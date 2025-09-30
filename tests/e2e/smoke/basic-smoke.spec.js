@@ -84,7 +84,6 @@ test.describe('Evo SDK Basic Smoke Tests', () => {
       'Identity Queries',
       'Data Contract Queries', 
       'Document Queries',
-      'DPNS Queries',
       'Voting & Contested Resources',
       'Protocol & Version',
       'Epoch & Block Queries',
@@ -241,7 +240,7 @@ test.describe('State Transitions UI Tests', () => {
       'Data Contract Transitions',
       'Document Transitions',
       'Token Transitions',
-      // 'Voting Transitions', // TODO: re-enable once voting transitions are working on the site
+      'Voting Transitions',
     ];
 
     const missing = expected.filter(cat => !categories.includes(cat));
@@ -261,7 +260,7 @@ test.describe('State Transitions UI Tests', () => {
     );
 
     const expected = [
-      // 'Identity Create', // TODO: re-enable once supported on the site
+      'Identity Create',
       'Identity Top Up',
       'Identity Update',
       'Identity Credit Transfer',
@@ -295,13 +294,12 @@ test.describe('State Transitions UI Tests', () => {
     );
 
     const expected = [
-      // 'Document Create', // TODO: re-enable once supported on the site
-      // 'Document Replace', // TODO: re-enable once supported on the site
+      'Document Create',
+      'Document Replace',
       'Document Delete',
       'Document Transfer',
       'Document Purchase',
       'Document Set Price',
-      // 'DPNS Register Name' // TODO: re-enable once supported on the site
     ];
 
     expect(new Set(transitionTypes)).toEqual(new Set(expected));
@@ -368,7 +366,6 @@ test.describe('Query Categories and Types UI Tests', () => {
       'Identity Queries',
       'Data Contract Queries',
       'Document Queries',
-      'DPNS Queries',
       'Voting & Contested Resources',
       'Protocol & Version',
       'Epoch & Block Queries',
@@ -442,26 +439,69 @@ test.describe('Query Categories and Types UI Tests', () => {
     ensureExactOptions(queryTypes, expected, 'Document query types');
   });
 
-  test('should populate DPNS query types correctly', async () => {
-    await evoSdkPage.setOperationType('queries');
-    await evoSdkPage.setQueryCategory('dpns');
+  test('should populate DPNS categories correctly', async () => {
+    await evoSdkPage.setOperationType('dpns');
 
-    const queryTypes = filterPlaceholderOptions(
+    const categories = filterPlaceholderOptions(
+      await evoSdkPage.getAvailableQueryCategories()
+    );
+
+    const expected = [
+      'Lookup & Resolve',
+      'Validation & Safety',
+      'Registration',
+    ];
+
+    ensureExactOptions(categories, expected, 'DPNS categories');
+  });
+
+  test('should populate DPNS lookup operations correctly', async () => {
+    await evoSdkPage.setOperationType('dpns');
+    await evoSdkPage.setQueryCategory('lookup');
+
+    const operations = filterPlaceholderOptions(
       await evoSdkPage.getAvailableQueryTypes()
     );
 
     const expected = [
       'Get Primary Username',
-      'List Usernames for Identity',
-      'Get Username by Name',
-      'Resolve DPNS Name',
-      'Check DPNS Availability',
-      'Convert to Homograph Safe',
-      'Validate Username',
-      'Is Contested Username'
+      'Get All Usernames',
+      'Get Username By Label',
+      'Resolve Name',
     ];
 
-    ensureExactOptions(queryTypes, expected, 'DPNS query types');
+    ensureExactOptions(operations, expected, 'DPNS lookup operations');
+  });
+
+  test('should populate DPNS validation operations correctly', async () => {
+    await evoSdkPage.setOperationType('dpns');
+    await evoSdkPage.setQueryCategory('validation');
+
+    const operations = filterPlaceholderOptions(
+      await evoSdkPage.getAvailableQueryTypes()
+    );
+
+    const expected = [
+      'Is Name Available',
+      'Convert To Homograph Safe',
+      'Validate Username Format',
+      'Is Contested Username',
+    ];
+
+    ensureExactOptions(operations, expected, 'DPNS validation operations');
+  });
+
+  test('should populate DPNS registration operations correctly', async () => {
+    await evoSdkPage.setOperationType('dpns');
+    await evoSdkPage.setQueryCategory('registration');
+
+    const operations = filterPlaceholderOptions(
+      await evoSdkPage.getAvailableQueryTypes()
+    );
+
+    const expected = ['Register DPNS Name'];
+
+    ensureExactOptions(operations, expected, 'DPNS registration operations');
   });
 
   test('should populate system query types correctly', async () => {

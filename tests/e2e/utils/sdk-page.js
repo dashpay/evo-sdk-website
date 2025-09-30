@@ -91,10 +91,11 @@ class EvoSdkPage extends BaseTest {
   /**
    * Set up a query test scenario
    */
-  async setupQuery(category, queryType, parameters = {}) {
-    // Set operation type to queries
-    await this.setOperationType('queries');
-    
+  async setupQuery(category, queryType, parameters = {}, options = {}) {
+    const operationType = options.operationType || 'queries';
+
+    await this.setOperationType(operationType);
+
     // Set category and query type
     await this.setQueryCategory(category);
     await this.setQueryType(queryType);

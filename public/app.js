@@ -58,9 +58,6 @@ const SUPPORTED_QUERIES = new Set([
   'getDataContract', 'getDataContractHistory', 'getDataContracts',
   // Documents
   'getDocuments', 'getDocument',
-  // DPNS
-  'getDpnsUsername', 'getDpnsUsernames', 'getDpnsUsernameByName', 'dpnsResolve', 'dpnsCheckAvailability',
-  'dpnsConvertToHomographSafe', 'dpnsIsValidUsername', 'dpnsIsContestedUsername',
   // Epoch
   'getEpochsInfo', 'getCurrentEpoch', 'getFinalizedEpochInfos', 'getEvonodesProposedEpochBlocksByIds', 'getEvonodesProposedEpochBlocksByRange',
   // Voting & Contested Resources
@@ -86,6 +83,89 @@ const SUPPORTED_TRANSITIONS = new Set([
   'tokenMint', 'tokenBurn', 'tokenTransfer', 'tokenFreeze', 'tokenUnfreeze', 'tokenDestroyFrozen', 'tokenSetPriceForDirectPurchase', 'tokenDirectPurchase', 'tokenClaim', 'tokenConfigUpdate',
   'masternodeVote',
 ]);
+
+const DPNS_CATEGORY_DEFINITIONS = {
+  lookup: {
+    label: 'Lookup & Resolve',
+    operations: {
+      getDpnsUsername: {
+        label: 'Get Primary Username',
+        description: 'Fetch the primary DPNS username associated with an identity.',
+        inputs: [
+          { name: 'identityId', label: 'Identity ID', type: 'text', required: true },
+        ],
+      },
+      getDpnsUsernames: {
+        label: 'Get All Usernames',
+        description: 'List DPNS usernames owned by an identity with an optional limit.',
+        inputs: [
+          { name: 'identityId', label: 'Identity ID', type: 'text', required: true },
+          { name: 'limit', label: 'Limit', type: 'number', min: 1, max: 100, help: 'Optional maximum number of usernames to return.' },
+        ],
+      },
+      getDpnsUsernameByName: {
+        label: 'Get Username By Label',
+        description: 'Fetch DPNS username information using its full label.',
+        inputs: [
+          { name: 'username', label: 'Username (e.g. alice)', type: 'text', required: true },
+        ],
+      },
+      dpnsResolve: {
+        label: 'Resolve Name',
+        description: 'Resolve a fully-qualified DPNS name (e.g. alice.dash) to its identity.',
+        inputs: [
+          { name: 'name', label: 'DPNS Name', type: 'text', required: true },
+        ],
+      },
+    },
+  },
+  validation: {
+    label: 'Validation & Safety',
+    operations: {
+      dpnsCheckAvailability: {
+        label: 'Is Name Available',
+        description: 'Check if a DPNS label is currently available for registration.',
+        inputs: [
+          { name: 'label', label: 'Label', type: 'text', required: true },
+        ],
+      },
+      dpnsConvertToHomographSafe: {
+        label: 'Convert To Homograph Safe',
+        description: 'Convert a DPNS label to its homograph-safe representation.',
+        inputs: [
+          { name: 'name', label: 'Label', type: 'text', required: true },
+        ],
+      },
+      dpnsIsValidUsername: {
+        label: 'Validate Username Format',
+        description: 'Validate a DPNS label against format rules.',
+        inputs: [
+          { name: 'label', label: 'Label', type: 'text', required: true },
+        ],
+      },
+      dpnsIsContestedUsername: {
+        label: 'Is Contested Username',
+        description: 'Determine if a label is part of the contested DPNS namespace.',
+        inputs: [
+          { name: 'label', label: 'Label', type: 'text', required: true },
+        ],
+      },
+    },
+  },
+  registration: {
+    label: 'Registration',
+    operations: {
+      dpnsRegisterName: {
+        label: 'Register DPNS Name',
+        description: 'Register a DPNS label using an identity owned key and private key.',
+        inputs: [
+          { name: 'label', label: 'Label', type: 'text', required: true },
+          { name: 'publicKeyId', label: 'Identity Public Key ID', type: 'number', required: true, min: 0 },
+        ],
+      },
+    },
+  },
+};
 
 const PROOF_CAPABLE = new Set([
   // Identity
@@ -132,8 +212,8 @@ const SUPPORTED_INPUT_TYPES = new Set([
 ]);
 
 const state = {
-  rawDefinitions: { queries: {}, transitions: {} },
-  definitions: { queries: {}, transitions: {} },
+  rawDefinitions: { queries: {}, transitions: {}, dpns: {} },
+  definitions: { queries: {}, transitions: {}, dpns: {} },
   selected: null,
   client: null,
   clientKey: null,
@@ -164,6 +244,10 @@ function getDynamicHandler(name) {
 function setNoProofInfoVisibility(shouldShow) {
   if (!elements.noProofInfoContainer) return;
   elements.noProofInfoContainer.style.display = shouldShow ? 'block' : 'none';
+}
+
+function getTypeConfig(type) {
+  return TYPE_CONFIG[type] || null;
 }
 
 const TRANSITION_AUTH_REQUIREMENTS = {
@@ -264,6 +348,19 @@ const TRANSITION_AUTH_REQUIREMENTS = {
     identity: { required: true, targets: ['masternodeProTxHash'] },
     privateKey: { required: true, targets: ['votingKeyWif'] },
   },
+};
+
+const DPNS_AUTH_REQUIREMENTS = {
+  dpnsRegisterName: {
+    identity: { required: true, targets: ['identityId'] },
+    privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: false },
+  },
+};
+
+const TYPE_CONFIG = {
+  queries: { definitionKey: 'queries', itemsKey: 'queries', allowProof: true },
+  transitions: { definitionKey: 'transitions', itemsKey: 'transitions', allowProof: false },
+  dpns: { definitionKey: 'dpns', itemsKey: 'operations', allowProof: true },
 };
 
 function computeAuthRequirements(operationKey, definition) {
@@ -502,7 +599,6 @@ function filterDefinitions(source, entriesKey, allowSet) {
 
 function populateCategories() {
   const type = elements.operationType.value;
-  const isQuery = type === 'queries';
   if (type === 'wallet') {
     elements.queryCategory.innerHTML = '<option value="">Wallet helpers are not available in this demo</option>';
     elements.queryType.innerHTML = '<option value="">Select Operation</option>';
@@ -517,7 +613,12 @@ function populateCategories() {
     return;
   }
 
-  const target = isQuery ? state.definitions.queries : state.definitions.transitions;
+  const config = getTypeConfig(type) || TYPE_CONFIG.queries;
+  if (!config.allowProof) {
+    setNoProofInfoVisibility(false);
+  }
+
+  const target = state.definitions[config.definitionKey] || {};
   elements.queryCategory.innerHTML = '<option value="">Select Category</option>';
   const entries = Object.entries(target);
   entries.sort((a, b) => (a[1]?.label || a[0]).localeCompare(b[1]?.label || b[0]));
@@ -533,16 +634,14 @@ function populateCategories() {
     elements.queryTypeLabel.style.display = 'none';
   }
   hideOperationDetails();
-  if (!isQuery) {
-    setNoProofInfoVisibility(false);
-  }
 }
 
 function populateOperations(categoryKey) {
   const type = elements.operationType.value;
-  const isQuery = type === 'queries';
-  const sourceGroup = (isQuery ? state.definitions.queries : state.definitions.transitions)[categoryKey];
-  const itemsKey = isQuery ? 'queries' : 'transitions';
+  const config = getTypeConfig(type) || TYPE_CONFIG.queries;
+  const source = state.definitions[config.definitionKey] || {};
+  const sourceGroup = source[categoryKey];
+  const itemsKey = config.itemsKey;
   const items = sourceGroup?.[itemsKey];
   elements.queryType.innerHTML = '<option value="">Select Operation</option>';
   if (!items) {
@@ -584,9 +683,10 @@ function hideOperationDetails() {
 
 function onOperationChange(categoryKey, operationKey) {
   const type = elements.operationType.value;
-  const isQuery = type === 'queries';
-  const group = (isQuery ? state.definitions.queries : state.definitions.transitions)[categoryKey];
-  const itemsKey = isQuery ? 'queries' : 'transitions';
+  const config = getTypeConfig(type) || TYPE_CONFIG.queries;
+  const groupRoot = state.definitions[config.definitionKey] || {};
+  const group = groupRoot[categoryKey];
+  const itemsKey = config.itemsKey;
   const def = group?.[itemsKey]?.[operationKey];
   if (!def) {
     hideOperationDetails();
@@ -601,12 +701,17 @@ function onOperationChange(categoryKey, operationKey) {
     elements.queryDescription.style.display = 'none';
   }
   renderInputs(def);
-  const supportsProof = isQuery && PROOF_CAPABLE.has(operationKey);
-  const shouldShowNoProof = isQuery && !supportsProof;
+  const supportsProof = config.allowProof && PROOF_CAPABLE.has(operationKey);
+  const shouldShowNoProof = config.allowProof && !supportsProof;
   elements.proofToggle.checked = supportsProof;
   elements.proofToggleContainer.style.display = supportsProof ? 'flex' : 'none';
   setNoProofInfoVisibility(shouldShowNoProof);
-  const authRequirements = isQuery ? null : computeAuthRequirements(operationKey, def);
+  let authRequirements = null;
+  if (type === 'transitions') {
+    authRequirements = computeAuthRequirements(operationKey, def);
+  } else if (type === 'dpns') {
+    authRequirements = DPNS_AUTH_REQUIREMENTS[operationKey] || null;
+  }
   updateAuthInputsVisibility(authRequirements);
   if (elements.executeButton) {
     elements.executeButton.style.display = 'block';
@@ -1980,6 +2085,27 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.dpns.isValidUsername(n.label);
     case 'dpnsIsContestedUsername':
       return c.dpns.isContestedUsername(n.label);
+    case 'dpnsRegisterName': {
+      if (!n.label) {
+        throw new Error('Label is required for DPNS registration.');
+      }
+      if (!n.identityId) {
+        throw new Error('Identity ID is required for DPNS registration.');
+      }
+      if (!n.privateKeyWif) {
+        throw new Error('Private key WIF is required for DPNS registration.');
+      }
+      const publicKeyId = toNumber(n.publicKeyId);
+      if (publicKeyId === null) {
+        throw new Error('Identity public key ID must be provided for DPNS registration.');
+      }
+      return c.dpns.registerName({
+        label: n.label,
+        identityId: n.identityId,
+        publicKeyId,
+        privateKeyWif: n.privateKeyWif,
+      });
+    }
 
     // Epoch
     case 'getEpochsInfo':
@@ -2258,9 +2384,10 @@ async function executeSelected() {
     const args = collectArgs(definition);
     const authArgs = collectAuthArgs(auth);
     const client = await ensureClient();
-    const useProof = elements.proofToggleContainer.style.display !== 'none'
-      && elements.proofToggle.checked
-      && state.selected.type === 'queries';
+    const typeConfig = getTypeConfig(state.selected.type);
+    const useProof = Boolean(typeConfig?.allowProof
+      && elements.proofToggleContainer.style.display !== 'none'
+      && elements.proofToggle.checked);
     setStatus(`Running ${state.selected.operationKey}${useProof ? ' (proof)' : ''}...`, 'loading');
     const result = await callEvo(
       client,
@@ -2374,11 +2501,16 @@ async function loadDefinitions() {
   state.rawDefinitions = {
     queries: data.queries || {},
     transitions: data.transitions || {},
+    dpns: DPNS_CATEGORY_DEFINITIONS,
   };
   state.definitions = {
     queries: filterDefinitions(state.rawDefinitions.queries, 'queries', SUPPORTED_QUERIES),
     transitions: filterDefinitions(state.rawDefinitions.transitions, 'transitions', SUPPORTED_TRANSITIONS),
+    dpns: JSON.parse(JSON.stringify(DPNS_CATEGORY_DEFINITIONS)),
   };
+  if (state.definitions.queries?.dpns) {
+    delete state.definitions.queries.dpns;
+  }
   if (elements.latestVersionInfo) {
     let latestVersion = await EvoSDK.getLatestVersionNumber();
     elements.latestVersionInfo.textContent = `Latest version: ${latestVersion}`;
@@ -2403,8 +2535,9 @@ function attachEventListeners() {
     });
   }
   elements.operationType.addEventListener('change', () => {
-    const isQuery = elements.operationType.value === 'queries';
-    if (!isQuery) {
+    const type = elements.operationType.value;
+    const config = getTypeConfig(type);
+    if (!config?.allowProof) {
       setNoProofInfoVisibility(false);
     }
     populateCategories();

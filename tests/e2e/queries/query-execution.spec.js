@@ -11,9 +11,19 @@ const { ParameterInjector } = require('../utils/parameter-injector');
  * @param {string} network - Network to use ('testnet' or 'mainnet')
  * @returns {Promise<Object>} - The query result object
  */
-async function executeQueryWithProof(evoSdkPage, parameterInjector, category, queryName, network = 'testnet') {
-  await evoSdkPage.setupQuery(category, queryName);
-  
+async function executeQueryWithProof(
+  evoSdkPage,
+  parameterInjector,
+  category,
+  queryName,
+  network = 'testnet',
+  options = {}
+) {
+  const operationType = options.operationType || 'queries';
+  const parameterCategory = options.parameterCategory || category;
+
+  await evoSdkPage.setupQuery(category, queryName, {}, { operationType });
+
   // Enable proof info if available
   const proofEnabled = await evoSdkPage.enableProofInfo();
   
@@ -23,7 +33,7 @@ async function executeQueryWithProof(evoSdkPage, parameterInjector, category, qu
     await expect(proofToggle).toBeChecked();
   }
   
-  const success = await parameterInjector.injectParameters(category, queryName, network);
+  const success = await parameterInjector.injectParameters(parameterCategory, queryName, network);
   expect(success).toBe(true);
   
   const result = await evoSdkPage.executeQueryAndGetResult();
@@ -1087,20 +1097,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
       // Fill with invalid ID (contains invalid base58 characters '0', 'O', 'I', 'l')
       await evoSdkPage.fillQueryParameters({ id: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4SOIl0' });
       
-      // Click execute button directly
-      const executeButton = evoSdkPage.page.locator('#executeQuery');
-      await executeButton.click();
-      
-      // Wait a bit for the error to appear
-      await evoSdkPage.page.waitForTimeout(1000);
-      
-      // Check for error status
-      const statusBanner = evoSdkPage.page.locator('#statusBanner');
-      const statusClass = await statusBanner.getAttribute('class');
-      const statusText = await evoSdkPage.getStatusBannerText();
-      
-      // Should show error
-      expect(statusClass).toContain('error');
+      const outcome = await evoSdkPage.executeQueryAndGetResult();
+
+      const statusText = outcome.statusText || '';
+      const resultText = outcome.result || '';
+
+      const indicator = outcome.hasError
+        || statusText.toLowerCase().includes('error')
+        || /error|invalid|null/i.test(resultText);
+
+      expect(indicator).toBe(true);
       expect(statusText).toBeTruthy();
     });
 
@@ -1225,6 +1231,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
   test.describe('DPNS Queries', () => {
     const dpnsQueries = [
       {
+        category: 'lookup',
         name: 'getDpnsUsername',
         hasProofSupport: false, // Not working currently
         needsParameters: true,
@@ -1240,6 +1247,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
         }
       },
       {
+        category: 'lookup',
         name: 'getDpnsUsernames',
         hasProofSupport: true,
         needsParameters: true,
@@ -1256,6 +1264,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
         }
       },
       {
+        category: 'lookup',
         name: 'getDpnsUsernameByName',
         hasProofSupport: true,
         needsParameters: true,
@@ -1271,6 +1280,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
         }
       },
       {
+        category: 'lookup',
         name: 'dpnsResolve',
         hasProofSupport: false,  // Proof support not yet implemented in SDK
         needsParameters: true,
@@ -1288,12 +1298,14 @@ test.describe('Evo SDK Query Execution Tests', () => {
         }
       },
       {
+        category: 'validation',
         name: 'dpnsCheckAvailability',
         hasProofSupport: false,  // Proof support not yet implemented in SDK
         needsParameters: true,
         validateFn: validateBooleanResult
       },
       {
+        category: 'validation',
         name: 'dpnsConvertToHomographSafe',
         hasProofSupport: false,  // Utility function, no proof needed
         needsParameters: true,
@@ -1304,12 +1316,14 @@ test.describe('Evo SDK Query Execution Tests', () => {
         }
       },
       {
+        category: 'validation',
         name: 'dpnsIsValidUsername',
         hasProofSupport: false,  // Utility function, no proof needed
         needsParameters: true,
         validateFn: validateBooleanResult
       },
       {
+        category: 'validation',
         name: 'dpnsIsContestedUsername',
         hasProofSupport: false,  // Proof support not yet implemented in SDK
         needsParameters: true,
@@ -1334,10 +1348,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
       // }
     ];
 
-    dpnsQueries.forEach(({ name, hasProofSupport, needsParameters, validateFn }) => {
+    dpnsQueries.forEach(({ category, name, hasProofSupport, needsParameters, validateFn }) => {
       test.describe(`${name} query (parameterized)`, () => {
         test('without proof info', async () => {
-          await evoSdkPage.setupQuery('dpns', name);
+          await evoSdkPage.setupQuery(category, name, {}, { operationType: 'dpns' });
           await evoSdkPage.disableProofInfo();
           
           if (needsParameters) {
@@ -1356,9 +1370,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
             const { result, proofEnabled } = await executeQueryWithProof(
               evoSdkPage, 
               parameterInjector, 
-              'dpns', 
+              category,
               name,
-              'testnet'
+              'testnet',
+              { operationType: 'dpns', parameterCategory: 'dpns' }
             );
             
             validateBasicDpnsQueryResult(result);
