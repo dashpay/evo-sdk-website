@@ -850,10 +850,20 @@ function parseInputValue(type, def, control) {
         return raw.split(',').map(item => item.trim()).filter(Boolean);
       }
     }
-    case 'multiselect':
-      return Array.from(control.selectedOptions).map(opt => opt.value);
-    case 'select':
-      return control.value;
+    case 'multiselect': {
+      const values = Array.from(control.selectedOptions).map(opt => opt.value);
+      if (def.required && values.length === 0) {
+        throw new Error(`${def.label || def.name} is required`);
+      }
+      return values;
+    }
+    case 'select': {
+      const val = control.value;
+      if (def.required && (val === '' || val === undefined || val === null)) {
+        throw new Error(`${def.label || def.name} is required`);
+      }
+      return val;
+    }
     case 'textarea':
     case 'text':
     default: {
