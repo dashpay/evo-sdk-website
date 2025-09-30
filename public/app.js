@@ -128,6 +128,11 @@ const state = {
   advancedOptions: {},
 };
 
+function setNoProofInfoVisibility(shouldShow) {
+  if (!elements.noProofInfoContainer) return;
+  elements.noProofInfoContainer.style.display = shouldShow ? 'block' : 'none';
+}
+
 const TRANSITION_AUTH_REQUIREMENTS = {
   identityCreate: {
     assetLockProof: { required: true, target: 'assetLockProof' },
@@ -472,6 +477,7 @@ function populateCategories() {
       elements.queryTypeLabel.style.display = 'none';
     }
     hideOperationDetails();
+    setNoProofInfoVisibility(false);
     setStatus('Wallet helpers are not available with the Evo SDK demo.', 'loading');
     updateAuthInputsVisibility(null);
     return;
@@ -493,6 +499,9 @@ function populateCategories() {
     elements.queryTypeLabel.style.display = 'none';
   }
   hideOperationDetails();
+  if (!isQuery) {
+    setNoProofInfoVisibility(false);
+  }
 }
 
 function populateOperations(categoryKey) {
@@ -530,7 +539,7 @@ function hideOperationDetails() {
   elements.queryInputs.style.display = 'none';
   elements.dynamicInputs.innerHTML = '';
   elements.proofToggleContainer.style.display = 'none';
-  elements.noProofInfoContainer.style.display = 'none';
+  setNoProofInfoVisibility(false);
   if (elements.executeButton) {
     elements.executeButton.style.display = 'none';
     elements.executeButton.disabled = true;
@@ -559,9 +568,10 @@ function onOperationChange(categoryKey, operationKey) {
   }
   renderInputs(def);
   const supportsProof = isQuery && PROOF_CAPABLE.has(operationKey);
+  const shouldShowNoProof = isQuery && !supportsProof;
   elements.proofToggle.checked = supportsProof;
   elements.proofToggleContainer.style.display = supportsProof ? 'flex' : 'none';
-  elements.noProofInfoContainer.style.display = supportsProof ? 'none' : 'block';
+  setNoProofInfoVisibility(shouldShowNoProof);
   const authRequirements = isQuery ? null : computeAuthRequirements(operationKey, def);
   updateAuthInputsVisibility(authRequirements);
   if (elements.executeButton) {
@@ -1512,6 +1522,10 @@ function attachEventListeners() {
     });
   }
   elements.operationType.addEventListener('change', () => {
+    const isQuery = elements.operationType.value === 'queries';
+    if (!isQuery) {
+      setNoProofInfoVisibility(false);
+    }
     populateCategories();
   });
   elements.queryCategory.addEventListener('change', (event) => {
@@ -1590,6 +1604,7 @@ async function init() {
   updateNetworkIndicator();
   attachEventListeners();
   defaultResultMessage();
+  setNoProofInfoVisibility(false);
   try {
     await loadDefinitions();
     setProgress(90, 'Finalizing UI...');
