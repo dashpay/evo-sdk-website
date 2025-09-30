@@ -10,6 +10,13 @@ const DYNAMIC_ARRAY_PARAMETERS = {
   'indexValues': true
 };
 
+const PARAM_SPECIFIC_FALLBACK_SELECTORS = {
+  contractId: ['input[placeholder*="Contract ID"]'],
+  documentType: ['input[placeholder*="Document Type"]'],
+  json: ['textarea[placeholder*="JSON"]'],
+  schema: ['textarea[placeholder*="Schema"]']
+};
+
 /**
  * Page Object Model for WASM SDK index.html interface
  */
@@ -157,12 +164,11 @@ class EvoSdkPage extends BaseTest {
         `label:has-text("${paramName}") + input`,
         `label:has-text("${paramName}") + select`,
         `label:has-text("${paramName}") + textarea`,
-        // Special cases for contract and document fields
-        `input[placeholder*="Contract ID"]`,
-        `input[placeholder*="Document Type"]`,
-        `textarea[placeholder*="JSON"]`,
-        `textarea[placeholder*="Schema"]`
       ];
+
+      if (PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]) {
+        alternativeSelectors.push(...PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]);
+      }
       
       let found = false;
       for (const selector of alternativeSelectors) {
