@@ -238,8 +238,8 @@ function validateKeysResult(resultStr) {
   const keysData = JSON.parse(resultStr);
   expect(keysData).toBeDefined();
   keysData.forEach(key => {
-      expect(key).toHaveProperty('keyId')
-      expect(key).toHaveProperty('purpose')
+      expect(key).toHaveProperty('keyId');
+      expect(key).toHaveProperty('purpose');
     });
 }
 
