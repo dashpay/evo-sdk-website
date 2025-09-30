@@ -2233,7 +2233,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'tokenUnfreeze':
       return c.tokens.unfreeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToUnfreeze: n.identityToUnfreeze, unfreezerId: n.unfreezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenDestroyFrozen':
-      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
+      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.frozenIdentityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenSetPriceForDirectPurchase':
       return c.tokens.setPriceForDirectPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, priceType: n.priceType, priceData: n.priceData, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenDirectPurchase':
