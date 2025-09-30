@@ -116,7 +116,20 @@ const PROOF_CAPABLE = new Set([
   'getPrefundedSpecializedBalance', 'getTotalCreditsInPlatform', 'getPathElements',
 ]);
 
-const SUPPORTED_INPUT_TYPES = new Set(['text', 'string', 'textarea', 'number', 'checkbox', 'json', 'select', 'multiselect', 'array']);
+const SUPPORTED_INPUT_TYPES = new Set([
+  'text',
+  'string',
+  'textarea',
+  'number',
+  'checkbox',
+  'json',
+  'select',
+  'multiselect',
+  'array',
+  'button',
+  'dynamic',
+  'keyPreview',
+]);
 
 const state = {
   rawDefinitions: { queries: {}, transitions: {} },
@@ -127,6 +140,26 @@ const state = {
   currentResult: null,
   advancedOptions: {},
 };
+
+const dynamicInputHandlers = new Map();
+
+function clearDynamicHandlers() {
+  dynamicInputHandlers.forEach(handler => {
+    if (handler && typeof handler.clear === 'function') {
+      try { handler.clear(); } catch (_) { /* ignore */ }
+    }
+  });
+  dynamicInputHandlers.clear();
+}
+
+function registerDynamicHandler(name, handler) {
+  if (!name || !handler) return;
+  dynamicInputHandlers.set(name, handler);
+}
+
+function getDynamicHandler(name) {
+  return name ? dynamicInputHandlers.get(name) : undefined;
+}
 
 function setNoProofInfoVisibility(shouldShow) {
   if (!elements.noProofInfoContainer) return;
@@ -228,6 +261,7 @@ const TRANSITION_AUTH_REQUIREMENTS = {
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   masternodeVote: {
+    identity: { required: true, targets: ['masternodeProTxHash'] },
     privateKey: { required: true, targets: ['votingKeyWif'] },
   },
 };
@@ -583,6 +617,7 @@ function onOperationChange(categoryKey, operationKey) {
 
 function renderInputs(def) {
   elements.dynamicInputs.innerHTML = '';
+  clearDynamicHandlers();
   const inputs = Array.isArray(def.inputs) ? def.inputs : [];
   if (!inputs.length) {
     elements.queryInputs.style.display = 'none';
@@ -599,8 +634,11 @@ function renderInputs(def) {
     label.textContent = inputDef.label || inputDef.name || `Parameter ${index + 1}`;
     wrapper.appendChild(label);
 
-    const control = createControl(normalizedType, inputDef);
-    if (!control) return;
+    const control = createControl(normalizedType, inputDef, wrapper);
+    if (!control) {
+      elements.dynamicInputs.appendChild(wrapper);
+      return;
+    }
     control.dataset.inputName = inputDef.name || `param_${index}`;
     wrapper.appendChild(control);
 
@@ -642,9 +680,17 @@ function renderInputs(def) {
   elements.queryInputs.style.display = 'block';
 }
 
-function createControl(type, def) {
+function createControl(type, def, wrapper) {
   let control;
   switch (type) {
+    case 'button': {
+      control = document.createElement('button');
+      control.type = 'button';
+      control.className = 'action-button';
+      control.textContent = def.label || def.name || 'Action';
+      control.addEventListener('click', () => handleButtonAction(def.action, def));
+      break;
+    }
     case 'number': {
       control = document.createElement('input');
       control.type = 'number';
@@ -693,6 +739,26 @@ function createControl(type, def) {
       }
       break;
     }
+    case 'dynamic': {
+      control = document.createElement('div');
+      control.className = 'dynamic-field-container';
+      if (wrapper) wrapper.style.display = 'none';
+      const handlerName = def.name || '';
+      if (handlerName === 'documentFields') {
+        registerDynamicHandler(handlerName, createDocumentFieldsHandler(control, wrapper));
+      } else if (handlerName === 'contestedResourceDropdown') {
+        registerDynamicHandler(handlerName, createContestedResourceHandler(control, wrapper));
+      } else {
+        registerDynamicHandler(handlerName, createGenericDynamicHandler(control, wrapper));
+      }
+      break;
+    }
+    case 'keyPreview': {
+      control = document.createElement('div');
+      control.className = 'key-preview-container';
+      control.textContent = def.help || 'Enter a seed phrase to preview keys.';
+      break;
+    }
     case 'array':
     case 'text':
     default: {
@@ -715,6 +781,19 @@ function collectArgs(definition) {
   return defs.map((inputDef, index) => {
     const type = normalizeType(inputDef.type);
     if (!SUPPORTED_INPUT_TYPES.has(type)) return undefined;
+    if (type === 'button' || type === 'keyPreview') {
+      return undefined;
+    }
+    if (type === 'dynamic') {
+      const handler = getDynamicHandler(inputDef.name || `param_${index}`);
+      if (!handler || typeof handler.collect !== 'function') {
+        if (inputDef.required) {
+          throw new Error(`Missing required input: ${inputDef.label || inputDef.name || `Parameter ${index + 1}`}`);
+        }
+        return undefined;
+      }
+      return handler.collect(state.selected?.operationKey || null);
+    }
     const selector = `[data-input-name="${inputDef.name || `param_${index}`}"]`;
     const control = elements.dynamicInputs.querySelector(selector);
     if (!control) {
@@ -784,6 +863,737 @@ function parseInputValue(type, def, control) {
       }
       return raw || null;
     }
+  }
+}
+
+async function handleButtonAction(action) {
+  if (!action) return;
+  const handlers = {
+    fetchDocumentSchema,
+    loadExistingDocument,
+    generateTestSeed,
+    fetchContestedResources,
+  };
+  const handler = handlers[action];
+  if (!handler) {
+    console.warn(`Unhandled action: ${action}`);
+    setStatus(`Action "${action}" is not available in this demo.`, 'error');
+    return;
+  }
+  try {
+    await handler();
+  } catch (error) {
+    console.error(`Action ${action} failed`, error);
+    setStatus(`Error executing action: ${error?.message || error}`, 'error');
+  }
+}
+
+function createDocumentFieldsHandler(container, wrapper) {
+  const state = {
+    schema: null,
+    revision: null,
+  };
+
+  return {
+    setSchema(schema, existingData = null, options = {}) {
+      state.schema = schema || null;
+      if (Object.prototype.hasOwnProperty.call(options, 'revision')) {
+        state.revision = options.revision;
+      } else if (options.resetRevision) {
+        state.revision = null;
+      }
+      renderDocumentFields(container, state.schema, existingData || {});
+      if (wrapper) wrapper.style.display = '';
+    },
+    setRevision(revision) {
+      state.revision = revision ?? null;
+    },
+    collect(operationKey) {
+      if (!state.schema) {
+        throw new Error('Please fetch the document schema first.');
+      }
+      const data = collectDocumentFieldValues(container, state.schema);
+      const payload = { data };
+      if (operationKey === 'documentCreate') {
+        payload.entropyHex = generateEntropyHex();
+      }
+      if (state.revision != null) {
+        payload.revision = state.revision;
+      } else if (operationKey === 'documentReplace') {
+        throw new Error('Document revision is missing. Click "Load Document" before replacing.');
+      }
+      return payload;
+    },
+    clear() {
+      container.innerHTML = '';
+      state.schema = null;
+      state.revision = null;
+      if (wrapper) wrapper.style.display = 'none';
+    },
+  };
+}
+
+function createContestedResourceHandler(container, wrapper) {
+  const state = {
+    resources: [],
+    select: null,
+    valuesInput: null,
+  };
+
+  const resetContainer = () => {
+    container.innerHTML = '';
+    state.select = null;
+    state.valuesInput = null;
+  };
+
+  const renderIndexValuesInput = (selectedIndex) => {
+    const existing = container.querySelector('.index-values-group');
+    if (existing) existing.remove();
+    const index = Number(selectedIndex);
+    if (!Number.isInteger(index) || index < 0 || !state.resources[index]) {
+      state.valuesInput = null;
+      return;
+    }
+    const resource = state.resources[index];
+    const group = document.createElement('div');
+    group.className = 'input-group index-values-group';
+
+    const label = document.createElement('label');
+    label.textContent = 'Index Values (JSON array)';
+    group.appendChild(label);
+
+    const textarea = document.createElement('textarea');
+    textarea.rows = 2;
+    const placeholderHint = Array.isArray(resource.indexProperties) && resource.indexProperties.length
+      ? `Match order: ${resource.indexProperties.map(prop => prop.property || prop.name || prop).join(', ')}`
+      : 'e.g., ["value1", "value2"]';
+    textarea.placeholder = placeholderHint;
+    group.appendChild(textarea);
+
+    container.appendChild(group);
+    state.valuesInput = textarea;
+  };
+
+  const renderResources = (resources) => {
+    resetContainer();
+    state.resources = Array.isArray(resources) ? resources : [];
+    if (wrapper) wrapper.style.display = '';
+
+    if (!state.resources.length) {
+      const info = document.createElement('p');
+      info.className = 'empty-message';
+      info.textContent = 'No contested resources found for this contract.';
+      container.appendChild(info);
+      return;
+    }
+
+    const selectGroup = document.createElement('div');
+    selectGroup.className = 'input-group contested-resource-group';
+
+    const select = document.createElement('select');
+    select.className = 'contested-resource-select';
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Select a contested resource --';
+    select.appendChild(placeholder);
+
+    state.resources.forEach((resource, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = resource.displayName || `${resource.documentType} - ${resource.indexName}`;
+      select.appendChild(option);
+    });
+
+    select.addEventListener('change', () => renderIndexValuesInput(select.value));
+
+    selectGroup.appendChild(select);
+    container.appendChild(selectGroup);
+    state.select = select;
+  };
+
+  return {
+    setResources(resources) {
+      renderResources(resources);
+    },
+    collect() {
+      if (!state.resources.length) {
+        throw new Error('Click "Get Contested Resources" to load available options.');
+      }
+      if (!state.select || !state.select.value) {
+        throw new Error('Please select a contested resource.');
+      }
+      const index = Number(state.select.value);
+      const resource = state.resources[index];
+      if (!resource) {
+        throw new Error('Invalid contested resource selection.');
+      }
+      if (!state.valuesInput) {
+        throw new Error('Provide index values for the contested resource.');
+      }
+      const raw = state.valuesInput.value.trim();
+      if (!raw) {
+        throw new Error('Index Values are required for the contested resource.');
+      }
+      let indexValues;
+      try {
+        indexValues = JSON.parse(raw);
+      } catch (error) {
+        throw new Error(`Index Values must be valid JSON: ${error.message}`);
+      }
+      if (!Array.isArray(indexValues)) {
+        throw new Error('Index Values must be a JSON array.');
+      }
+      return {
+        contractId: resource.contractId,
+        documentTypeName: resource.documentType,
+        indexName: resource.indexName,
+        indexValues,
+      };
+    },
+    clear() {
+      resetContainer();
+      state.resources = [];
+      if (wrapper) wrapper.style.display = 'none';
+    },
+  };
+}
+
+function createGenericDynamicHandler(container, wrapper) {
+  return {
+    collect() {
+      return undefined;
+    },
+    clear() {
+      container.innerHTML = '';
+      if (wrapper) wrapper.style.display = 'none';
+    },
+  };
+}
+
+function renderDocumentFields(container, schema, existingData = {}) {
+  container.innerHTML = '';
+  if (!schema) {
+    const info = document.createElement('p');
+    info.className = 'empty-message';
+    info.textContent = 'Document schema not available for this operation.';
+    container.appendChild(info);
+    return;
+  }
+
+  const properties = schema.properties || {};
+  const entries = Object.entries(properties);
+
+  if (!entries.length) {
+    const info = document.createElement('p');
+    info.className = 'empty-message';
+    info.textContent = 'This document type does not define any fields.';
+    container.appendChild(info);
+    return;
+  }
+
+  const header = document.createElement('h4');
+  header.className = 'document-fields-header';
+  header.textContent = 'Document Fields';
+  container.appendChild(header);
+
+  const requiredSet = new Set(Array.isArray(schema.required) ? schema.required : []);
+
+  entries.forEach(([fieldName, fieldSchema]) => {
+    const group = document.createElement('div');
+    group.className = 'input-group document-field';
+
+    const label = document.createElement('label');
+    const isRequired = requiredSet.has(fieldName);
+    label.textContent = `${fieldName}${isRequired ? ' *' : ''}`;
+    group.appendChild(label);
+
+    const input = createDocumentFieldInput(fieldName, fieldSchema || {}, existingData[fieldName], isRequired);
+    group.appendChild(input);
+
+    if (fieldSchema && fieldSchema.description) {
+      const description = document.createElement('small');
+      description.className = 'input-help';
+      description.textContent = fieldSchema.description;
+      group.appendChild(description);
+    }
+
+    container.appendChild(group);
+  });
+}
+
+function createDocumentFieldInput(fieldName, fieldSchema, existingValue, required) {
+  const fieldType = fieldSchema?.type || 'string';
+  const format = fieldSchema?.format;
+  let input;
+
+  if (fieldType === 'boolean') {
+    input = document.createElement('input');
+    input.type = 'checkbox';
+    const defaultValue = existingValue !== undefined ? existingValue : fieldSchema.default;
+    input.checked = !!defaultValue;
+  } else if (fieldType === 'integer' || fieldType === 'number') {
+    input = document.createElement('input');
+    input.type = 'number';
+    if (fieldSchema.minimum !== undefined) input.min = fieldSchema.minimum;
+    if (fieldSchema.maximum !== undefined) input.max = fieldSchema.maximum;
+    if (fieldSchema.multipleOf !== undefined) input.step = fieldSchema.multipleOf;
+    if (fieldType === 'integer' && !input.step) input.step = '1';
+    const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (value !== undefined && value !== null) input.value = String(value);
+  } else if (fieldType === 'array') {
+    if (fieldSchema.byteArray) {
+      input = document.createElement('input');
+      input.type = 'text';
+      const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+      if (value !== undefined && value !== null) input.value = String(value);
+    } else {
+      input = document.createElement('textarea');
+      input.rows = 3;
+      const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+      if (value !== undefined && value !== null) {
+        input.value = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+      }
+    }
+  } else if (fieldType === 'object') {
+    input = document.createElement('textarea');
+    input.rows = 4;
+    const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (value !== undefined && value !== null) {
+      input.value = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    }
+  } else if (fieldType === 'string' && Array.isArray(fieldSchema.enum)) {
+    input = document.createElement('select');
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = '-- Select --';
+    input.appendChild(placeholder);
+    fieldSchema.enum.forEach(value => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      input.appendChild(option);
+    });
+    const selected = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (selected !== undefined && selected !== null) input.value = String(selected);
+  } else if (fieldType === 'string' && format === 'date-time') {
+    input = document.createElement('input');
+    input.type = 'datetime-local';
+    const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (value !== undefined && value !== null) {
+      const formatted = toLocalDateTimeString(value);
+      if (formatted) input.value = formatted;
+    }
+  } else if (fieldSchema.maxLength && fieldSchema.maxLength > 250) {
+    input = document.createElement('textarea');
+    input.rows = 3;
+    input.maxLength = fieldSchema.maxLength;
+    const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (value !== undefined && value !== null) input.value = String(value);
+  } else {
+    input = document.createElement('input');
+    input.type = 'text';
+    if (fieldSchema.maxLength) input.maxLength = fieldSchema.maxLength;
+    if (fieldSchema.pattern) input.pattern = fieldSchema.pattern;
+    const value = existingValue !== undefined ? existingValue : fieldSchema.default;
+    if (value !== undefined && value !== null) input.value = String(value);
+  }
+
+  input.name = `doc_field_${fieldName}`;
+  input.dataset.fieldName = fieldName;
+  input.dataset.fieldType = fieldType;
+  if (fieldSchema.byteArray === true) input.dataset.byteArray = 'true';
+  if (format) input.dataset.format = format;
+  input.classList.add('doc-field-input');
+  input.placeholder = fieldSchema.placeholder || '';
+  if (required) input.required = true;
+
+  return input;
+}
+
+function collectDocumentFieldValues(container, schema) {
+  const values = {};
+  const requiredSet = new Set(Array.isArray(schema?.required) ? schema.required : []);
+  const inputs = container.querySelectorAll('.doc-field-input');
+
+  inputs.forEach(input => {
+    const fieldName = input.dataset.fieldName;
+    if (!fieldName) return;
+    const fieldType = input.dataset.fieldType || 'string';
+
+    if (fieldType === 'boolean') {
+      values[fieldName] = input.checked;
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    if (fieldType === 'integer' || fieldType === 'number') {
+      const raw = input.value.trim();
+      if (!raw) {
+        if (requiredSet.has(fieldName)) {
+          throw new Error(`${fieldName} is required.`);
+        }
+        return;
+      }
+      const parsed = Number(raw);
+      if (Number.isNaN(parsed)) {
+        throw new Error(`${fieldName} must be a valid ${fieldType}.`);
+      }
+      values[fieldName] = fieldType === 'integer' ? Math.trunc(parsed) : parsed;
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    if (fieldType === 'array') {
+      const raw = input.value.trim();
+      if (!raw) {
+        if (requiredSet.has(fieldName)) {
+          throw new Error(`${fieldName} is required.`);
+        }
+        return;
+      }
+      if (input.dataset.byteArray === 'true') {
+        values[fieldName] = raw;
+      } else {
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (error) {
+          throw new Error(`${fieldName} must be a JSON array.`);
+        }
+        if (!Array.isArray(parsed)) {
+          throw new Error(`${fieldName} must be a JSON array.`);
+        }
+        values[fieldName] = parsed;
+      }
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    if (fieldType === 'object') {
+      const raw = input.value.trim();
+      if (!raw) {
+        if (requiredSet.has(fieldName)) {
+          throw new Error(`${fieldName} is required.`);
+        }
+        return;
+      }
+      try {
+        values[fieldName] = JSON.parse(raw);
+      } catch (error) {
+        throw new Error(`${fieldName} must be valid JSON.`);
+      }
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    if (fieldType === 'string' && input.tagName === 'SELECT') {
+      const raw = input.value;
+      if (!raw) {
+        if (requiredSet.has(fieldName)) {
+          throw new Error(`${fieldName} is required.`);
+        }
+        return;
+      }
+      values[fieldName] = raw;
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    if (input.dataset.format === 'date-time') {
+      const raw = input.value.trim();
+      if (!raw) {
+        if (requiredSet.has(fieldName)) {
+          throw new Error(`${fieldName} is required.`);
+        }
+        return;
+      }
+      const timestamp = new Date(raw);
+      if (Number.isNaN(timestamp.getTime())) {
+        throw new Error(`${fieldName} must be a valid date/time.`);
+      }
+      values[fieldName] = timestamp.getTime();
+      requiredSet.delete(fieldName);
+      return;
+    }
+
+    const raw = (input.value ?? '').toString().trim();
+    if (!raw) {
+      if (requiredSet.has(fieldName)) {
+        throw new Error(`${fieldName} is required.`);
+      }
+      return;
+    }
+    values[fieldName] = raw;
+    requiredSet.delete(fieldName);
+  });
+
+  if (requiredSet.size) {
+    const missing = Array.from(requiredSet).join(', ');
+    throw new Error(`Missing required document fields: ${missing}`);
+  }
+
+  return values;
+}
+
+function toLocalDateTimeString(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const tzOffsetMs = date.getTimezoneOffset() * 60000;
+  const local = new Date(date.getTime() - tzOffsetMs);
+  return local.toISOString().slice(0, 16);
+}
+
+function generateEntropyHex() {
+  const bytes = new Uint8Array(32);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function normalizeContract(contract) {
+  if (!contract) return null;
+  let value = contract;
+  if (typeof value.toJSON === 'function') {
+    try {
+      value = value.toJSON();
+    } catch (_) { /* ignore */ }
+  } else if (typeof value.toObject === 'function') {
+    try {
+      value = value.toObject();
+    } catch (_) { /* ignore */ }
+  } else if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch (_) {
+      return null;
+    }
+  }
+  if (value && typeof value === 'object') {
+    if (value.documentSchemas) return value;
+    if (value.definition && value.definition.documentSchemas) return value.definition;
+  }
+  return value;
+}
+
+function normalizeDocument(document) {
+  if (!document) return null;
+  let value = document;
+  if (typeof value.toJSON === 'function') {
+    try {
+      value = value.toJSON();
+    } catch (_) { /* ignore */ }
+  } else if (typeof value.toObject === 'function') {
+    try {
+      value = value.toObject();
+    } catch (_) { /* ignore */ }
+  } else if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  if (value && typeof value === 'object') {
+    if (value.result && value.result.document) {
+      value = value.result.document;
+    }
+    if (value.document) {
+      value = value.document;
+    }
+  }
+
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  if (!value || typeof value !== 'object') return null;
+
+  const data = value.data ?? value.value ?? {};
+  const revisionRaw = value.revision ?? null;
+  const revision = revisionRaw != null ? Number(revisionRaw) : null;
+
+  return { data, revision: Number.isNaN(revision) ? null : revision };
+}
+
+function getInputElement(name) {
+  return elements.dynamicInputs?.querySelector(`[data-input-name="${name}"]`);
+}
+
+function getInputValue(name) {
+  const element = getInputElement(name);
+  if (!element) return '';
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+    const raw = element.value;
+    return typeof raw === 'string' ? raw.trim() : raw;
+  }
+  return '';
+}
+
+async function fetchDocumentSchema() {
+  const contractId = getInputValue('contractId');
+  const documentType = getInputValue('documentType');
+  if (!contractId || !documentType) {
+    setStatus('Please enter both Data Contract ID and Document Type.', 'error');
+    return;
+  }
+  const handler = getDynamicHandler('documentFields');
+  if (!handler || typeof handler.setSchema !== 'function') {
+    setStatus('Document fields are not available for this operation.', 'error');
+    return;
+  }
+  try {
+    setStatus('Fetching data contract...', 'loading');
+    const client = await ensureClient();
+    const contract = await client.contracts.fetch(contractId);
+    const contractJson = normalizeContract(contract);
+    const schema = contractJson?.documentSchemas?.[documentType];
+    if (!schema) {
+      const available = contractJson?.documentSchemas ? Object.keys(contractJson.documentSchemas) : [];
+      const message = available.length
+        ? `Document type "${documentType}" not found. Available types: ${available.join(', ')}`
+        : `Document type "${documentType}" not found in contract.`;
+      setStatus(message, 'error');
+      return;
+    }
+    handler.setSchema(schema, null, { revision: null });
+    if (typeof handler.setRevision === 'function') handler.setRevision(null);
+    setStatus(`Schema loaded for ${documentType}.`, 'success');
+  } catch (error) {
+    console.error('fetchDocumentSchema failed', error);
+    setStatus(`Error fetching schema: ${error?.message || error}`, 'error');
+  }
+}
+
+async function loadExistingDocument() {
+  const contractId = getInputValue('contractId');
+  const documentType = getInputValue('documentType');
+  const documentId = getInputValue('documentId');
+  if (!contractId || !documentType || !documentId) {
+    setStatus('Please fill in Data Contract ID, Document Type, and Document ID.', 'error');
+    return;
+  }
+  const handler = getDynamicHandler('documentFields');
+  if (!handler || typeof handler.setSchema !== 'function') {
+    setStatus('Document fields are not available for this operation.', 'error');
+    return;
+  }
+  try {
+    setStatus('Loading document...', 'loading');
+    const client = await ensureClient();
+    const document = await client.documents.get(contractId, documentType, documentId);
+    const normalizedDocument = normalizeDocument(document);
+    if (!normalizedDocument) {
+      setStatus('Document not found or could not be parsed.', 'error');
+      return;
+    }
+    const contract = await client.contracts.fetch(contractId);
+    const contractJson = normalizeContract(contract);
+    const schema = contractJson?.documentSchemas?.[documentType];
+    if (!schema) {
+      const available = contractJson?.documentSchemas ? Object.keys(contractJson.documentSchemas) : [];
+      const message = available.length
+        ? `Document type "${documentType}" not found. Available types: ${available.join(', ')}`
+        : `Document type "${documentType}" not found in contract.`;
+      setStatus(message, 'error');
+      return;
+    }
+    handler.setSchema(schema, normalizedDocument.data || {}, { revision: normalizedDocument.revision ?? null });
+    if (typeof handler.setRevision === 'function') handler.setRevision(normalizedDocument.revision ?? null);
+    const revisionDisplay = normalizedDocument.revision != null ? normalizedDocument.revision : 'N/A';
+    setStatus(`Document loaded successfully (revision ${revisionDisplay}).`, 'success');
+  } catch (error) {
+    console.error('loadExistingDocument failed', error);
+    setStatus(`Error loading document: ${error?.message || error}`, 'error');
+  }
+}
+
+async function fetchContestedResources() {
+  const contractId = getInputValue('contractId');
+  if (!contractId) {
+    setStatus('Please enter a Data Contract ID.', 'error');
+    return;
+  }
+  const handler = getDynamicHandler('contestedResourceDropdown');
+  if (!handler || typeof handler.setResources !== 'function') {
+    setStatus('Contested resource controls are not available for this operation.', 'error');
+    return;
+  }
+  try {
+    setStatus('Loading contested resources...', 'loading');
+    const client = await ensureClient();
+    const contract = await client.contracts.fetch(contractId);
+    const contractJson = normalizeContract(contract);
+    const documentSchemas = contractJson?.documentSchemas || {};
+    const resources = [];
+
+    Object.entries(documentSchemas).forEach(([documentType, schema]) => {
+      const indices = Array.isArray(schema.indices) ? schema.indices : [];
+      indices.forEach((index) => {
+        if (index && index.unique && index.contested) {
+          let description = '';
+          if (typeof index.contested === 'object' && index.contested.description) {
+            description = ` - ${index.contested.description}`;
+          }
+          resources.push({
+            contractId,
+            documentType,
+            indexName: index.name,
+            indexProperties: index.properties || [],
+            displayName: `${documentType} - ${index.name}${description}`,
+          });
+        }
+      });
+    });
+
+    handler.setResources(resources);
+
+    if (!resources.length) {
+      setStatus('No contested resources found for this contract.', 'warning');
+    } else {
+      setStatus(`Found ${resources.length} contested resource type(s).`, 'success');
+    }
+  } catch (error) {
+    console.error('fetchContestedResources failed', error);
+    setStatus(`Error fetching contested resources: ${error?.message || error}`, 'error');
+  }
+}
+
+async function generateTestSeed() {
+  const seedInput = getInputElement('seedPhrase');
+  if (!(seedInput instanceof HTMLTextAreaElement || seedInput instanceof HTMLInputElement)) {
+    setStatus('Seed phrase input not available in this context.', 'error');
+    return;
+  }
+  try {
+    await ensureClient();
+    const mnemonic = EvoSDK.wallet.generateMnemonic(12);
+    seedInput.value = mnemonic;
+    seedInput.dispatchEvent(new Event('input', { bubbles: true }));
+    const parent = seedInput.parentElement;
+    if (parent && !parent.querySelector('.seed-warning')) {
+      const warning = document.createElement('div');
+      warning.className = 'seed-warning';
+      warning.style.color = '#dc3545';
+      warning.style.fontSize = '0.9em';
+      warning.style.marginTop = '5px';
+      warning.textContent = '⚠️ Generated test seed – never use this for real funds.';
+      parent.appendChild(warning);
+    }
+    setStatus('Generated test seed phrase. Treat it as insecure.', 'success');
+  } catch (error) {
+    console.error('generateTestSeed failed', error);
+    setStatus(`Failed to generate seed: ${error?.message || error}`, 'error');
   }
 }
 
@@ -1098,10 +1908,42 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return useProof
         ? c.documents.getWithProof(n.dataContractId || n.contractId, n.documentType, n.documentId)
         : c.documents.get(n.dataContractId || n.contractId, n.documentType, n.documentId);
-    case 'documentCreate':
-      return c.documents.create({ contractId: n.contractId, type: n.documentType, ownerId: n.ownerId, data: n.data, entropyHex: n.entropyHex, privateKeyWif: n.privateKeyWif });
-    case 'documentReplace':
-      return c.documents.replace({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, data: n.data, revision: n.revision, privateKeyWif: n.privateKeyWif });
+    case 'documentCreate': {
+      const dynamic = (typeof n.documentFields === 'object' && n.documentFields !== null) ? n.documentFields : {};
+      const data = n.data ?? dynamic.data;
+      if (!data) {
+        throw new Error('Document data is required. Click "Fetch Schema" and fill the document fields.');
+      }
+      const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
+      return c.documents.create({
+        contractId: n.contractId,
+        type: n.documentType,
+        ownerId: n.ownerId,
+        data,
+        entropyHex,
+        privateKeyWif: n.privateKeyWif,
+      });
+    }
+    case 'documentReplace': {
+      const dynamic = (typeof n.documentFields === 'object' && n.documentFields !== null) ? n.documentFields : {};
+      const data = n.data ?? dynamic.data;
+      if (!data) {
+        throw new Error('Document data is required. Load the document and modify the fields before replacing.');
+      }
+      const revision = n.revision ?? dynamic.revision;
+      if (revision == null) {
+        throw new Error('Document revision is missing. Click "Load Document" before replacing.');
+      }
+      return c.documents.replace({
+        contractId: n.contractId,
+        type: n.documentType,
+        documentId: n.documentId,
+        ownerId: n.ownerId,
+        data,
+        revision,
+        privateKeyWif: n.privateKeyWif,
+      });
+    }
     case 'documentDelete':
       return c.documents.delete({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, privateKeyWif: n.privateKeyWif });
     case 'documentTransfer':
@@ -1323,16 +2165,45 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       });
     }
 
-    case 'masternodeVote':
+    case 'masternodeVote': {
+      const contested = (typeof n.contestedResourceDropdown === 'object' && n.contestedResourceDropdown !== null)
+        ? n.contestedResourceDropdown
+        : {};
+      const contractId = n.contractId || contested.contractId;
+      const documentTypeName = n.documentTypeName || contested.documentTypeName;
+      const indexName = n.indexName || contested.indexName;
+      let indexValues = Array.isArray(n.indexValues) ? n.indexValues : contested.indexValues;
+      if (!Array.isArray(indexValues) || !indexValues.length) {
+        throw new Error('Index values are required. Use "Get Contested Resources" to load them.');
+      }
+      let voteChoice = n.voteChoice;
+      if (!voteChoice) {
+        throw new Error('Vote choice is required.');
+      }
+      if (voteChoice === 'towardsIdentity') {
+        const targetIdentity = n.targetIdentity || '';
+        if (!targetIdentity) {
+          throw new Error('Target identity ID is required when voting towards an identity.');
+        }
+        voteChoice = `towardsIdentity:${targetIdentity}`;
+      }
+      const masternodeProTxHash = n.masternodeProTxHash || contested.masternodeProTxHash;
+      if (!masternodeProTxHash) {
+        throw new Error('Masternode ProTxHash is required. Enter it in the Identity ID field.');
+      }
+      if (!contractId || !documentTypeName || !indexName) {
+        throw new Error('Contested resource details are incomplete. Fetch contested resources and select one.');
+      }
       return c.voting.masternodeVote({
-        masternodeProTxHash: n.masternodeProTxHash,
-        contractId: n.contractId,
-        documentTypeName: n.documentTypeName,
-        indexName: n.indexName,
-        indexValues: toStringArray(n.indexValues),
-        voteChoice: n.voteChoice,
+        masternodeProTxHash,
+        contractId,
+        documentTypeName,
+        indexName,
+        indexValues,
+        voteChoice,
         votingKeyWif: n.votingKeyWif,
       });
+    }
 
     // System
     case 'getStatus':
