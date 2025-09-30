@@ -673,29 +673,24 @@ class EvoSdkPage extends BaseTest {
    */
   async fetchDocumentSchema() {
     console.log('Attempting to fetch document schema...');
-    
-    // First check if the function exists and call it directly
+
+    // Click the "Fetch Schema" button
     try {
-      await this.page.evaluate(() => {
-        if (typeof window.fetchDocumentSchema === 'function') {
-          return window.fetchDocumentSchema();
-        } else {
-          throw new Error('fetchDocumentSchema function not found');
-        }
-      });
-      console.log('Called fetchDocumentSchema function directly');
+      const fetchSchemaButton = this.page.locator('button:has-text("Fetch Schema")');
+      await fetchSchemaButton.waitFor({ state: 'visible', timeout: 5000 });
+      await fetchSchemaButton.click();
     } catch (error) {
-      console.error('Error calling fetchDocumentSchema:', error);
+      console.error('Error clicking Fetch Schema button:', error);
       throw error;
     }
-    
+
     // Wait for schema to load and fields to be generated
     await this.page.waitForTimeout(3000);
-    
-    // Check if dynamic fields container is visible
-    const dynamicFieldsContainer = this.page.locator('#dynamic_documentFields');
-    await dynamicFieldsContainer.waitFor({ state: 'visible', timeout: 15000 });
-    
+
+    // Check if document fields header is visible (indicates fields are loaded)
+    const documentFieldsHeader = this.page.locator('.document-fields-header:has-text("Document Fields")');
+    await documentFieldsHeader.waitFor({ state: 'visible', timeout: 15000 });
+
     console.log('Document schema fetched and fields generated');
   }
 
@@ -703,7 +698,7 @@ class EvoSdkPage extends BaseTest {
    * Fill a specific document field by name
    */
   async fillDocumentField(fieldName, value) {
-    const fieldInput = this.page.locator(`#dynamic_documentFields input[data-field-name="${fieldName}"], #dynamic_documentFields textarea[data-field-name="${fieldName}"]`);
+    const fieldInput = this.page.locator(`.doc-field-input[data-field-name="${fieldName}"]`);
     
     // Convert value to string based on type
     let stringValue = '';
@@ -734,25 +729,21 @@ class EvoSdkPage extends BaseTest {
    */
   async loadExistingDocument() {
     console.log('Loading existing document for replacement...');
-    
-    // Call the loadExistingDocument function directly via page.evaluate
+
+    // Click the "Load Document" button
     try {
-      await this.page.evaluate(() => {
-        if (typeof window.loadExistingDocument === 'function') {
-          return window.loadExistingDocument();
-        } else {
-          throw new Error('loadExistingDocument function not found');
-        }
-      });
-      console.log('Existing document loaded successfully');
+      const loadDocumentButton = this.page.locator('button:has-text("Load Document")');
+      await loadDocumentButton.waitFor({ state: 'visible', timeout: 5000 });
+      await loadDocumentButton.click();
+      console.log('Clicked Load Document button');
     } catch (error) {
-      console.error('Error loading existing document:', error);
+      console.error('Error clicking Load Document button:', error);
       throw error;
     }
-    
+
     // Wait for the document to be loaded and fields to be populated
     await this.page.waitForTimeout(3000);
-    
+
     console.log('Document loaded and fields populated');
   }
 
