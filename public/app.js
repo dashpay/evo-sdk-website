@@ -1,4 +1,4 @@
-import { EvoSDK } from './dist/evo-sdk.module.js';
+import { EvoSDK, wallet } from './dist/evo-sdk.module.js';
 
 const identityIdInputEl = document.getElementById('identityId');
 const assetLockProofInputEl = document.getElementById('assetLockProof');
@@ -1692,7 +1692,7 @@ async function generateTestSeed() {
   }
   try {
     await ensureClient();
-    const mnemonic = EvoSDK.wallet.generateMnemonic(12);
+    const mnemonic = await wallet.generateMnemonic(12);
     seedInput.value = mnemonic;
     seedInput.dispatchEvent(new Event('input', { bubbles: true }));
     const parent = seedInput.parentElement;
