@@ -1873,6 +1873,65 @@ function buildContractDefinition(params) {
   return JSON.stringify(contractData);
 }
 
+function buildContractUpdates(params) {
+  // Start with the complete existing contract
+  let contractData = { ...params.existingContract };
+
+  // Increment the version for updates
+  contractData.version = (contractData.version || 1) + 1;
+
+  // Update document schemas if provided
+  if (params.newDocumentSchemas) {
+    let newSchemas;
+    try {
+      newSchemas = typeof params.newDocumentSchemas === 'string'
+        ? JSON.parse(params.newDocumentSchemas)
+        : params.newDocumentSchemas;
+    } catch (e) {
+      throw new Error(`Invalid JSON in New Document Schemas field: ${e.message}`);
+    }
+    // Merge new schemas with existing ones (new ones override existing)
+    contractData.documentSchemas = {
+      ...contractData.documentSchemas,
+      ...newSchemas
+    };
+  }
+
+  // Update groups if provided
+  if (params.newGroups) {
+    let newGroups;
+    try {
+      newGroups = typeof params.newGroups === 'string'
+        ? JSON.parse(params.newGroups)
+        : params.newGroups;
+    } catch (e) {
+      throw new Error(`Invalid JSON in New Groups field: ${e.message}`);
+    }
+    contractData.groups = {
+      ...contractData.groups,
+      ...newGroups
+    };
+  }
+
+  // Update tokens if provided
+  if (params.newTokens) {
+    let newTokens;
+    try {
+      newTokens = typeof params.newTokens === 'string'
+        ? JSON.parse(params.newTokens)
+        : params.newTokens;
+    } catch (e) {
+      throw new Error(`Invalid JSON in New Tokens field: ${e.message}`);
+    }
+    contractData.tokens = {
+      ...contractData.tokens,
+      ...newTokens
+    };
+  }
+
+  return JSON.stringify(contractData);
+}
+
 async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArgs = {}) {
   const n = { ...namedArgs(defs, args), ...(extraArgs || {}) };
   const c = client;
@@ -2003,8 +2062,20 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const definition = buildContractDefinition(n);
       return c.contracts.create({ ownerId: n.ownerId, definition: definition, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
     }
-    case 'dataContractUpdate':
-      return c.contracts.update({ contractId: n.dataContractId || n.contractId, ownerId: n.ownerId, updates: n.updates, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+    case 'dataContractUpdate': {
+      // First fetch the existing contract to get its current state
+      const contractId = n.dataContractId || n.contractId;
+      const existingContract = await c.contracts.fetch(contractId);
+      const contractJson = normalizeContract(existingContract);
+
+      // Build updates using the entire existing contract as base
+      const updates = buildContractUpdates({
+        ...n,
+        existingContract: contractJson
+      });
+
+      return c.contracts.update({ contractId: contractId, ownerId: n.ownerId, updates: updates, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+    }
 
     // Documents
     case 'getDocuments': {
@@ -2162,7 +2233,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'tokenUnfreeze':
       return c.tokens.unfreeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToUnfreeze: n.identityToUnfreeze, unfreezerId: n.unfreezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenDestroyFrozen':
-      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
+      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.frozenIdentityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenSetPriceForDirectPurchase':
       return c.tokens.setPriceForDirectPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, priceType: n.priceType, priceData: n.priceData, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenDirectPurchase':
