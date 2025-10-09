@@ -89,8 +89,8 @@ export default defineConfig({
     }]),
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
+  /* Run local dev server only if testing locally */
+  webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: process.env.DEBUG ? 'python3 -m http.server 8081' : 'python3 -m http.server 8081 2>/dev/null',
     url: 'http://localhost:8081',
     cwd: 'public',
