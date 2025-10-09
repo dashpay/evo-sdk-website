@@ -13,7 +13,7 @@ class BaseTest {
    * Navigate to the WASM SDK index page and wait for initialization
    */
   async navigateToSdk() {
-    await this.page.goto('/');
+    await this.page.goto('');
     
     // Wait for the WASM SDK to initialize
     await this.page.waitForSelector('#statusBanner.success', { 

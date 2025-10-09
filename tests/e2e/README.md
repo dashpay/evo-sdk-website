@@ -123,7 +123,7 @@ The testing suite uses a unified configuration approach:
 
 - **Dependencies**: In `package.json`
 - **Configuration**: `playwright.config.ts` in root directory
-- **Base URL**: `http://localhost:8081` (auto-managed web server)
+- **Base URL**: `http://localhost:8081` (auto-managed web server, configurable via `PLAYWRIGHT_BASE_URL`)
 - **Browsers**: Chromium (headless by default)
 - **Timeouts**: 30s for actions, 120s for tests
 - **Reporters**: HTML, JSON, and console output
@@ -159,6 +159,10 @@ yarn test:report           # View HTML report
 yarn test:all              # Run with comprehensive reporting
 yarn test:ci               # CI-friendly output
 yarn install-browsers     # Install Playwright browsers
+
+# Testing against hosted sites
+PLAYWRIGHT_BASE_URL=https://example.com/ yarn test        # Test remote site
+PLAYWRIGHT_BASE_URL=https://example.com/ yarn test:smoke  # Test specific project
 ```
 
 ### run-ui-tests.sh Script
@@ -171,7 +175,8 @@ yarn install-browsers     # Install Playwright browsers
 ./run-ui-tests.sh [headed|debug|ui]
 
 # Environment options
-DEBUG=true ./run-ui-tests.sh smoke    # Detailed output
+DEBUG=true ./run-ui-tests.sh smoke                              # Detailed output
+PLAYWRIGHT_BASE_URL=https://example.com/ ./run-ui-tests.sh smoke # Test remote site
 ```
 
 ### Direct Playwright Commands
@@ -186,6 +191,9 @@ yarn playwright test --project=sequential-e2e-tests
 # Pattern matching
 yarn playwright test --grep "Identity Queries"
 yarn playwright test --grep "getIdentity"
+
+# Test against hosted site
+PLAYWRIGHT_BASE_URL=https://example.com/ yarn playwright test --project=smoke-tests
 ```
 
 ## Adding New Tests
