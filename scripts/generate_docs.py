@@ -1124,7 +1124,10 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
                 description = query.get('description', 'No description available')
                 example_code = evo_example_for_query(query_key, query.get('inputs', []))
 
-                lines.append(f"**{label}** - `{query_key}`")
+                # Use sdk_method field from api-definitions.json if available, otherwise fall back to query_key
+                sdk_method = query.get('sdk_method', query_key)
+
+                lines.append(f"**{label}** - `{sdk_method}`")
                 lines.append(f"*{description}*")
                 lines.append('')
 
@@ -1216,7 +1219,10 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
             sdk_params = transition.get('sdk_params') or []
             inputs = transition.get('inputs') or []
 
-            lines.append(f"**{label}** - `{transition_key}`")
+            # Use sdk_method field from api-definitions.json if available, otherwise fall back to transition_key
+            sdk_method = transition.get('sdk_method', transition_key)
+
+            lines.append(f"**{label}** - `{sdk_method}`")
             lines.append(f"*{description}*")
             lines.append('')
 
@@ -1287,7 +1293,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
         '1. **Network configuration**: Use `EvoSDK.testnetTrusted()` for a ready-to-use testnet client. '
         'When mainnet is available, switch to `EvoSDK.mainnetTrusted()` or instantiate `new EvoSDK({ network: \"mainnet\" })`.',
         '2. **Identity format**: Identity identifiers are Base58-encoded strings. Signing keys are provided as WIF strings.',
-        '3. **Credits**: All platform fees are charged in credits (1 credit = 1 satoshi equivalent). Ensure identities maintain sufficient balance.',
+        '3. **Credits**: All platform fees are charged in credits (1000 credits = 1 satoshi equivalent). Ensure identities maintain sufficient balance.',
         '4. **Nonces**: Evo SDK facades manage nonces automatically when you submit transitions. Use `sdk.identities.nonce(...)` for manual workflows.',
         '5. **Proofs**: Pass `proofs: true` when constructing `EvoSDK` to validate GroveDB proofs and prefer `*WithProof` helpers.',
         '',
