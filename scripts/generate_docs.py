@@ -346,8 +346,8 @@ def evo_example_for_query(key: str, inputs: List[dict]):
 def evo_example_for_transition(key: str):
     m = {
         # Identities
-        'identityCreate': "await client.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys })",
-        'identityTopUp': "await client.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif })",
+        # 'identityCreate' - example in api-definitions.json
+        # 'identityTopUp' - example in api-definitions.json
         'identityCreditTransfer': "await client.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId })",
         'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId })",
         'identityUpdate': "await client.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif })",
@@ -890,7 +890,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
     transition_sections = collect_sections(
         transition_defs,
         'transitions',
-        lambda key, _item: evo_example_for_transition(key)
+        lambda key, item: item.get('sdk_example') or evo_example_for_transition(key)
     )
 
     sidebar_queries = build_sidebar_entries(query_sections, 'query')
@@ -1212,7 +1212,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
         for transition_key, transition in transitions.items():
             label = transition.get('label', transition_key)
             description = transition.get('description', 'No description available')
-            example_code = evo_example_for_transition(transition_key)
+            example_code = transition.get('sdk_example') or evo_example_for_transition(transition_key)
             sdk_params = transition.get('sdk_params') or []
             inputs = transition.get('inputs') or []
 

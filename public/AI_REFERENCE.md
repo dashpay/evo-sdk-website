@@ -1059,7 +1059,42 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys });
+// Asset lock proof is a hex-encoded JSON object
+const result = const assetLockProof = "a9147d3b... (hex-encoded)";
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+
+// Public keys array with proper key types
+const publicKeys = JSON.stringify([
+  {
+    id: 0,
+    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3
+    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, WITHDRAW = 4, VOTING = 5, OWNER = 6
+    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3
+    data: "A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ", // Base64-encoded public key
+    readOnly: false,
+    privateKeyWif: "XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2" // Required for ECDSA_SECP256K1 signing
+  },
+  {
+    id: 1,
+    type: 0, // ECDSA_SECP256K1
+    purpose: 0, // AUTHENTICATION
+    securityLevel: 2, // HIGH
+    data: "AnotherBase64EncodedPublicKeyHere", // Base64-encoded public key
+    readOnly: false,
+    privateKeyWif: "XAnotherPrivateKeyInWIFFormat" // Required for signing
+  },
+  {
+    id: 2,
+    type: 2, // ECDSA_HASH160
+    purpose: 0, // AUTHENTICATION
+    securityLevel: 2, // HIGH
+    data: "ripemd160hash20bytes1234", // Base64-encoded 20-byte RIPEMD160 hash
+    readOnly: false
+    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)
+  }
+]);
+
+const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKey, publicKeys });
 ```
 
 **Identity Top Up** - `identityTopUp`
@@ -1077,7 +1112,11 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif });
+const result = const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
+const assetLockProof = "a9147d3b... (hex-encoded)";
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+
+const result = await sdk.identities.topup({ identityId, assetLockProof, assetLockProofPrivateKey });
 ```
 
 **Identity Update** - `identityUpdate`
