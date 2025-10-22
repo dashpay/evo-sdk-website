@@ -1060,7 +1060,7 @@ Parameters:
 Example:
 ```javascript
 // Asset lock proof is a hex-encoded JSON object
-const result = const assetLockProof = "a9147d3b... (hex-encoded)";
+const assetLockProof = "a9147d3b... (hex-encoded)";
 const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
 
 // Public keys array with proper key types
@@ -1094,7 +1094,7 @@ const publicKeys = JSON.stringify([
   }
 ]);
 
-const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKey, publicKeys });
+const result = await sdk.identities.create({ assetLockProof, assetLockProofPrivateKey, publicKeys });
 ```
 
 **Identity Top Up** - `identities.topup`
@@ -1112,7 +1112,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
+const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
 const assetLockProof = "a9147d3b... (hex-encoded)";
 const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
 

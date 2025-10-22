@@ -1017,10 +1017,18 @@ def format_ai_example_block(code: str | None, item_key: str) -> str:
     stripped = first_line.lstrip()
     indent = first_line[: len(first_line) - len(stripped)]
 
-    if stripped.startswith('return '):
-        stripped = stripped[len('return ') :].lstrip()
+    # Check if the example already contains variable declarations or const result
+    already_has_declaration = (
+        stripped.startswith('const ') or
+        stripped.startswith('let ') or
+        stripped.startswith('var ') or
+        'const result' in snippet
+    )
 
-    processed[first_index] = f"{indent}const result = {stripped}"
+    if not already_has_declaration:
+        if stripped.startswith('return '):
+            stripped = stripped[len('return ') :].lstrip()
+        processed[first_index] = f"{indent}const result = {stripped}"
 
     joined = '\n'.join(processed).rstrip()
     if not joined.endswith(';'):
