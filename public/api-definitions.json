@@ -17,7 +17,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "identities.fetch"
         },
         "getIdentityUnproved": {
           "label": "Get Identity (Unproved)",
@@ -30,7 +31,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "identities.fetchUnproved"
         },
         "getIdentityKeys": {
           "label": "Get Identity Keys",
@@ -98,7 +100,8 @@
               "type": "number",
               "label": "Offset"
             }
-          ]
+          ],
+          "sdk_method": "identities.getKeys"
         },
         "getIdentitiesContractKeys": {
           "label": "Get Contract Keys for Identities",
@@ -145,7 +148,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "sdk_method": "identities.contractKeys"
         },
         "getIdentityNonce": {
           "label": "Get Identity Nonce",
@@ -158,7 +162,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "identities.nonce"
         },
         "getIdentityContractNonce": {
           "label": "Get Identity Contract Nonce",
@@ -178,7 +183,8 @@
               "required": true,
               "placeholder": "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec"
             }
-          ]
+          ],
+          "sdk_method": "identities.contractNonce"
         },
         "getIdentityBalance": {
           "label": "Get Identity Balance",
@@ -191,7 +197,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "identities.balance"
         },
         "getIdentitiesBalances": {
           "label": "Get Multiple Identity Balances",
@@ -204,7 +211,8 @@
               "required": true,
               "placeholder": "[\"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"]"
             }
-          ]
+          ],
+          "sdk_method": "identities.balances"
         },
         "getIdentityBalanceAndRevision": {
           "label": "Get Identity Balance & Revision",
@@ -217,7 +225,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "identities.balanceAndRevision"
         },
         "getIdentityByPublicKeyHash": {
           "label": "Get Identity by Unique Public Key Hash",
@@ -230,7 +239,8 @@
               "required": true,
               "placeholder": "b7e904ce25ed97594e72f7af0e66f298031c1754"
             }
-          ]
+          ],
+          "sdk_method": "identities.byPublicKeyHash"
         },
         "getIdentityByNonUniquePublicKeyHash": {
           "label": "Get Identity by Non-Unique Public Key Hash",
@@ -249,7 +259,8 @@
               "label": "Start After (Key ID)",
               "help": "Resume pagination using the previous key identifier."
             }
-          ]
+          ],
+          "sdk_method": "identities.byNonUniquePublicKeyHash"
         },
         "getIdentityTokenBalances": {
           "label": "Get Identity Token Balances",
@@ -269,7 +280,8 @@
               "required": true,
               "placeholder": "[\"Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv\"]"
             }
-          ]
+          ],
+          "sdk_method": "identities.tokenBalances"
         },
         "getIdentitiesTokenBalances": {
           "label": "Get Token Balances for Identities",
@@ -289,7 +301,8 @@
               "required": true,
               "placeholder": "Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"
             }
-          ]
+          ],
+          "sdk_method": "tokens.balances"
         },
         "getIdentityTokenInfos": {
           "label": "Get Identity Token Info",
@@ -318,7 +331,8 @@
               "type": "number",
               "label": "Offset"
             }
-          ]
+          ],
+          "sdk_method": "tokens.identityTokenInfos"
         },
         "getIdentitiesTokenInfos": {
           "label": "Get Token Info for Identities",
@@ -338,7 +352,8 @@
               "required": true,
               "placeholder": "Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"
             }
-          ]
+          ],
+          "sdk_method": "tokens.identitiesTokenInfos"
         }
       }
     },
@@ -356,7 +371,8 @@
               "required": true,
               "placeholder": "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec"
             }
-          ]
+          ],
+          "sdk_method": "contracts.fetch"
         },
         "getDataContractHistory": {
           "label": "Get Data Contract History",
@@ -379,7 +395,8 @@
               "type": "number",
               "label": "Start Timestamp (ms)"
             }
-          ]
+          ],
+          "sdk_method": "contracts.getHistory"
         },
         "getDataContracts": {
           "label": "Get Data Contracts",
@@ -392,7 +409,8 @@
               "required": true,
               "placeholder": "[\"GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec\",\"ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A\"]"
             }
-          ]
+          ],
+          "sdk_method": "contracts.getMany"
         }
       }
     },
@@ -446,7 +464,8 @@
               "label": "Start At",
               "help": "Explicit starting index value (JSON string)."
             }
-          ]
+          ],
+          "sdk_method": "documents.query"
         },
         "getDocument": {
           "label": "Get Document",
@@ -473,7 +492,8 @@
               "required": true,
               "placeholder": "7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r"
             }
-          ]
+          ],
+          "sdk_method": "documents.get"
         }
       }
     },
@@ -491,7 +511,8 @@
               "required": true,
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             }
-          ]
+          ],
+          "sdk_method": "dpns.username"
         },
         "getDpnsUsernames": {
           "label": "List Usernames for Identity",
@@ -509,7 +530,8 @@
               "type": "number",
               "label": "Limit"
             }
-          ]
+          ],
+          "sdk_method": "dpns.usernames"
         },
         "getDpnsUsernameByName": {
           "label": "Get Username by Name",
@@ -522,7 +544,8 @@
               "required": true,
               "placeholder": "alice.dash"
             }
-          ]
+          ],
+          "sdk_method": "dpns.getUsernameByName"
         },
         "dpnsResolve": {
           "label": "Resolve DPNS Name",
@@ -535,7 +558,8 @@
               "required": true,
               "placeholder": "alice.dash"
             }
-          ]
+          ],
+          "sdk_method": "dpns.resolveName"
         },
         "dpnsCheckAvailability": {
           "label": "Check DPNS Availability",
@@ -548,7 +572,8 @@
               "required": true,
               "placeholder": "alice"
             }
-          ]
+          ],
+          "sdk_method": "dpns.isNameAvailable"
         },
         "dpnsConvertToHomographSafe": {
           "label": "Convert to Homograph Safe",
@@ -559,9 +584,10 @@
               "type": "text",
               "label": "Label",
               "required": true,
-              "placeholder": "\u0105lice"
+              "placeholder": "ąlice"
             }
-          ]
+          ],
+          "sdk_method": "dpns.convertToHomographSafe"
         },
         "dpnsIsValidUsername": {
           "label": "Validate Username",
@@ -574,7 +600,8 @@
               "required": true,
               "placeholder": "alice"
             }
-          ]
+          ],
+          "sdk_method": "dpns.isValidUsername"
         },
         "dpnsIsContestedUsername": {
           "label": "Is Contested Username",
@@ -587,7 +614,8 @@
               "required": true,
               "placeholder": "alice"
             }
-          ]
+          ],
+          "sdk_method": "dpns.isContestedUsername"
         }
       }
     },
@@ -633,7 +661,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "group.contestedResources"
         },
         "getContestedResourceVoteState": {
           "label": "Get Contested Resource Vote State",
@@ -693,7 +722,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "voting.contestedResourceVoteState"
         },
         "getContestedResourceVotersForIdentity": {
           "label": "Get Voters for Identity",
@@ -758,7 +788,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "group.contestedResourceVotersForIdentity"
         },
         "getContestedResourceIdentityVotes": {
           "label": "Get Identity Votes",
@@ -791,7 +822,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "voting.contestedResourceIdentityVotes"
         },
         "getVotePollsByEndDate": {
           "label": "Get Vote Polls by End Date",
@@ -836,7 +868,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "voting.votePollsByEndDate"
         }
       }
     },
@@ -846,7 +879,8 @@
         "getProtocolVersionUpgradeState": {
           "label": "Get Protocol Version Upgrade State",
           "description": "Retrieve protocol upgrade vote tallies.",
-          "inputs": []
+          "inputs": [],
+          "sdk_method": "protocol.versionUpgradeState"
         },
         "getProtocolVersionUpgradeVoteStatus": {
           "label": "Get Protocol Version Vote Status",
@@ -863,7 +897,8 @@
               "type": "number",
               "label": "Count"
             }
-          ]
+          ],
+          "sdk_method": "protocol.versionUpgradeVoteStatus"
         }
       }
     },
@@ -889,12 +924,14 @@
               "type": "checkbox",
               "label": "Ascending Order"
             }
-          ]
+          ],
+          "sdk_method": "epoch.epochsInfo"
         },
         "getCurrentEpoch": {
           "label": "Get Current Epoch",
           "description": "Fetch the current platform epoch.",
-          "inputs": []
+          "inputs": [],
+          "sdk_method": "epoch.current"
         },
         "getFinalizedEpochInfos": {
           "label": "Get Finalized Epoch Infos",
@@ -915,7 +952,8 @@
               "type": "checkbox",
               "label": "Ascending Order"
             }
-          ]
+          ],
+          "sdk_method": "epoch.finalizedInfos"
         },
         "getEvonodesProposedEpochBlocksByIds": {
           "label": "Get Epoch Blocks by Evonode IDs",
@@ -934,7 +972,8 @@
               "required": true,
               "placeholder": "[\"143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113\"]"
             }
-          ]
+          ],
+          "sdk_method": "epoch.evonodesProposedBlocksByIds"
         },
         "getEvonodesProposedEpochBlocksByRange": {
           "label": "Get Epoch Blocks by Range",
@@ -962,7 +1001,8 @@
               "type": "checkbox",
               "label": "Order Ascending"
             }
-          ]
+          ],
+          "sdk_method": "epoch.evonodesProposedBlocksByRange"
         }
       }
     },
@@ -980,7 +1020,8 @@
               "required": true,
               "placeholder": "[\"Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv\"]"
             }
-          ]
+          ],
+          "sdk_method": "tokens.statuses"
         },
         "getTokenDirectPurchasePrices": {
           "label": "Get Direct Purchase Prices",
@@ -993,7 +1034,8 @@
               "required": true,
               "placeholder": "[\"Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv\"]"
             }
-          ]
+          ],
+          "sdk_method": "tokens.directPurchasePrices"
         },
         "getTokenContractInfo": {
           "label": "Get Token Contract Info",
@@ -1006,7 +1048,8 @@
               "required": true,
               "placeholder": "ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A"
             }
-          ]
+          ],
+          "sdk_method": "tokens.contractInfo"
         },
         "getTokenPerpetualDistributionLastClaim": {
           "label": "Get Token Distribution Last Claim",
@@ -1026,7 +1069,8 @@
               "required": true,
               "placeholder": "Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"
             }
-          ]
+          ],
+          "sdk_method": "tokens.perpetualDistributionLastClaim"
         },
         "getTokenTotalSupply": {
           "label": "Get Token Total Supply",
@@ -1039,7 +1083,8 @@
               "required": true,
               "placeholder": "Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"
             }
-          ]
+          ],
+          "sdk_method": "tokens.totalSupply"
         },
         "getTokenPriceByContract": {
           "label": "Get Token Price by Contract",
@@ -1059,7 +1104,8 @@
               "required": true,
               "placeholder": "0"
             }
-          ]
+          ],
+          "sdk_method": "tokens.priceByContract"
         }
       }
     },
@@ -1084,7 +1130,8 @@
               "required": true,
               "placeholder": "0"
             }
-          ]
+          ],
+          "sdk_method": "group.info"
         },
         "getGroupInfos": {
           "label": "List Group Infos",
@@ -1107,7 +1154,8 @@
               "type": "number",
               "label": "Count"
             }
-          ]
+          ],
+          "sdk_method": "group.infos"
         },
         "getGroupMembers": {
           "label": "Get Group Members",
@@ -1142,7 +1190,8 @@
               "type": "number",
               "label": "Limit"
             }
-          ]
+          ],
+          "sdk_method": "group.members"
         },
         "getGroupActions": {
           "label": "Get Group Actions",
@@ -1196,7 +1245,8 @@
               "type": "number",
               "label": "Count"
             }
-          ]
+          ],
+          "sdk_method": "group.actions"
         },
         "getGroupActionSigners": {
           "label": "Get Group Action Signers",
@@ -1246,7 +1296,8 @@
               "label": "Action ID",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "group.actionSigners"
         },
         "getIdentityGroups": {
           "label": "Get Identity Groups",
@@ -1274,7 +1325,8 @@
               "type": "array",
               "label": "Moderator Data Contracts"
             }
-          ]
+          ],
+          "sdk_method": "group.identityGroups"
         },
         "getGroupsDataContracts": {
           "label": "Get Groups Data Contracts",
@@ -1287,7 +1339,8 @@
               "required": true,
               "placeholder": "[\"GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec\"]"
             }
-          ]
+          ],
+          "sdk_method": "group.groupsDataContracts"
         }
       }
     },
@@ -1297,12 +1350,14 @@
         "getStatus": {
           "label": "Get Platform Status",
           "description": "Retrieve basic platform status information.",
-          "inputs": []
+          "inputs": [],
+          "sdk_method": "system.status"
         },
         "getCurrentQuorumsInfo": {
           "label": "Get Current Quorums Info",
           "description": "Fetch details about currently active quorums.",
-          "inputs": []
+          "inputs": [],
+          "sdk_method": "system.currentQuorumsInfo"
         },
         "getPrefundedSpecializedBalance": {
           "label": "Get Prefunded Specialized Balance",
@@ -1315,12 +1370,14 @@
               "required": true,
               "placeholder": "AzaU7zqCT7X1kxh8yWxkT9PxAgNqWDu4Gz13emwcRyAT"
             }
-          ]
+          ],
+          "sdk_method": "system.prefundedSpecializedBalance"
         },
         "getTotalCreditsInPlatform": {
           "label": "Get Total Credits in Platform",
           "description": "Fetch the total credit balance stored in the platform.",
-          "inputs": []
+          "inputs": [],
+          "sdk_method": "system.totalCreditsInPlatform"
         },
         "getPathElements": {
           "label": "Get Path Elements",
@@ -1340,7 +1397,8 @@
               "required": true,
               "placeholder": "[\"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"]"
             }
-          ]
+          ],
+          "sdk_method": "system.pathElements"
         },
         "waitForStateTransitionResult": {
           "label": "Wait for State Transition Result",
@@ -1353,7 +1411,8 @@
               "required": true,
               "placeholder": "0000000000000000000000000000000000000000000000000000000000000000"
             }
-          ]
+          ],
+          "sdk_method": "system.waitForStateTransitionResult"
         }
       }
     }
@@ -1456,7 +1515,8 @@
               "description": "JSON array of public keys. Key requirements: ECDSA_SECP256K1 requires privateKeyHex or privateKeyWif for signing, BLS12_381 requires privateKeyHex for signing, ECDSA_HASH160 requires either the data field (base64-encoded 20-byte public key hash) or privateKeyHex (produces empty signatures)."
             }
           ],
-          "sdk_example": "// Asset lock proof is a hex-encoded JSON object\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\n// Public keys array with proper key types and private keys for signing/hashing\nconst publicKeys = JSON.stringify([\n  {\n    id: 0,\n    keyType: \"ECDSA_SECP256K1\",\n    purpose: \"AUTHENTICATION\",\n    securityLevel: \"MASTER\",\n    data: \"A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2\"\n  },\n  {\n    id: 1,\n    keyType: \"ECDSA_HASH160\",\n    purpose: \"AUTHENTICATION\",\n    securityLevel: \"HIGH\",\n    data: \"ripemd160hash20bytes1234\", // Base64-encoded 20-byte RIPEMD160 hash\n    readOnly: false,\n    // ECDSA_HASH160 keys produce empty signatures (not required/used for signing)\n  }\n]);\n\nconst result = await sdk.identityCreate(assetLockProof, assetLockProofPrivateKey, publicKeys);"
+          "sdk_example": "// Asset lock proof is a hex-encoded JSON object\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\n// Public keys array with proper key types\nconst publicKeys = JSON.stringify([\n  {\n    id: 0,\n    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3\n    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, WITHDRAW = 4, VOTING = 5, OWNER = 6\n    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3\n    data: \"A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2\" // Required for ECDSA_SECP256K1 signing\n  },\n  {\n    id: 1,\n    type: 0, // ECDSA_SECP256K1\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"AnotherBase64EncodedPublicKeyHere\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XAnotherPrivateKeyInWIFFormat\" // Required for signing\n  },\n  {\n    id: 2,\n    type: 2, // ECDSA_HASH160\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"ripemd160hash20bytes1234\", // Base64-encoded 20-byte RIPEMD160 hash\n    readOnly: false\n    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)\n  }\n]);\n\nconst result = await client.identities.create({ assetLockProof, assetLockProofPrivateKey, publicKeys });",
+          "sdk_method": "identities.create"
         },
         "identityTopUp": {
           "label": "Identity Top Up",
@@ -1494,7 +1554,8 @@
               "description": "WIF format private key"
             }
           ],
-          "sdk_example": "const identityId = \"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"; // base58\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\nconst result = await sdk.identityTopUp(identityId, assetLockProof, assetLockProofPrivateKey);"
+          "sdk_example": "const identityId = \"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"; // base58\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\nconst result = await sdk.identities.topup({ identityId, assetLockProof, assetLockProofPrivateKey });",
+          "sdk_method": "identities.topup"
         },
         "identityUpdate": {
           "label": "Identity Update",
@@ -1514,7 +1575,8 @@
               "required": false,
               "placeholder": "2,3,5"
             }
-          ]
+          ],
+          "sdk_method": "identities.update"
         },
         "identityCreditTransfer": {
           "label": "Identity Credit Transfer",
@@ -1532,7 +1594,8 @@
               "label": "Amount (credits)",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "identities.creditTransfer"
         },
         "identityCreditWithdrawal": {
           "label": "Identity Credit Withdrawal",
@@ -1556,7 +1619,8 @@
               "label": "Core Fee Per Byte (optional)",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "identities.creditWithdrawal"
         }
       }
     },
@@ -1650,7 +1714,8 @@
               "label": "Description (optional)",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "contracts.create"
         },
         "dataContractUpdate": {
           "label": "Data Contract Update",
@@ -1683,7 +1748,8 @@
               "required": false,
               "placeholder": "{}"
             }
-          ]
+          ],
+          "sdk_method": "contracts.update"
         }
       }
     },
@@ -1717,7 +1783,8 @@
               "type": "dynamic",
               "label": "Document Fields"
             }
-          ]
+          ],
+          "sdk_method": "documents.create"
         },
         "documentReplace": {
           "label": "Document Replace",
@@ -1752,7 +1819,8 @@
               "type": "dynamic",
               "label": "Document Fields"
             }
-          ]
+          ],
+          "sdk_method": "documents.replace"
         },
         "documentDelete": {
           "label": "Document Delete",
@@ -1776,7 +1844,8 @@
               "label": "Document ID",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "documents.delete"
         },
         "documentTransfer": {
           "label": "Document Transfer",
@@ -1806,7 +1875,8 @@
               "label": "Recipient Identity ID",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "documents.transfer"
         },
         "documentPurchase": {
           "label": "Document Purchase",
@@ -1836,7 +1906,8 @@
               "label": "Price (credits)",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "documents.purchase"
         },
         "documentSetPrice": {
           "label": "Document Set Price",
@@ -1866,7 +1937,8 @@
               "label": "Price (credits, 0 to remove)",
               "required": true
             }
-          ]
+          ],
+          "sdk_method": "documents.setPrice"
         },
         "dpnsRegister": {
           "label": "DPNS Register Name",
@@ -1880,7 +1952,8 @@
               "placeholder": "Enter username (e.g., alice)",
               "validateOnType": true
             }
-          ]
+          ],
+          "sdk_method": "dpns.registerName"
         }
       }
     },
@@ -1915,7 +1988,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.burn"
         },
         "tokenMint": {
           "label": "Token Mint",
@@ -1951,7 +2025,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.mint"
         },
         "tokenClaim": {
           "label": "Token Claim",
@@ -1991,7 +2066,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.claim"
         },
         "tokenSetPriceForDirectPurchase": {
           "label": "Token Set Price",
@@ -2038,7 +2114,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.setPriceForDirectPurchase"
         },
         "tokenDirectPurchase": {
           "label": "Token Direct Purchase",
@@ -2068,7 +2145,8 @@
               "label": "Total Agreed Price (in credits) - Optional, fetches from pricing schedule if not provided",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.directPurchase"
         },
         "tokenConfigUpdate": {
           "label": "Token Config Update",
@@ -2150,7 +2228,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.configUpdate"
         },
         "tokenTransfer": {
           "label": "Token Transfer",
@@ -2186,7 +2265,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.transfer"
         },
         "tokenFreeze": {
           "label": "Token Freeze",
@@ -2216,7 +2296,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.freeze"
         },
         "tokenUnfreeze": {
           "label": "Token Unfreeze",
@@ -2246,7 +2327,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.unfreeze"
         },
         "tokenDestroyFrozen": {
           "label": "Token Destroy Frozen",
@@ -2276,7 +2358,8 @@
               "label": "Public Note",
               "required": false
             }
-          ]
+          ],
+          "sdk_method": "tokens.destroyFrozen"
         }
       }
     },
@@ -2325,7 +2408,8 @@
                 "value": "towardsIdentity"
               }
             }
-          ]
+          ],
+          "sdk_method": "voting.masternodeVote"
         },
         "masternodeVote": {
           "label": "Contested Resource",
@@ -2380,7 +2464,8 @@
                 "value": "towardsIdentity"
               }
             }
-          ]
+          ],
+          "sdk_method": "voting.masternodeVote"
         }
       }
     }

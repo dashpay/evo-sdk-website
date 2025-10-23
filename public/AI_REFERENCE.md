@@ -34,7 +34,7 @@ const result = await sdk.<namespace>.<method>(params);
 ### Available Queries
 #### Identity Queries
 
-**Get Identity** - `getIdentity`
+**Get Identity** - `identities.fetch`
 *Fetch an identity by its identifier.*
 
 Parameters:
@@ -46,7 +46,7 @@ Example:
 const result = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**Get Identity (Unproved)** - `getIdentityUnproved`
+**Get Identity (Unproved)** - `identities.fetchUnproved`
 *Fetch an identity without requesting cryptographic proofs.*
 
 Parameters:
@@ -58,7 +58,7 @@ Example:
 const result = await sdk.identities.fetchUnproved('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**Get Identity Keys** - `getIdentityKeys`
+**Get Identity Keys** - `identities.getKeys`
 *Retrieve public keys for an identity, including support for specific key IDs or purpose searches.*
 
 Parameters:
@@ -88,7 +88,7 @@ const result = await sdk.identities.getKeys({
 });
 ```
 
-**Get Contract Keys for Identities** - `getIdentitiesContractKeys`
+**Get Contract Keys for Identities** - `identities.contractKeys`
 *Fetch contract-specific keys for one or more identities.*
 
 Parameters:
@@ -109,7 +109,7 @@ const result = await sdk.identities.contractKeys({
 });
 ```
 
-**Get Identity Nonce** - `getIdentityNonce`
+**Get Identity Nonce** - `identities.nonce`
 *Retrieve the global nonce associated with an identity.*
 
 Parameters:
@@ -121,7 +121,7 @@ Example:
 const result = await sdk.identities.nonce('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**Get Identity Contract Nonce** - `getIdentityContractNonce`
+**Get Identity Contract Nonce** - `identities.contractNonce`
 *Retrieve the per-contract nonce for an identity.*
 
 Parameters:
@@ -136,7 +136,7 @@ Example:
 const result = await sdk.identities.contractNonce('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec');
 ```
 
-**Get Identity Balance** - `getIdentityBalance`
+**Get Identity Balance** - `identities.balance`
 *Fetch the credit balance for an identity.*
 
 Parameters:
@@ -148,7 +148,7 @@ Example:
 const result = await sdk.identities.balance('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**Get Multiple Identity Balances** - `getIdentitiesBalances`
+**Get Multiple Identity Balances** - `identities.balances`
 *Fetch balances for multiple identities in a single request.*
 
 Parameters:
@@ -160,7 +160,7 @@ Example:
 const result = await sdk.identities.balances(['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk']);
 ```
 
-**Get Identity Balance & Revision** - `getIdentityBalanceAndRevision`
+**Get Identity Balance & Revision** - `identities.balanceAndRevision`
 *Retrieve both the balance and revision number for an identity.*
 
 Parameters:
@@ -172,7 +172,7 @@ Example:
 const result = await sdk.identities.balanceAndRevision('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**Get Identity by Unique Public Key Hash** - `getIdentityByPublicKeyHash`
+**Get Identity by Unique Public Key Hash** - `identities.byPublicKeyHash`
 *Lookup an identity via its unique public key hash.*
 
 Parameters:
@@ -184,7 +184,7 @@ Example:
 const result = await sdk.identities.byPublicKeyHash('b7e904ce25ed97594e72f7af0e66f298031c1754');
 ```
 
-**Get Identity by Non-Unique Public Key Hash** - `getIdentityByNonUniquePublicKeyHash`
+**Get Identity by Non-Unique Public Key Hash** - `identities.byNonUniquePublicKeyHash`
 *Lookup identities that match a non-unique public key hash.*
 
 Parameters:
@@ -198,7 +198,7 @@ Example:
 const result = await sdk.identities.byNonUniquePublicKeyHash('518038dc858461bcee90478fd994bba8057b7531', { startAfter: null });
 ```
 
-**Get Identity Token Balances** - `getIdentityTokenBalances`
+**Get Identity Token Balances** - `identities.tokenBalances`
 *Retrieve balances for a set of token IDs held by an identity.*
 
 Parameters:
@@ -213,7 +213,7 @@ Example:
 const result = await sdk.identities.tokenBalances('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', ['Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv']);
 ```
 
-**Get Token Balances for Identities** - `getIdentitiesTokenBalances`
+**Get Token Balances for Identities** - `tokens.balances`
 *Fetch balances for multiple identities for a single token.*
 
 Parameters:
@@ -228,7 +228,7 @@ Example:
 const result = await sdk.tokens.balances(['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'], 'Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv');
 ```
 
-**Get Identity Token Info** - `getIdentityTokenInfos`
+**Get Identity Token Info** - `tokens.identityTokenInfos`
 *Retrieve token metadata and balances for an identity.*
 
 Parameters:
@@ -247,7 +247,7 @@ Example:
 const result = await sdk.tokens.identityTokenInfos('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', ['Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv'], { limit: 10, offset: 0 });
 ```
 
-**Get Token Info for Identities** - `getIdentitiesTokenInfos`
+**Get Token Info for Identities** - `tokens.identitiesTokenInfos`
 *Retrieve token metadata for multiple identities for a single token.*
 
 Parameters:
@@ -264,7 +264,7 @@ const result = await sdk.tokens.identitiesTokenInfos(['5DbLwAxGBzUzo81VewMUwn4b5
 
 #### Data Contract Queries
 
-**Get Data Contract** - `getDataContract`
+**Get Data Contract** - `contracts.fetch`
 *Fetch a data contract by its identifier.*
 
 Parameters:
@@ -276,7 +276,7 @@ Example:
 const result = await sdk.contracts.fetch('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec');
 ```
 
-**Get Data Contract History** - `getDataContractHistory`
+**Get Data Contract History** - `contracts.getHistory`
 *Retrieve the version history for a data contract.*
 
 Parameters:
@@ -296,7 +296,7 @@ const result = await sdk.contracts.getHistory({
 });
 ```
 
-**Get Data Contracts** - `getDataContracts`
+**Get Data Contracts** - `contracts.getMany`
 *Fetch multiple data contracts by their identifiers.*
 
 Parameters:
@@ -313,7 +313,7 @@ const result = await sdk.contracts.getMany([
 
 #### Document Queries
 
-**Get Documents** - `getDocuments`
+**Get Documents** - `documents.query`
 *Query documents from a data contract using optional filters.*
 
 Parameters:
@@ -346,7 +346,7 @@ const result = await sdk.documents.query({
 });
 ```
 
-**Get Document** - `getDocument`
+**Get Document** - `documents.get`
 *Fetch a specific document by ID.*
 
 Parameters:
@@ -370,7 +370,7 @@ const result = await sdk.documents.get(
 
 #### DPNS Queries
 
-**Get Primary Username** - `getDpnsUsername`
+**Get Primary Username** - `dpns.username`
 *Fetch the primary DPNS username for an identity.*
 
 Parameters:
@@ -382,7 +382,7 @@ Example:
 const result = await sdk.dpns.username('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 ```
 
-**List Usernames for Identity** - `getDpnsUsernames`
+**List Usernames for Identity** - `dpns.usernames`
 *Fetch all DPNS usernames owned by an identity.*
 
 Parameters:
@@ -396,7 +396,7 @@ Example:
 const result = await sdk.dpns.usernames('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', { limit: 10 });
 ```
 
-**Get Username by Name** - `getDpnsUsernameByName`
+**Get Username by Name** - `dpns.getUsernameByName`
 *Fetch DPNS username details by full name.*
 
 Parameters:
@@ -408,7 +408,7 @@ Example:
 const result = await sdk.dpns.getUsernameByName('alice.dash');
 ```
 
-**Resolve DPNS Name** - `dpnsResolve`
+**Resolve DPNS Name** - `dpns.resolveName`
 *Resolve a DPNS name to its identity information.*
 
 Parameters:
@@ -420,7 +420,7 @@ Example:
 const result = await sdk.dpns.resolveName('alice.dash');
 ```
 
-**Check DPNS Availability** - `dpnsCheckAvailability`
+**Check DPNS Availability** - `dpns.isNameAvailable`
 *Check if a DPNS label is available for registration.*
 
 Parameters:
@@ -432,7 +432,7 @@ Example:
 const result = await sdk.dpns.isNameAvailable('alice');
 ```
 
-**Convert to Homograph Safe** - `dpnsConvertToHomographSafe`
+**Convert to Homograph Safe** - `dpns.convertToHomographSafe`
 *Convert a label to its homograph-safe representation.*
 
 Parameters:
@@ -444,7 +444,7 @@ Example:
 const result = sdk.dpns.convertToHomographSafe('ąlice');
 ```
 
-**Validate Username** - `dpnsIsValidUsername`
+**Validate Username** - `dpns.isValidUsername`
 *Validate whether a label conforms to DPNS username rules.*
 
 Parameters:
@@ -456,7 +456,7 @@ Example:
 const result = sdk.dpns.isValidUsername('alice');
 ```
 
-**Is Contested Username** - `dpnsIsContestedUsername`
+**Is Contested Username** - `dpns.isContestedUsername`
 *Check if a label is currently part of a contested DPNS registration.*
 
 Parameters:
@@ -470,7 +470,7 @@ const result = sdk.dpns.isContestedUsername('alice');
 
 #### Voting & Contested Resources
 
-**Get Contested Resources** - `getContestedResources`
+**Get Contested Resources** - `group.contestedResources`
 *List contested resources for a document type and index.*
 
 Parameters:
@@ -500,7 +500,7 @@ const result = await sdk.group.contestedResources({
 });
 ```
 
-**Get Contested Resource Vote State** - `getContestedResourceVoteState`
+**Get Contested Resource Vote State** - `voting.contestedResourceVoteState`
 *Retrieve vote tallies for a contested resource.*
 
 Parameters:
@@ -539,7 +539,7 @@ const result = await sdk.voting.contestedResourceVoteState({
 });
 ```
 
-**Get Voters for Identity** - `getContestedResourceVotersForIdentity`
+**Get Voters for Identity** - `group.contestedResourceVotersForIdentity`
 *List voters that voted for a specific identity in a contested resource.*
 
 Parameters:
@@ -580,7 +580,7 @@ const result = await sdk.group.contestedResourceVotersForIdentity({
 });
 ```
 
-**Get Identity Votes** - `getContestedResourceIdentityVotes`
+**Get Identity Votes** - `voting.contestedResourceIdentityVotes`
 *Fetch contested resource votes submitted by a particular identity.*
 
 Parameters:
@@ -603,7 +603,7 @@ const result = await sdk.voting.contestedResourceIdentityVotes(
 );
 ```
 
-**Get Vote Polls by End Date** - `getVotePollsByEndDate`
+**Get Vote Polls by End Date** - `voting.votePollsByEndDate`
 *Fetch vote polls filtered by end time. Use JSON time info for standard responses or millisecond timestamps with proof.*
 
 Parameters:
@@ -633,7 +633,7 @@ const result = await sdk.voting.votePollsByEndDate({
 
 #### Protocol & Version
 
-**Get Protocol Version Upgrade State** - `getProtocolVersionUpgradeState`
+**Get Protocol Version Upgrade State** - `protocol.versionUpgradeState`
 *Retrieve protocol upgrade vote tallies.*
 
 No parameters required.
@@ -643,7 +643,7 @@ Example:
 const result = await sdk.protocol.versionUpgradeState();
 ```
 
-**Get Protocol Version Vote Status** - `getProtocolVersionUpgradeVoteStatus`
+**Get Protocol Version Vote Status** - `protocol.versionUpgradeVoteStatus`
 *Fetch voting status for masternodes on protocol upgrades.*
 
 Parameters:
@@ -662,7 +662,7 @@ const result = await sdk.protocol.versionUpgradeVoteStatus({
 
 #### Epoch & Block Queries
 
-**Get Epochs Info** - `getEpochsInfo`
+**Get Epochs Info** - `epoch.epochsInfo`
 *Retrieve summary information for one or more epochs.*
 
 Parameters:
@@ -681,7 +681,7 @@ const result = await sdk.epoch.epochsInfo({
 });
 ```
 
-**Get Current Epoch** - `getCurrentEpoch`
+**Get Current Epoch** - `epoch.current`
 *Fetch the current platform epoch.*
 
 No parameters required.
@@ -691,7 +691,7 @@ Example:
 const result = await sdk.epoch.current();
 ```
 
-**Get Finalized Epoch Infos** - `getFinalizedEpochInfos`
+**Get Finalized Epoch Infos** - `epoch.finalizedInfos`
 *Retrieve finalized epoch information for a range.*
 
 Parameters:
@@ -710,7 +710,7 @@ const result = await sdk.epoch.finalizedInfos({
 });
 ```
 
-**Get Epoch Blocks by Evonode IDs** - `getEvonodesProposedEpochBlocksByIds`
+**Get Epoch Blocks by Evonode IDs** - `epoch.evonodesProposedBlocksByIds`
 *Fetch proposed blocks for specific evonode ProTx hashes.*
 
 Parameters:
@@ -727,7 +727,7 @@ const result = await sdk.epoch.evonodesProposedBlocksByIds(
 );
 ```
 
-**Get Epoch Blocks by Range** - `getEvonodesProposedEpochBlocksByRange`
+**Get Epoch Blocks by Range** - `epoch.evonodesProposedBlocksByRange`
 *Fetch proposed blocks in range order.*
 
 Parameters:
@@ -750,7 +750,7 @@ const result = await sdk.epoch.evonodesProposedBlocksByRange(8635, {
 
 #### Token Queries
 
-**Get Token Statuses** - `getTokenStatuses`
+**Get Token Statuses** - `tokens.statuses`
 *Retrieve status information for one or more tokens.*
 
 Parameters:
@@ -765,7 +765,7 @@ const result = await sdk.tokens.statuses([
 ]);
 ```
 
-**Get Direct Purchase Prices** - `getTokenDirectPurchasePrices`
+**Get Direct Purchase Prices** - `tokens.directPurchasePrices`
 *Fetch direct purchase prices for tokens.*
 
 Parameters:
@@ -779,7 +779,7 @@ const result = await sdk.tokens.directPurchasePrices([
 ]);
 ```
 
-**Get Token Contract Info** - `getTokenContractInfo`
+**Get Token Contract Info** - `tokens.contractInfo`
 *Retrieve metadata for a token contract.*
 
 Parameters:
@@ -791,7 +791,7 @@ Example:
 const result = await sdk.tokens.contractInfo('ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A');
 ```
 
-**Get Token Distribution Last Claim** - `getTokenPerpetualDistributionLastClaim`
+**Get Token Distribution Last Claim** - `tokens.perpetualDistributionLastClaim`
 *Fetch the last perpetual distribution claim for an identity and token.*
 
 Parameters:
@@ -809,7 +809,7 @@ const result = await sdk.tokens.perpetualDistributionLastClaim(
 );
 ```
 
-**Get Token Total Supply** - `getTokenTotalSupply`
+**Get Token Total Supply** - `tokens.totalSupply`
 *Fetch the total supply for a token.*
 
 Parameters:
@@ -821,7 +821,7 @@ Example:
 const result = await sdk.tokens.totalSupply('Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv');
 ```
 
-**Get Token Price by Contract** - `getTokenPriceByContract`
+**Get Token Price by Contract** - `tokens.priceByContract`
 *Retrieve the price details for a token indexed by contract position.*
 
 Parameters:
@@ -838,7 +838,7 @@ const result = await sdk.tokens.priceByContract('ALybvzfcCwMs7sinDwmtumw17NneuW7
 
 #### Group Queries
 
-**Get Group Info** - `getGroupInfo`
+**Get Group Info** - `group.info`
 *Fetch metadata for a specific group contract position.*
 
 Parameters:
@@ -853,7 +853,7 @@ Example:
 const result = await sdk.group.info('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0);
 ```
 
-**List Group Infos** - `getGroupInfos`
+**List Group Infos** - `group.infos`
 *List group information entries for a contract.*
 
 Parameters:
@@ -869,7 +869,7 @@ Example:
 const result = await sdk.group.infos('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', null, 10);
 ```
 
-**Get Group Members** - `getGroupMembers`
+**Get Group Members** - `group.members`
 *Retrieve member entries for a group.*
 
 Parameters:
@@ -890,7 +890,7 @@ Example:
 const result = await sdk.group.members('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, { limit: 10 });
 ```
 
-**Get Group Actions** - `getGroupActions`
+**Get Group Actions** - `group.actions`
 *Fetch actions associated with a group.*
 
 Parameters:
@@ -912,7 +912,7 @@ Example:
 const result = await sdk.group.actions('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, 'ACTIVE', { count: 10 });
 ```
 
-**Get Group Action Signers** - `getGroupActionSigners`
+**Get Group Action Signers** - `group.actionSigners`
 *List signers for a specific group action.*
 
 Parameters:
@@ -932,7 +932,7 @@ Example:
 const result = await sdk.group.actionSigners('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, 'ACTIVE', '6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ');
 ```
 
-**Get Identity Groups** - `getIdentityGroups`
+**Get Identity Groups** - `group.identityGroups`
 *Fetch group memberships for an identity.*
 
 Parameters:
@@ -950,7 +950,7 @@ Example:
 const result = await sdk.group.identityGroups('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', {});
 ```
 
-**Get Groups Data Contracts** - `getGroupsDataContracts`
+**Get Groups Data Contracts** - `group.groupsDataContracts`
 *Fetch group configuration documents for the supplied data contracts.*
 
 Parameters:
@@ -964,7 +964,7 @@ const result = await sdk.group.groupsDataContracts(['GWRSAVFMjXx8HpQFaNJMqBV7MBg
 
 #### System & Utility
 
-**Get Platform Status** - `getStatus`
+**Get Platform Status** - `system.status`
 *Retrieve basic platform status information.*
 
 No parameters required.
@@ -974,7 +974,7 @@ Example:
 const result = await sdk.system.status();
 ```
 
-**Get Current Quorums Info** - `getCurrentQuorumsInfo`
+**Get Current Quorums Info** - `system.currentQuorumsInfo`
 *Fetch details about currently active quorums.*
 
 No parameters required.
@@ -984,7 +984,7 @@ Example:
 const result = await sdk.system.currentQuorumsInfo();
 ```
 
-**Get Prefunded Specialized Balance** - `getPrefundedSpecializedBalance`
+**Get Prefunded Specialized Balance** - `system.prefundedSpecializedBalance`
 *Retrieve a prefunded specialized balance entry.*
 
 Parameters:
@@ -996,7 +996,7 @@ Example:
 const result = await sdk.system.prefundedSpecializedBalance('AzaU7zqCT7X1kxh8yWxkT9PxAgNqWDu4Gz13emwcRyAT');
 ```
 
-**Get Total Credits in Platform** - `getTotalCreditsInPlatform`
+**Get Total Credits in Platform** - `system.totalCreditsInPlatform`
 *Fetch the total credit balance stored in the platform.*
 
 No parameters required.
@@ -1006,7 +1006,7 @@ Example:
 const result = await sdk.system.totalCreditsInPlatform();
 ```
 
-**Get Path Elements** - `getPathElements`
+**Get Path Elements** - `system.pathElements`
 *Access items in the GroveDB state tree by specifying a path and keys.*
 
 Parameters:
@@ -1021,7 +1021,7 @@ Example:
 const result = await sdk.system.pathElements(['96'], ['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk']);
 ```
 
-**Wait for State Transition Result** - `waitForStateTransitionResult`
+**Wait for State Transition Result** - `system.waitForStateTransitionResult`
 *Wait for a state transition to be processed and return the result.*
 
 Parameters:
@@ -1044,7 +1044,7 @@ const result = await sdk.<namespace>.<transition>({ ...params, privateKeyWif });
 ### Available State Transitions
 #### Identity Transitions
 
-**Identity Create** - `identityCreate`
+**Identity Create** - `identities.create`
 *Create a new identity with initial credits*
 
 Parameters:
@@ -1059,10 +1059,45 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys });
+// Asset lock proof is a hex-encoded JSON object
+const assetLockProof = "a9147d3b... (hex-encoded)";
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+
+// Public keys array with proper key types
+const publicKeys = JSON.stringify([
+  {
+    id: 0,
+    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3
+    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, WITHDRAW = 4, VOTING = 5, OWNER = 6
+    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3
+    data: "A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ", // Base64-encoded public key
+    readOnly: false,
+    privateKeyWif: "XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2" // Required for ECDSA_SECP256K1 signing
+  },
+  {
+    id: 1,
+    type: 0, // ECDSA_SECP256K1
+    purpose: 0, // AUTHENTICATION
+    securityLevel: 2, // HIGH
+    data: "AnotherBase64EncodedPublicKeyHere", // Base64-encoded public key
+    readOnly: false,
+    privateKeyWif: "XAnotherPrivateKeyInWIFFormat" // Required for signing
+  },
+  {
+    id: 2,
+    type: 2, // ECDSA_HASH160
+    purpose: 0, // AUTHENTICATION
+    securityLevel: 2, // HIGH
+    data: "ripemd160hash20bytes1234", // Base64-encoded 20-byte RIPEMD160 hash
+    readOnly: false
+    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)
+  }
+]);
+
+const result = await sdk.identities.create({ assetLockProof, assetLockProofPrivateKey, publicKeys });
 ```
 
-**Identity Top Up** - `identityTopUp`
+**Identity Top Up** - `identities.topup`
 *Add credits to an existing identity*
 
 Parameters:
@@ -1077,10 +1112,14 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif });
+const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
+const assetLockProof = "a9147d3b... (hex-encoded)";
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+
+const result = await sdk.identities.topup({ identityId, assetLockProof, assetLockProofPrivateKey });
 ```
 
-**Identity Update** - `identityUpdate`
+**Identity Update** - `identities.update`
 *Update identity keys (add or disable)*
 
 Parameters (payload fields):
@@ -1095,7 +1134,7 @@ Example:
 const result = await sdk.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif });
 ```
 
-**Identity Credit Transfer** - `identityCreditTransfer`
+**Identity Credit Transfer** - `identities.creditTransfer`
 *Transfer credits between identities*
 
 Parameters (payload fields):
@@ -1108,7 +1147,7 @@ Example:
 const result = await sdk.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId });
 ```
 
-**Identity Credit Withdrawal** - `identityCreditWithdrawal`
+**Identity Credit Withdrawal** - `identities.creditWithdrawal`
 *Withdraw credits from identity to Dash address*
 
 Parameters (payload fields):
@@ -1125,7 +1164,7 @@ const result = await sdk.identities.creditWithdrawal({ identityId, toAddress, am
 
 #### Data Contract Transitions
 
-**Data Contract Create** - `dataContractCreate`
+**Data Contract Create** - `contracts.create`
 *Create a new data contract*
 
 Parameters (payload fields):
@@ -1176,7 +1215,7 @@ Example:
 const result = await sdk.contracts.create({ ownerId, definition, privateKeyWif, keyId });
 ```
 
-**Data Contract Update** - `dataContractUpdate`
+**Data Contract Update** - `contracts.update`
 *Add document types, groups, or tokens to an existing data contract*
 
 Parameters (payload fields):
@@ -1211,7 +1250,7 @@ const result = await sdk.contracts.update({ contractId, ownerId, updates, privat
 
 #### Document Transitions
 
-**Document Create** - `documentCreate`
+**Document Create** - `documents.create`
 *Create a new document*
 
 Parameters (payload fields):
@@ -1228,7 +1267,7 @@ Example:
 const result = await sdk.documents.create({ contractId, type: documentType, ownerId, data, entropyHex, privateKeyWif });
 ```
 
-**Document Replace** - `documentReplace`
+**Document Replace** - `documents.replace`
 *Replace an existing document*
 
 Parameters (payload fields):
@@ -1247,7 +1286,7 @@ Example:
 const result = await sdk.documents.replace({ contractId, type: documentType, documentId, ownerId, data, revision, privateKeyWif });
 ```
 
-**Document Delete** - `documentDelete`
+**Document Delete** - `documents.delete`
 *Delete an existing document*
 
 Parameters (payload fields):
@@ -1262,7 +1301,7 @@ Example:
 const result = await sdk.documents.delete({ contractId, type: documentType, documentId, ownerId, privateKeyWif });
 ```
 
-**Document Transfer** - `documentTransfer`
+**Document Transfer** - `documents.transfer`
 *Transfer document ownership*
 
 Parameters (payload fields):
@@ -1279,7 +1318,7 @@ Example:
 const result = await sdk.documents.transfer({ contractId, type: documentType, documentId, ownerId, recipientId, privateKeyWif });
 ```
 
-**Document Purchase** - `documentPurchase`
+**Document Purchase** - `documents.purchase`
 *Purchase a document*
 
 Parameters (payload fields):
@@ -1296,7 +1335,7 @@ Example:
 const result = await sdk.documents.purchase({ contractId, type: documentType, documentId, buyerId, price, privateKeyWif });
 ```
 
-**Document Set Price** - `documentSetPrice`
+**Document Set Price** - `documents.setPrice`
 *Set or update document price*
 
 Parameters (payload fields):
@@ -1313,7 +1352,7 @@ Example:
 const result = await sdk.documents.setPrice({ contractId, type: documentType, documentId, ownerId, price, privateKeyWif });
 ```
 
-**DPNS Register Name** - `dpnsRegister`
+**DPNS Register Name** - `dpns.registerName`
 *Register a new DPNS username*
 
 Parameters (payload fields):
@@ -1327,7 +1366,7 @@ const result = await sdk.dpns.registerName({ label, identityId, publicKeyId, pri
 
 #### Token Transitions
 
-**Token Burn** - `tokenBurn`
+**Token Burn** - `tokens.burn`
 *Burn tokens*
 
 Parameters (payload fields):
@@ -1344,7 +1383,7 @@ Example:
 const result = await sdk.tokens.burn({ contractId, tokenPosition, amount, identityId, privateKeyWif, publicNote });
 ```
 
-**Token Mint** - `tokenMint`
+**Token Mint** - `tokens.mint`
 *Mint new tokens*
 
 Parameters (payload fields):
@@ -1363,7 +1402,7 @@ Example:
 const result = await sdk.tokens.mint({ contractId, tokenPosition, amount, identityId, privateKeyWif, recipientId, publicNote });
 ```
 
-**Token Claim** - `tokenClaim`
+**Token Claim** - `tokens.claim`
 *Claim tokens from a distribution*
 
 Parameters (payload fields):
@@ -1381,7 +1420,7 @@ Example:
 const result = await sdk.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote });
 ```
 
-**Token Set Price** - `tokenSetPriceForDirectPurchase`
+**Token Set Price** - `tokens.setPriceForDirectPurchase`
 *Set or update the price for direct token purchases*
 
 Parameters (payload fields):
@@ -1402,7 +1441,7 @@ Example:
 const result = await sdk.tokens.setPriceForDirectPurchase({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote });
 ```
 
-**Token Direct Purchase** - `tokenDirectPurchase`
+**Token Direct Purchase** - `tokens.directPurchase`
 *Purchase tokens directly at the configured price*
 
 Parameters (payload fields):
@@ -1419,7 +1458,7 @@ Example:
 const result = await sdk.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif });
 ```
 
-**Token Config Update** - `tokenConfigUpdate`
+**Token Config Update** - `tokens.configUpdate`
 *Update token configuration settings*
 
 Parameters (payload fields):
@@ -1439,7 +1478,7 @@ Example:
 const result = await sdk.tokens.configUpdate({ contractId, tokenPosition, configItemType, configValue, identityId, privateKeyWif, publicNote });
 ```
 
-**Token Transfer** - `tokenTransfer`
+**Token Transfer** - `tokens.transfer`
 *Transfer tokens between identities*
 
 Parameters (payload fields):
@@ -1458,7 +1497,7 @@ Example:
 const result = await sdk.tokens.transfer({ contractId, tokenPosition, amount, senderId, recipientId, privateKeyWif, publicNote });
 ```
 
-**Token Freeze** - `tokenFreeze`
+**Token Freeze** - `tokens.freeze`
 *Freeze tokens for a specific identity*
 
 Parameters (payload fields):
@@ -1475,7 +1514,7 @@ Example:
 const result = await sdk.tokens.freeze({ contractId, tokenPosition, identityToFreeze, freezerId, privateKeyWif, publicNote });
 ```
 
-**Token Unfreeze** - `tokenUnfreeze`
+**Token Unfreeze** - `tokens.unfreeze`
 *Unfreeze tokens for a specific identity*
 
 Parameters (payload fields):
@@ -1492,7 +1531,7 @@ Example:
 const result = await sdk.tokens.unfreeze({ contractId, tokenPosition, identityToUnfreeze, unfreezerId, privateKeyWif, publicNote });
 ```
 
-**Token Destroy Frozen** - `tokenDestroyFrozen`
+**Token Destroy Frozen** - `tokens.destroyFrozen`
 *Destroy frozen tokens*
 
 Parameters (payload fields):
@@ -1511,7 +1550,7 @@ const result = await sdk.tokens.destroyFrozen({ contractId, tokenPosition, ident
 
 #### Voting Transitions
 
-**DPNS Username** - `dpnsUsername`
+**DPNS Username** - `voting.masternodeVote`
 *Cast a vote for a contested DPNS username*
 
 Parameters (payload fields):
@@ -1529,7 +1568,7 @@ Example:
 const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif });
 ```
 
-**Contested Resource** - `masternodeVote`
+**Contested Resource** - `voting.masternodeVote`
 *Cast a vote for contested resources as a masternode*
 
 Parameters (payload fields):
@@ -1605,7 +1644,7 @@ const balances = await sdk.identities.balances(identityIds);
 
 1. **Network configuration**: Use `EvoSDK.testnetTrusted()` for a ready-to-use testnet client. When mainnet is available, switch to `EvoSDK.mainnetTrusted()` or instantiate `new EvoSDK({ network: "mainnet" })`.
 2. **Identity format**: Identity identifiers are Base58-encoded strings. Signing keys are provided as WIF strings.
-3. **Credits**: All platform fees are charged in credits (1 credit = 1 satoshi equivalent). Ensure identities maintain sufficient balance.
+3. **Credits**: All platform fees are charged in credits (1000 credits = 1 satoshi equivalent). Ensure identities maintain sufficient balance.
 4. **Nonces**: Evo SDK facades manage nonces automatically when you submit transitions. Use `sdk.identities.nonce(...)` for manual workflows.
 5. **Proofs**: Pass `proofs: true` when constructing `EvoSDK` to validate GroveDB proofs and prefer `*WithProof` helpers.
 

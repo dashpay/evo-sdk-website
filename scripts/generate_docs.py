@@ -346,8 +346,8 @@ def evo_example_for_query(key: str, inputs: List[dict]):
 def evo_example_for_transition(key: str):
     m = {
         # Identities
-        'identityCreate': "await client.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys })",
-        'identityTopUp': "await client.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif })",
+        # 'identityCreate' - example in api-definitions.json
+        # 'identityTopUp' - example in api-definitions.json
         'identityCreditTransfer': "await client.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId })",
         'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId })",
         'identityUpdate': "await client.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif })",
@@ -890,7 +890,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
     transition_sections = collect_sections(
         transition_defs,
         'transitions',
-        lambda key, _item: evo_example_for_transition(key)
+        lambda key, item: item.get('sdk_example') or evo_example_for_transition(key)
     )
 
     sidebar_queries = build_sidebar_entries(query_sections, 'query')
@@ -1017,10 +1017,18 @@ def format_ai_example_block(code: str | None, item_key: str) -> str:
     stripped = first_line.lstrip()
     indent = first_line[: len(first_line) - len(stripped)]
 
-    if stripped.startswith('return '):
-        stripped = stripped[len('return ') :].lstrip()
+    # Check if the example already contains variable declarations or const result
+    already_has_declaration = (
+        stripped.startswith('const ') or
+        stripped.startswith('let ') or
+        stripped.startswith('var ') or
+        'const result' in snippet
+    )
 
-    processed[first_index] = f"{indent}const result = {stripped}"
+    if not already_has_declaration:
+        if stripped.startswith('return '):
+            stripped = stripped[len('return ') :].lstrip()
+        processed[first_index] = f"{indent}const result = {stripped}"
 
     joined = '\n'.join(processed).rstrip()
     if not joined.endswith(';'):
@@ -1124,7 +1132,10 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
                 description = query.get('description', 'No description available')
                 example_code = evo_example_for_query(query_key, query.get('inputs', []))
 
-                lines.append(f"**{label}** - `{query_key}`")
+                # Use sdk_method field from api-definitions.json if available, otherwise fall back to query_key
+                sdk_method = query.get('sdk_method', query_key)
+
+                lines.append(f"**{label}** - `{sdk_method}`")
                 lines.append(f"*{description}*")
                 lines.append('')
 
@@ -1212,11 +1223,14 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
         for transition_key, transition in transitions.items():
             label = transition.get('label', transition_key)
             description = transition.get('description', 'No description available')
-            example_code = evo_example_for_transition(transition_key)
+            example_code = transition.get('sdk_example') or evo_example_for_transition(transition_key)
             sdk_params = transition.get('sdk_params') or []
             inputs = transition.get('inputs') or []
 
-            lines.append(f"**{label}** - `{transition_key}`")
+            # Use sdk_method field from api-definitions.json if available, otherwise fall back to transition_key
+            sdk_method = transition.get('sdk_method', transition_key)
+
+            lines.append(f"**{label}** - `{sdk_method}`")
             lines.append(f"*{description}*")
             lines.append('')
 
@@ -1287,7 +1301,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict) -> str:
         '1. **Network configuration**: Use `EvoSDK.testnetTrusted()` for a ready-to-use testnet client. '
         'When mainnet is available, switch to `EvoSDK.mainnetTrusted()` or instantiate `new EvoSDK({ network: \"mainnet\" })`.',
         '2. **Identity format**: Identity identifiers are Base58-encoded strings. Signing keys are provided as WIF strings.',
-        '3. **Credits**: All platform fees are charged in credits (1 credit = 1 satoshi equivalent). Ensure identities maintain sufficient balance.',
+        '3. **Credits**: All platform fees are charged in credits (1000 credits = 1 satoshi equivalent). Ensure identities maintain sufficient balance.',
         '4. **Nonces**: Evo SDK facades manage nonces automatically when you submit transitions. Use `sdk.identities.nonce(...)` for manual workflows.',
         '5. **Proofs**: Pass `proofs: true` when constructing `EvoSDK` to validate GroveDB proofs and prefer `*WithProof` helpers.',
         '',
