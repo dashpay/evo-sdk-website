@@ -5,19 +5,19 @@ __metadata:
   version: 8
   cacheKey: 10
 
-"@dashevo/evo-sdk@npm:2.1-rc":
-  version: 2.1.0-rc.1
-  resolution: "@dashevo/evo-sdk@npm:2.1.0-rc.1"
+"@dashevo/evo-sdk@npm:2.1.2":
+  version: 2.1.2
+  resolution: "@dashevo/evo-sdk@npm:2.1.2"
   dependencies:
-    "@dashevo/wasm-sdk": "npm:2.1.0-rc.1"
-  checksum: 6b49f28999ff68485b9aedea9e99a1735703972e83b1cc15ae2cd8b40ca429f8e8a809ba0b03e632b680d84e019fa4ca6d03492ffccaf949f70d7b467f2a1577
+    "@dashevo/wasm-sdk": "npm:2.1.2"
+  checksum: 7a329790c74d2c4340e9e48fa0a29f904f69f15e045730f565cd84630ec3551e2b7f3c3385bf79f8f5f2a85a3e43fb79453f95c201aaf2b7aa3223dc12a50472
   languageName: node
   linkType: hard
 
-"@dashevo/wasm-sdk@npm:2.1.0-rc.1":
-  version: 2.1.0-rc.1
-  resolution: "@dashevo/wasm-sdk@npm:2.1.0-rc.1"
-  checksum: b050760203b5038268b5ef226e6a8b32e1d69243d8b970d937770874cbee2cb3b37d412c6c1152d8d1d60944a86ef673661d7686d9123dbc7804a99aa4653b74
+"@dashevo/wasm-sdk@npm:2.1.2":
+  version: 2.1.2
+  resolution: "@dashevo/wasm-sdk@npm:2.1.2"
+  checksum: f63646beec4f227065a2ffbcedfc81e37cbb9b3cacaaa75efca607cbfc6b401fcb2fccf57f456a0fc8353166d0481e94574f263d993a97d87da658e5ab40f6a7
   languageName: node
   linkType: hard
 
@@ -680,7 +680,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@dashevo/evo-sdk": "npm:2.1-rc"
+    "@dashevo/evo-sdk": "npm:2.1.2"
     "@playwright/test": "npm:1.56.0"
     dotenv: "npm:17.2.3"
   languageName: unknown
