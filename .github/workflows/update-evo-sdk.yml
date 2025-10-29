@@ -1,4 +1,4 @@
-name: Update evo-sdk version on npm release
+name: Check/Update SDK version
 
 on:
   workflow_dispatch:  # Manual trigger
@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: '20'
 
@@ -83,7 +83,9 @@ jobs:
           }
 
       - name: Run smoke tests
+        id: smoke_tests
         if: steps.check_version.outputs.needs_update == 'true'
+        continue-on-error: true
         run: |
           echo "Installing Playwright browsers..."
           npx playwright install --with-deps chromium
@@ -91,15 +93,18 @@ jobs:
           yarn test:smoke
 
       - name: Run query tests
+        id: query_tests
         if: steps.check_version.outputs.needs_update == 'true'
+        continue-on-error: true
         run: |
           echo "Running query tests to verify compatibility..."
           yarn test:queries
 
       - name: Create Pull Request
         if: steps.check_version.outputs.needs_update == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
+          draft: ${{ steps.smoke_tests.outcome != 'success' || steps.query_tests.outcome != 'success' }}
           branch: update-deps/evo-sdk-${{ steps.check_version.outputs.latest }}
           title: "chore: upgrade evo-sdk to ${{ steps.check_version.outputs.latest }}"
           body: |
@@ -109,13 +114,20 @@ jobs:
             - Previous: `${{ steps.check_version.outputs.current }}`
             - New: `${{ steps.check_version.outputs.latest }}`
 
-            **Automated Checks:**
-            - Smoke tests: Passed
-            - Query tests: Passed
+            **Test Results:**
+            - Smoke tests: ${{ steps.smoke_tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
+            - Query tests: ${{ steps.query_tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
+            ${{ steps.smoke_tests.outcome == 'success' && steps.query_tests.outcome == 'success' && '
+
+            ✅ Smoke and query tests passed!' || format('
+
+            ⚠️ **This PR is in draft because tests failed.**
+
+            Review the test failures in the [workflow run]({0}/{1}/actions/runs/{2}) and update the site code to support the new SDK version.', github.server_url, github.repository, github.run_id) }}
+
+            ---
 
             This PR was automatically created by the [update-evo-sdk workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/update-evo-sdk.yml).
-
-            Please review the changes and merge if everything looks good.
           commit-message: "chore: upgrade evo-sdk to ${{ steps.check_version.outputs.latest }}"
           reviewers: "thephez,shumkov"
           delete-branch: true
