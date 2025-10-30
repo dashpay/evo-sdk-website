@@ -501,6 +501,29 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateDataContractResult(result.result, false);
     });
 
+    test('should create data contract with history enabled', async () => {
+      // Execute the data contract create transition with keepsHistory: true
+      const result = await executeStateTransitionWithCustomParams(
+        evoSdkPage,
+        parameterInjector,
+        'dataContract',
+        'dataContractCreate',
+        'testnet',
+        { keepsHistory: true } // Override to enable history
+      );
+
+      // Validate basic result structure
+      validateBasicStateTransitionResult(result);
+
+      // Validate data contract creation specific result
+      validateDataContractResult(result.result, false);
+
+      // Parse result and verify keepsHistory is set to true
+      const contractData = JSON.parse(result.result);
+      expect(contractData).toBeDefined();
+      expect(contractData.contractId).toBeDefined();
+    });
+
     test.skip('should execute data contract update transition', async () => {
       // Execute the data contract update transition
       const result = await executeStateTransition(

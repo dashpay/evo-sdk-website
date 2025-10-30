@@ -1660,14 +1660,14 @@
               "type": "checkbox",
               "label": "Documents Mutable (Default)",
               "required": false,
-              "defaultValue": true
+              "default": true
             },
             {
               "name": "documentsCanBeDeletedContractDefault",
               "type": "checkbox",
               "label": "Documents Can Be Deleted (Default)",
               "required": false,
-              "defaultValue": true
+              "default": true
             },
             {
               "name": "requiresIdentityEncryptionBoundedKey",
