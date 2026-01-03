@@ -1,25 +1,42 @@
-# Evo SDK Website / Docs
+# Evo SDK Website
 
-This repository hosts the static documentation website and generators for the Evo JS SDK, adapted from the wasm-sdk site.
+An interactive documentation and testing website for the [Dash Platform Evo JS SDK](https://github.com/dashpay/platform/tree/master/packages/js-evo-sdk).
 
-## Usage
-- Generate docs and AI reference:
-  - `yarn docs:generate` (or `python3 scripts/generate_docs.py`)
-  - Regeneration also refreshes `public/dist` with the latest Evo SDK bundle built in `platform/packages/js-evo-sdk/dist`.
-- Check documentation status: `yarn docs:check` (or `python3 scripts/check_docs.py`)
+**Live site:** https://dashpay.github.io/evo-sdk-website/
 
-## Serve Locally
-```
+## Related Repositories
+
+- **[Dash Platform](https://github.com/dashpay/platform)** — The monorepo containing all Dash Platform components
+- **[Evo JS SDK](https://github.com/dashpay/platform/tree/master/packages/js-evo-sdk)** — The JavaScript SDK for interacting with Dash Platform
+
+## Local Development
+
+### Serve the website locally
+```bash
 yarn website:serve
 open http://localhost:8081/index.html
 ```
 
+### Generate documentation
+```bash
+yarn docs:generate
+```
+This regenerates `public/docs.html`, `public/AI_REFERENCE.md`, and copies the latest SDK bundle from `platform/packages/js-evo-sdk/dist` to `public/dist`.
 
-## Outputs
-- `public/docs.html` — human-friendly docs with EvoSDK examples
-- `public/AI_REFERENCE.md` — compact list of queries and transitions
-- `public/docs_manifest.json` — manifest used for CI checks
+### Check documentation status
+```bash
+yarn docs:check
+```
+
+## Project Structure
+
+- `public/index.html` — Main interactive SDK testing interface
+- `public/docs.html` — Human-friendly documentation with examples
+- `public/AI_REFERENCE.md` — Compact reference for AI assistants
+- `public/api-definitions.json` — API definitions used by the generator
+- `scripts/generate_docs.py` — Documentation generator script
 
 ## Notes
+
 - The generator reads `public/api-definitions.json` (no fallbacks).
-- The Evo SDK module is expected at `public/dist`; build the SDK workspace with `yarn workspace @dashevo/evo-sdk build` before regenerating docs to copy it over.
+- The Evo SDK module is expected at `public/dist`. Build the SDK in the platform repo with `yarn workspace @dashevo/evo-sdk build` before regenerating docs.

@@ -974,7 +974,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
             <ul>
                 <li><a href=\"index.html\">← Back to SDK</a></li>
                 <li><a href=\"AI_REFERENCE.md\">AI Reference</a></li>
-                <li><a href=\"https://github.com/dashpay/platform\" target=\"_blank\">GitHub</a></li>
+                <li><a href=\"https://github.com/dashpay/evo-sdk-website\" target=\"_blank\">GitHub</a></li>
             </ul>
         </nav>
 
