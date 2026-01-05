@@ -13,19 +13,19 @@ An interactive documentation and testing website for the [Dash Platform Evo JS S
 
 ### Serve the website locally
 ```bash
-yarn website:serve
+yarn serve
 open http://localhost:8081/index.html
 ```
 
 ### Generate documentation
 ```bash
-yarn docs:generate
+yarn generate
 ```
 This regenerates `public/docs.html`, `public/AI_REFERENCE.md`, and copies the latest SDK bundle from `platform/packages/js-evo-sdk/dist` to `public/dist`.
 
 ### Check documentation status
 ```bash
-yarn docs:check
+yarn check
 ```
 
 ## Project Structure
