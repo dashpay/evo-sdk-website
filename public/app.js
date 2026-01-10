@@ -2078,8 +2078,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     // Documents
     case 'getDocuments': {
       const payload = {
-        contractId: n.dataContractId || n.contractId,
-        type: n.documentType,
+        // SDK v3 expects 'dataContractId' and 'documentTypeName'
+        dataContractId: n.dataContractId || n.contractId,
+        documentTypeName: n.documentType,
         where: n.where,
         orderBy: n.orderBy,
         limit: n.limit ?? null,
@@ -2440,12 +2441,99 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
   }
 }
 
+/**
+ * Convert a value to a plain JS object suitable for JSON serialization.
+ * Handles Maps, WASM objects with named properties, and nested structures.
+ */
+function toSerializable(value) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (typeof value === 'bigint') return value.toString();
+
+  // Handle Map objects - convert to object with string keys
+  if (value instanceof Map) {
+    const obj = {};
+    for (const [k, v] of value) {
+      // Use toString for Identifier keys, or string representation
+      const key = (k && typeof k.toString === 'function') ? k.toString() : String(k);
+      obj[key] = toSerializable(v);
+    }
+    return obj;
+  }
+
+  // Handle Arrays
+  if (Array.isArray(value)) {
+    return value.map(toSerializable);
+  }
+
+  // Handle Uint8Array and other typed arrays
+  if (ArrayBuffer.isView(value)) {
+    return Array.from(value);
+  }
+
+  // Handle objects - check for WASM objects with __wbg_ptr (these need special handling)
+  if (typeof value === 'object') {
+    // If it's a plain object, recursively convert
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const result = {};
+      for (const key of Object.keys(value)) {
+        if (key !== '__wbg_ptr' && key !== 'ptr') {
+          result[key] = toSerializable(value[key]);
+        }
+      }
+      return result;
+    }
+
+    // For WASM/class objects, try to extract properties via getOwnPropertyDescriptors
+    // This handles objects with getters like StatusResponse, TokenStatus, etc.
+    const result = {};
+    let hasProps = false;
+
+    // Get all properties from the prototype chain (including class prototypes)
+    // We need to check both the instance AND its prototype chain for getters
+    let obj = value;
+    while (obj && obj !== Object.prototype) {
+      const descriptors = Object.getOwnPropertyDescriptors(obj);
+      for (const [key, desc] of Object.entries(descriptors)) {
+        if (key === '__wbg_ptr' || key === 'ptr' || key === 'constructor' || key === 'free' || key.startsWith('__')) continue;
+        if (typeof desc.value === 'function') continue;
+        if (desc.get || (desc.value !== undefined && typeof desc.value !== 'function')) {
+          try {
+            const val = value[key]; // Always access from original value
+            if (typeof val !== 'function' && val !== undefined) {
+              result[key] = toSerializable(val);
+              hasProps = true;
+            }
+          } catch (_) { /* skip inaccessible properties */ }
+        }
+      }
+      obj = Object.getPrototypeOf(obj);
+    }
+
+    if (hasProps) return result;
+
+    // Fallback: try Object.keys for enumerable properties
+    for (const key of Object.keys(value)) {
+      if (key !== '__wbg_ptr' && key !== 'ptr') {
+        result[key] = toSerializable(value[key]);
+        hasProps = true;
+      }
+    }
+
+    return hasProps ? result : value;
+  }
+
+  return value;
+}
+
 function formatResult(value) {
   if (value === undefined) return 'Completed (no result returned)';
   if (value === null) return 'null';
   if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value, null, 2);
+    const serializable = toSerializable(value);
+    return JSON.stringify(serializable, null, 2);
   } catch (_) {
     return String(value);
   }

@@ -453,7 +453,8 @@ const testData = {
             documentTypeName: "domain",
             indexName: "parentNameAndLabel",
             indexValues: ["dash", "alice"],
-            resultType: "contenders",
+            // SDK v3 supports: 'documents' | 'voteTally' | 'documentsAndVoteTally'
+            resultType: "documentsAndVoteTally",
             allowIncludeLockedAndAbstainingVoteTally: false,
             count: 10,
             orderAscending: true

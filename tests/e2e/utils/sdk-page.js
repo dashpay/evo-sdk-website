@@ -128,8 +128,17 @@ class EvoSdkPage extends BaseTest {
    * Fill a specific parameter by name
    */
   async fillParameterByName(paramName, value) {
-    // Special handling for multiselect checkboxes (like purposes)
+    // Special handling for multiselect elements (like purposes)
     if (paramName === 'purposes' && Array.isArray(value)) {
+      // The UI renders multiselects as <select multiple name="purposes">
+      const multiselectSelector = `select[name="${paramName}"][multiple]`;
+      const multiselect = this.page.locator(multiselectSelector);
+      if (await multiselect.count() > 0) {
+        // Select multiple options by their values
+        await multiselect.selectOption(value.map(v => String(v)));
+        return;
+      }
+      // Fallback: try checkbox approach for backwards compatibility
       for (const purposeValue of value) {
         const checkboxSelector = `input[name="purposes_${purposeValue}"][type="checkbox"]`;
         const checkbox = this.page.locator(checkboxSelector);
