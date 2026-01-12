@@ -6,6 +6,14 @@
 // Load environment variables for sensitive test data
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
+// Configurable identity IDs (can be overridden via environment variables)
+const TEST_IDENTITY_PRIMARY = process.env.TEST_IDENTITY_PRIMARY || "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC";
+const TEST_IDENTITY_SECONDARY = process.env.TEST_IDENTITY_SECONDARY || "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG";
+
+// Configurable contract IDs for specialized tests (tokens, NFTs)
+const TEST_TOKEN_CONTRACT_ID = process.env.TEST_TOKEN_CONTRACT_ID || "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i";
+const TEST_NFT_CONTRACT_ID = process.env.TEST_NFT_CONTRACT_ID || "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv";
+
 const testData = {
   // Known testnet identity IDs for testing (from WASM SDK docs and tests)
   identityIds: {
@@ -419,7 +427,7 @@ const testData = {
       getTokenPerpetualDistributionLastClaim: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             tokenId: "Bu2749WKcP5HFNm8v3k5kshRKDSVyfsJMqoWnXmK4q7h"
           }
         ]
@@ -564,8 +572,8 @@ const testData = {
       identityCreditTransfer: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
-            recipientId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG",
+            identityId: TEST_IDENTITY_PRIMARY,
+            recipientId: TEST_IDENTITY_SECONDARY,
             amount: 100000, // 0.000001 DASH in credits
             privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER || "PLACEHOLDER_TRANSFER_KEY", // Transfer key
             description: "Transfer credits between identities"
@@ -575,7 +583,7 @@ const testData = {
       identityCreditWithdrawal: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             toAddress: "yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm",
             amount: 190000, // 0.0000019 DASH in credits (minimum withdrawal amount)
             privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER || "PLACEHOLDER_TRANSFER_KEY",
@@ -592,7 +600,7 @@ const testData = {
             readonly: false,
             keepsHistory: false,
             documentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0}}, "additionalProperties": false}}',
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Create simple test data contract with document schema"
           }
@@ -603,7 +611,7 @@ const testData = {
           {
             dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Sample contract ID
             newDocumentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0}, "author": {"type": "string", "position": 1}}, "additionalProperties": false}}',
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Update existing note document schema to add author field"
           }
@@ -619,7 +627,7 @@ const testData = {
             documentFields: {
               message: "Document created for WASM-SDK UI testing"
             },
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Create test note document with simple schema"
           }
@@ -634,7 +642,7 @@ const testData = {
             documentFields: {
               message: "Updated document message for automation testing"
             },
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Replace existing note document"
           }
@@ -646,7 +654,7 @@ const testData = {
             contractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract
             documentType: "note",
             documentId: "PLACEHOLDER_DOCUMENT_ID", // Will be set dynamically
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Delete existing note document"
           }
@@ -655,12 +663,12 @@ const testData = {
       documentTransfer: {
         testnet: [
           {
-            identityId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG", // Current owner
+            identityId: TEST_IDENTITY_SECONDARY, // Current owner
             privateKey: process.env.TEST_PRIVATE_KEY_SECONDARY || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            contractId: TEST_NFT_CONTRACT_ID, // Use NFT contract
             documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
-            recipientId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC", // Transfer recipient
+            recipientId: TEST_IDENTITY_PRIMARY, // Transfer recipient
             description: "Transfer trading card ownership to secondary identity"
           }
         ]
@@ -668,9 +676,9 @@ const testData = {
       documentPurchase: {
         testnet: [
           {
-            identityId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG", // Buyer identity
+            identityId: TEST_IDENTITY_SECONDARY, // Buyer identity
             privateKey: process.env.TEST_PRIVATE_KEY_SECONDARY || "PLACEHOLDER_SECONDARY_KEY",
-            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            contractId: TEST_NFT_CONTRACT_ID, // Use NFT contract
             documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
             price: 1000, // Price in credits
@@ -681,9 +689,9 @@ const testData = {
       documentSetPrice: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC", // Primary identity owns card after creation
+            identityId: TEST_IDENTITY_PRIMARY, // Primary identity owns card after creation
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            contractId: TEST_NFT_CONTRACT_ID, // Use NFT contract
             documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
             price: 1000, // Price in credits
@@ -696,10 +704,10 @@ const testData = {
       tokenMint: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             amount: "2",
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             // issuedToIdentityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             publicNote: "Token mint test",
@@ -710,12 +718,12 @@ const testData = {
       tokenTransfer: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             amount: "1",
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            recipientId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG",            
+            recipientId: TEST_IDENTITY_SECONDARY,
             publicNote: "Token transfer test",
             description: "Transfer tokens between identities"
           }
@@ -724,10 +732,10 @@ const testData = {
       tokenBurn: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             amount: "1",
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             publicNote: "Token burn test",
             description: "Burn tokens from identity balance"
@@ -737,10 +745,10 @@ const testData = {
       tokenFreeze: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
-            identityToFreeze: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG",
+            identityId: TEST_IDENTITY_PRIMARY,
+            identityToFreeze: TEST_IDENTITY_SECONDARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             publicNote: "Token freeze test",
             description: "Freeze tokens for an identity"
@@ -750,10 +758,10 @@ const testData = {
       tokenDestroyFrozen: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
-            frozenIdentityId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG",
+            identityId: TEST_IDENTITY_PRIMARY,
+            frozenIdentityId: TEST_IDENTITY_SECONDARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             publicNote: "Destroy frozen tokens test",
             description: "Destroy frozen tokens from an identity"
@@ -763,10 +771,10 @@ const testData = {
       tokenUnfreeze: {
         testnet: [
           {
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
-            identityToUnfreeze: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG",
+            identityId: TEST_IDENTITY_PRIMARY,
+            identityToUnfreeze: TEST_IDENTITY_SECONDARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             publicNote: "Token unfreeze test",
             description: "Unfreeze tokens for an identity"
@@ -776,9 +784,9 @@ const testData = {
       tokenClaim: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             distributionType: "perpetual",
             publicNote: "Token claim test",
@@ -789,9 +797,9 @@ const testData = {
       tokenSetPriceForDirectPurchase: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             priceType: "single",
             priceData: "10",
@@ -803,9 +811,9 @@ const testData = {
       tokenDirectPurchase: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             amount: "1",
             totalAgreedPrice: "10",
@@ -816,9 +824,9 @@ const testData = {
       tokenConfigUpdate: {
         testnet: [
           {
-            identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
+            identityId: TEST_IDENTITY_PRIMARY,
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            contractId: "Afk9QSj9UDE14K1y9y3iSx6kUSm5LLmhbdAvPvWL4P2i",
+            contractId: TEST_TOKEN_CONTRACT_ID,
             tokenPosition: 0,
             configItemType: "max_supply",
             configValue: "1000000",
