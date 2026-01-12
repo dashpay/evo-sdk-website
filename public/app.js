@@ -1534,9 +1534,22 @@ function normalizeDocument(document) {
 
   if (!value || typeof value !== 'object') return null;
 
-  const data = value.data ?? value.value ?? {};
-  const revisionRaw = value.revision ?? null;
+  const revisionRaw = value['$revision'] ?? value.revision ?? null;
   const revision = revisionRaw != null ? Number(revisionRaw) : null;
+
+  // Try to extract data from nested 'data' or 'value' properties (v2 SDK format)
+  let data = value.data ?? value.value ?? null;
+
+  // If no nested data property, extract all non-$ prefixed properties as data (v3 SDK format)
+  // In v3, document properties are at top level alongside $-prefixed metadata
+  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    data = {};
+    for (const key of Object.keys(value)) {
+      if (!key.startsWith('$')) {
+        data[key] = value[key];
+      }
+    }
+  }
 
   return { data, revision: Number.isNaN(revision) ? null : revision };
 }
@@ -2228,7 +2241,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.tokens.priceByContract(contractId, tokenPosition);
     }
     case 'tokenMint':
-      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.recipientId, publicNote: n.publicNote });
+      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.issuedToIdentityId || n.recipientId, publicNote: n.publicNote });
     case 'tokenBurn':
       return c.tokens.burn({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenTransfer':
