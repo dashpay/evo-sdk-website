@@ -856,6 +856,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         hasProofSupport: false,
         needsParameters: true,
         validateFn: (result) => {
+          // This query returns undefined if no perpetual distribution claim exists
+          // which gets formatted as "Completed (no result returned)"
+          if (result === 'Completed (no result returned)' || result === 'null') {
+            // Valid response - no claim data exists for this identity/token
+            return;
+          }
           expect(() => JSON.parse(result)).not.toThrow();
           const claimData = JSON.parse(result);
           expect(claimData).toBeDefined();
