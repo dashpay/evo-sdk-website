@@ -1,5 +1,23 @@
 import { EvoSDK, wallet, IdentitySigner } from './dist/evo-sdk.module.js';
 
+/**
+ * Fetches an identity and creates a signer with the provided private key.
+ * Used for state transitions that require Identity + IdentitySigner.
+ * @param {Object} client - The EvoSDK client instance
+ * @param {string} identityId - The identity ID to fetch
+ * @param {string} privateKeyWif - The private key in WIF format
+ * @returns {Promise<{identity: Identity, signer: IdentitySigner}>}
+ */
+async function prepareIdentityAndSigner(client, identityId, privateKeyWif) {
+  const identity = await client.identities.fetch(identityId);
+  if (!identity) {
+    throw new Error(`Identity not found: ${identityId}`);
+  }
+  const signer = new IdentitySigner();
+  signer.addKeyFromWif(privateKeyWif);
+  return { identity, signer };
+}
+
 const identityIdInputEl = document.getElementById('identityId');
 const assetLockProofInputEl = document.getElementById('assetLockProof');
 const privateKeyInputEl = document.getElementById('privateKey');
@@ -2050,13 +2068,8 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'identityTopUp':
       return c.identities.topUp({ identityId: n.identityId, assetLockProof: n.assetLockProof, assetLockPrivateKeyWif: n.assetLockPrivateKeyWif });
     case 'identityCreditTransfer': {
-      const senderIdentity = await c.identities.fetch(n.senderId);
-      if (!senderIdentity) {
-        throw new Error(`Identity not found: ${n.senderId}`);
-      }
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
-      return c.identities.creditTransfer({ identity: senderIdentity, recipientId: n.recipientId, amount: BigInt(n.amount), signer });
+      const { identity, signer } = await prepareIdentityAndSigner(c, n.senderId, n.privateKeyWif);
+      return c.identities.creditTransfer({ identity, recipientId: n.recipientId, amount: BigInt(n.amount), signer });
     }
     case 'identityCreditWithdrawal':
       return c.identities.creditWithdrawal({ identityId: n.identityId, toAddress: n.toAddress, amount: n.amount, coreFeePerByte: n.coreFeePerByte, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
