@@ -1009,228 +1009,208 @@ test.describe('Evo SDK State Transition Tests', () => {
   });
 
   test.describe('Token State Transitions', () => {
-    test('should create token contract and mint tokens', async () => {
-      // Set extended timeout for create contract + mint
-      test.setTimeout(180000);
+    // Simple UI test that doesn't need a contract
+    test('should show authentication inputs for token transitions', async () => {
+      await evoSdkPage.setupStateTransition('token', 'tokenTransfer');
 
-      let tokenContractId;
+      // Check that authentication inputs are visible
+      const hasAuthInputs = await evoSdkPage.hasAuthenticationInputs();
+      expect(hasAuthInputs).toBe(true);
+    });
 
-      // Step 1: Create a contract with tokens
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+    // Tests that need a shared token contract
+    test.describe('Contract Operations', () => {
+      // Shared token contract ID - created once in beforeAll, used by all token tests
+      let sharedTokenContractId;
 
-        // Get base params and add token definition
-        const baseParams = parameterInjector.testData.stateTransitionParameters.dataContract.dataContractCreate.testnet[0];
+      // Create a single comprehensive token contract for all token tests
+      test.beforeAll(async ({ browser }) => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      const setupEvoSdkPage = new EvoSdkPage(page);
+      const setupParameterInjector = new ParameterInjector(setupEvoSdkPage);
 
-        // Simple token definition - defaults allow minting with destination choice
-        const tokensJson = JSON.stringify({
-          "0": {
+      await setupEvoSdkPage.initialize('testnet');
+      await setupEvoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+
+      // Comprehensive token definition with ALL features enabled:
+      // - mint, burn, transfer (defaults)
+      // - freeze/unfreeze rules
+      // - destroy frozen funds rules
+      // - max supply change rules (for config update)
+      // - distribution rules with direct purchase pricing (for set price)
+      const comprehensiveTokenJson = JSON.stringify({
+        "0": {
+          "$format_version": "0",
+          "conventions": {
             "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "testtoken",
-                  "pluralForm": "testtokens"
-                }
-              },
-              "decimals": 8
+            "localizations": {
+              "en": {
+                "$format_version": "0",
+                "shouldCapitalize": false,
+                "singularForm": "sharedtoken",
+                "pluralForm": "sharedtokens"
+              }
             },
-            "baseSupply": 100000,
-            "maxSupply": null
+            "decimals": 8
+          },
+          "baseSupply": 100000,
+          "maxSupply": null,
+          "manualMintingRules": {
+            "V0": {
+              "authorized_to_make_change": "ContractOwner",
+              "admin_action_takers": "ContractOwner",
+              "changing_authorized_action_takers_to_no_one_allowed": false,
+              "changing_admin_action_takers_to_no_one_allowed": false,
+              "self_changing_admin_action_takers_allowed": false
+            }
+          },
+          "freezeRules": {
+            "V0": {
+              "authorized_to_make_change": "ContractOwner",
+              "admin_action_takers": "ContractOwner",
+              "changing_authorized_action_takers_to_no_one_allowed": false,
+              "changing_admin_action_takers_to_no_one_allowed": false,
+              "self_changing_admin_action_takers_allowed": false
+            }
+          },
+          "unfreezeRules": {
+            "V0": {
+              "authorized_to_make_change": "ContractOwner",
+              "admin_action_takers": "ContractOwner",
+              "changing_authorized_action_takers_to_no_one_allowed": false,
+              "changing_admin_action_takers_to_no_one_allowed": false,
+              "self_changing_admin_action_takers_allowed": false
+            }
+          },
+          "destroyFrozenFundsRules": {
+            "V0": {
+              "authorized_to_make_change": "ContractOwner",
+              "admin_action_takers": "ContractOwner",
+              "changing_authorized_action_takers_to_no_one_allowed": false,
+              "changing_admin_action_takers_to_no_one_allowed": false,
+              "self_changing_admin_action_takers_allowed": false
+            }
+          },
+          "maxSupplyChangeRules": {
+            "V0": {
+              "authorized_to_make_change": "ContractOwner",
+              "admin_action_takers": "ContractOwner",
+              "changing_authorized_action_takers_to_no_one_allowed": false,
+              "changing_admin_action_takers_to_no_one_allowed": false,
+              "self_changing_admin_action_takers_allowed": false
+            }
+          },
+          "distributionRules": {
+            "$format_version": "0",
+            "mintingAllowChoosingDestination": true,
+            "changeDirectPurchasePricingRules": {
+              "V0": {
+                "authorized_to_make_change": "ContractOwner",
+                "admin_action_takers": "ContractOwner",
+                "changing_authorized_action_takers_to_no_one_allowed": false,
+                "changing_admin_action_takers_to_no_one_allowed": false,
+                "self_changing_admin_action_takers_allowed": false
+              }
+            }
           }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          {
-            documentSchemas: '{}',
-            tokens: tokensJson
-          }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        // Extract contract ID from result
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
+        }
       });
 
-      // Step 2: Mint tokens
-      await test.step('Mint tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenMint');
+      const success = await setupParameterInjector.injectStateTransitionParameters(
+        'dataContract',
+        'dataContractCreate',
+        'testnet',
+        { documentSchemas: '{}', tokens: comprehensiveTokenJson }
+      );
 
-        // Get identity ID for minting to self
-        const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0].identityId;
+      if (!success) {
+        await context.close();
+        throw new Error('Failed to inject parameters for shared token contract creation');
+      }
 
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenMint',
-          'testnet',
-          {
-            contractId: tokenContractId,
-            issuedToIdentityId: identityId  // Mint tokens to our own identity
-          }
-        );
-        expect(success).toBe(true);
+      const createResult = await setupEvoSdkPage.executeStateTransitionAndGetResult();
 
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
+      if (!createResult.success) {
+        await context.close();
+        throw new Error(`Failed to create shared token contract: ${createResult.result}`);
+      }
 
-        const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0];
-        validateTokenMintResult(result.result, testParams.identityId, testParams.amount);
-      });
+      const resultData = JSON.parse(createResult.result);
+      sharedTokenContractId = resultData.contractId;
+      console.log('✅ Shared token contract created with ID:', sharedTokenContractId);
+
+      await context.close();
     });
 
     test('should execute token mint transition', async () => {
-      // Set extended timeout for create contract + mint
-      test.setTimeout(180000);
+      await evoSdkPage.setupStateTransition('token', 'tokenMint');
 
-      let tokenContractId;
+      const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0].identityId;
 
-      // Step 1: Create a token contract
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+      const success = await parameterInjector.injectStateTransitionParameters(
+        'token',
+        'tokenMint',
+        'testnet',
+        { contractId: sharedTokenContractId, issuedToIdentityId: identityId }
+      );
+      expect(success).toBe(true);
 
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "minttoken",
-                  "pluralForm": "minttokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null
-          }
-        });
+      const result = await evoSdkPage.executeStateTransitionAndGetResult();
+      validateBasicStateTransitionResult(result);
 
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
+      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0];
+      validateTokenMintResult(result.result, testParams.identityId, testParams.amount);
+    });
 
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens
-      await test.step('Mint tokens', async () => {
+    test('should execute token transfer transition', async () => {
+      // First mint some tokens to transfer
+      await test.step('Mint tokens to transfer', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenMint');
+        const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenTransfer.testnet[0].identityId;
 
-        const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0].identityId;
-
-        const success = await parameterInjector.injectStateTransitionParameters(
+        const mintSuccess = await parameterInjector.injectStateTransitionParameters(
           'token',
           'tokenMint',
           'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: identityId }
+          { contractId: sharedTokenContractId, issuedToIdentityId: identityId, amount: '10' }
+        );
+        expect(mintSuccess).toBe(true);
+
+        const mintResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(mintResult);
+        console.log('✅ Tokens minted for transfer');
+      });
+
+      // Then transfer
+      await test.step('Transfer tokens', async () => {
+        await evoSdkPage.setupStateTransition('token', 'tokenTransfer');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'token',
+          'tokenTransfer',
+          'testnet',
+          { contractId: sharedTokenContractId }
         );
         expect(success).toBe(true);
 
         const result = await evoSdkPage.executeStateTransitionAndGetResult();
         validateBasicStateTransitionResult(result);
 
-        const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenMint.testnet[0];
-        validateTokenMintResult(result.result, testParams.identityId, testParams.amount);
+        const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenTransfer.testnet[0];
+        validateTokenTransferResult(
+          result.result,
+          testParams.identityId,
+          testParams.recipientId,
+          testParams.amount
+        );
       });
-    });
-
-    test('should execute token transfer transition', async () => {
-      // Set up the token transfer transition
-      await evoSdkPage.setupStateTransition('token', 'tokenTransfer');
-
-      // Inject parameters (contractId, tokenId, tokenPosition, amount, recipientId, identityId, privateKey)
-      const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenTransfer', 'testnet');
-      expect(success).toBe(true);
-
-      // Execute the transfer
-      const result = await evoSdkPage.executeStateTransitionAndGetResult();
-
-      // Validate basic result structure
-      validateBasicStateTransitionResult(result);
-
-      // Get test parameters for validation
-      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenTransfer.testnet[0];
-
-      // Validate token transfer specific result
-      validateTokenTransferResult(
-        result.result,
-        testParams.identityId,
-        testParams.recipientId,
-        testParams.amount
-      );
     });
 
     test('should execute token burn transition', async () => {
-      // Set extended timeout for create contract + mint + burn
-      test.setTimeout(240000);
-
-      let tokenContractId;
       const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenBurn.testnet[0].identityId;
 
-      // Step 1: Create a token contract
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
-
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "burntoken",
-                  "pluralForm": "burntokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens to have something to burn
+      // Step 1: Mint tokens to have something to burn
       await test.step('Mint tokens', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenMint');
 
@@ -1238,7 +1218,7 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenMint',
           'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: identityId, amount: '100' }
+          { contractId: sharedTokenContractId, issuedToIdentityId: identityId, amount: '100' }
         );
         expect(success).toBe(true);
 
@@ -1247,7 +1227,7 @@ test.describe('Evo SDK State Transition Tests', () => {
         console.log('✅ Tokens minted');
       });
 
-      // Step 3: Burn tokens
+      // Step 2: Burn tokens
       await test.step('Burn tokens', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenBurn');
 
@@ -1255,7 +1235,7 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenBurn',
           'testnet',
-          { contractId: tokenContractId }
+          { contractId: sharedTokenContractId }
         );
         expect(success).toBe(true);
 
@@ -1267,73 +1247,12 @@ test.describe('Evo SDK State Transition Tests', () => {
       });
     });
 
-    test('should execute token freeze transition', async () => {
-      // Set extended timeout for create contract + mint + freeze
-      test.setTimeout(240000);
+    test('should execute token freeze, unfreeze, and destroy frozen transitions', async () => {
+      // This test combines freeze-related operations to avoid state conflicts
+      // All operations target the same identity in a logical sequence
+      const targetIdentity = parameterInjector.testData.stateTransitionParameters.token.tokenFreeze.testnet[0].identityToFreeze;
 
-      let tokenContractId;
-      const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenFreeze.testnet[0].freezerId;
-      const identityToFreeze = parameterInjector.testData.stateTransitionParameters.token.tokenFreeze.testnet[0].identityToFreeze;
-
-      // Step 1: Create a token contract with freeze rules allowing contract owner to freeze
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
-
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "freezetoken",
-                  "pluralForm": "freezetokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null,
-            "freezeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            },
-            "unfreezeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            }
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens to the identity we will freeze
+      // Step 1: Mint tokens to the identity we will test with
       await test.step('Mint tokens to identity', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenMint');
 
@@ -1341,16 +1260,16 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenMint',
           'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: identityToFreeze, amount: '100' }
+          { contractId: sharedTokenContractId, issuedToIdentityId: targetIdentity, amount: '200' }
         );
         expect(success).toBe(true);
 
         const result = await evoSdkPage.executeStateTransitionAndGetResult();
         validateBasicStateTransitionResult(result);
-        console.log('✅ Tokens minted to identity:', identityToFreeze);
+        console.log('✅ Tokens minted to identity:', targetIdentity);
       });
 
-      // Step 3: Freeze the identity's tokens
+      // Step 2: Freeze the identity's tokens
       await test.step('Freeze tokens', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenFreeze');
 
@@ -1358,236 +1277,17 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenFreeze',
           'testnet',
-          { contractId: tokenContractId }
+          { contractId: sharedTokenContractId, identityToFreeze: targetIdentity }
         );
         expect(success).toBe(true);
 
         const result = await evoSdkPage.executeStateTransitionAndGetResult();
         validateBasicStateTransitionResult(result);
-
-        validateTokenFreezeResult(result.result, identityToFreeze);
-      });
-    });
-
-    test('should execute token destroy frozen transition', async () => {
-      // Set extended timeout for create + mint + freeze + destroy
-      test.setTimeout(300000);
-
-      let tokenContractId;
-      const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenDestroyFrozen.testnet[0].destroyerId;
-      const frozenIdentityId = parameterInjector.testData.stateTransitionParameters.token.tokenDestroyFrozen.testnet[0].frozenIdentityId;
-
-      // Step 1: Create a token contract with freeze and destroy rules
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
-
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "destroytoken",
-                  "pluralForm": "destroytokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null,
-            "freezeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            },
-            "destroyFrozenFundsRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            }
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens to the identity we will freeze
-      await test.step('Mint tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenMint');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenMint',
-          'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: frozenIdentityId, amount: '100' }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
-        console.log('✅ Tokens minted');
-      });
-
-      // Step 3: Freeze the identity's tokens
-      await test.step('Freeze tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenFreeze');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenFreeze',
-          'testnet',
-          { contractId: tokenContractId, identityToFreeze: frozenIdentityId }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
+        validateTokenFreezeResult(result.result, targetIdentity);
         console.log('✅ Tokens frozen');
       });
 
-      // Step 4: Destroy the frozen tokens
-      await test.step('Destroy frozen tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenDestroyFrozen');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenDestroyFrozen',
-          'testnet',
-          { contractId: tokenContractId }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
-
-        validateTokenDestroyFrozenResult(result.result, frozenIdentityId);
-      });
-    });
-
-    test('should execute token unfreeze transition', async () => {
-      // Set extended timeout for create + mint + freeze + unfreeze
-      test.setTimeout(300000);
-
-      let tokenContractId;
-      const identityToFreeze = parameterInjector.testData.stateTransitionParameters.token.tokenUnfreeze.testnet[0].identityToUnfreeze;
-
-      // Step 1: Create a token contract with freeze/unfreeze rules
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
-
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "unfreezetoken",
-                  "pluralForm": "unfreezetokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null,
-            "freezeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            },
-            "unfreezeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            }
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens
-      await test.step('Mint tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenMint');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenMint',
-          'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: identityToFreeze, amount: '100' }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
-        console.log('✅ Tokens minted');
-      });
-
-      // Step 3: Freeze the identity's tokens
-      await test.step('Freeze tokens', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenFreeze');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenFreeze',
-          'testnet',
-          { contractId: tokenContractId, identityToFreeze: identityToFreeze }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
-        console.log('✅ Tokens frozen');
-      });
-
-      // Step 4: Unfreeze the tokens
+      // Step 3: Unfreeze the tokens
       await test.step('Unfreeze tokens', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenUnfreeze');
 
@@ -1595,163 +1295,86 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenUnfreeze',
           'testnet',
-          { contractId: tokenContractId }
+          { contractId: sharedTokenContractId, identityToUnfreeze: targetIdentity }
         );
         expect(success).toBe(true);
 
         const result = await evoSdkPage.executeStateTransitionAndGetResult();
         validateBasicStateTransitionResult(result);
+        validateTokenUnfreezeResult(result.result, targetIdentity);
+        console.log('✅ Tokens unfrozen');
+      });
 
-        validateTokenUnfreezeResult(result.result, identityToFreeze);
+      // Step 4: Freeze again for destroy test
+      await test.step('Freeze tokens again', async () => {
+        await evoSdkPage.setupStateTransition('token', 'tokenFreeze');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'token',
+          'tokenFreeze',
+          'testnet',
+          { contractId: sharedTokenContractId, identityToFreeze: targetIdentity }
+        );
+        expect(success).toBe(true);
+
+        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(result);
+        console.log('✅ Tokens frozen again');
+      });
+
+      // Step 5: Destroy the frozen tokens
+      await test.step('Destroy frozen tokens', async () => {
+        await evoSdkPage.setupStateTransition('token', 'tokenDestroyFrozen');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'token',
+          'tokenDestroyFrozen',
+          'testnet',
+          { contractId: sharedTokenContractId, frozenIdentityId: targetIdentity }
+        );
+        expect(success).toBe(true);
+
+        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(result);
+        validateTokenDestroyFrozenResult(result.result, targetIdentity);
+        console.log('✅ Frozen tokens destroyed');
       });
     });
 
     test('should execute token claim transition', async () => {
       // Token claim requires a perpetual distribution to be set up in the contract
-      // This is a complex feature that requires specific contract configuration
-      // For now, we test that the transition can be executed (may fail if no distribution exists)
-      test.setTimeout(180000);
+      // This is a complex feature - we test that the transition can be executed
+      // (may fail gracefully if no perpetual distribution exists)
 
-      let tokenContractId;
-      const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenClaim.testnet[0].identityId;
+      await evoSdkPage.setupStateTransition('token', 'tokenClaim');
 
-      // Step 1: Create a token contract (claim may fail if no perpetual distribution, but tests the flow)
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+      const success = await parameterInjector.injectStateTransitionParameters(
+        'token',
+        'tokenClaim',
+        'testnet',
+        { contractId: sharedTokenContractId }
+      );
+      expect(success).toBe(true);
 
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "claimtoken",
-                  "pluralForm": "claimtokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null
-          }
-        });
+      const result = await evoSdkPage.executeStateTransitionAndGetResult();
 
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Attempt to claim (will likely fail gracefully since no perpetual distribution)
-      await test.step('Attempt token claim', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenClaim');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenClaim',
-          'testnet',
-          { contractId: tokenContractId }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-
-        // Token claim may fail if no perpetual distribution is set up
-        // Accept either success or specific "no tokens to claim" type errors
-        if (result.success) {
-          validateBasicStateTransitionResult(result);
-          const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenClaim.testnet[0];
-          validateTokenClaimResult(result.result, testParams.distributionType);
-        } else {
-          // Expected: no perpetual distribution configured
-          console.log('Token claim returned expected error (no perpetual distribution):', result.result);
-          expect(result.result).toBeDefined();
-        }
-      });
+      // Token claim may fail if no perpetual distribution is set up
+      // Accept either success or specific "no tokens to claim" type errors
+      if (result.success) {
+        validateBasicStateTransitionResult(result);
+        const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenClaim.testnet[0];
+        validateTokenClaimResult(result.result, testParams.distributionType);
+      } else {
+        // Expected: no perpetual distribution configured
+        console.log('Token claim returned expected error (no perpetual distribution):', result.result);
+        expect(result.result).toBeDefined();
+      }
     });
 
     test('should execute token set price transition', async () => {
-      // Set extended timeout for create + mint + set price
-      test.setTimeout(240000);
-
-      let tokenContractId;
       const identityId = parameterInjector.testData.stateTransitionParameters.token.tokenSetPriceForDirectPurchase.testnet[0].identityId;
 
-      // Step 1: Create a token contract
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
-
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "pricetoken",
-                  "pluralForm": "pricetokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "distributionRules": {
-              "$format_version": "0",
-              "mintingAllowChoosingDestination": true,
-              "changeDirectPurchasePricingRules": {
-                "V0": {
-                  "authorized_to_make_change": "ContractOwner",
-                  "admin_action_takers": "ContractOwner",
-                  "changing_authorized_action_takers_to_no_one_allowed": false,
-                  "changing_admin_action_takers_to_no_one_allowed": false,
-                  "self_changing_admin_action_takers_allowed": false
-                }
-              }
-            },
-            "manualMintingRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            }
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Mint tokens to our identity (need tokens to set price on)
+      // Step 1: Mint tokens to our identity (need tokens to set price on)
       await test.step('Mint tokens', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenMint');
 
@@ -1759,7 +1382,7 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenMint',
           'testnet',
-          { contractId: tokenContractId, issuedToIdentityId: identityId, amount: '100' }
+          { contractId: sharedTokenContractId, issuedToIdentityId: identityId, amount: '100' }
         );
         expect(success).toBe(true);
 
@@ -1768,7 +1391,7 @@ test.describe('Evo SDK State Transition Tests', () => {
         console.log('✅ Tokens minted');
       });
 
-      // Step 3: Set price for direct purchase
+      // Step 2: Set price for direct purchase
       await test.step('Set price', async () => {
         await evoSdkPage.setupStateTransition('token', 'tokenSetPriceForDirectPurchase');
 
@@ -1776,7 +1399,7 @@ test.describe('Evo SDK State Transition Tests', () => {
           'token',
           'tokenSetPriceForDirectPurchase',
           'testnet',
-          { contractId: tokenContractId }
+          { contractId: sharedTokenContractId }
         );
         expect(success).toBe(true);
 
@@ -1789,115 +1412,49 @@ test.describe('Evo SDK State Transition Tests', () => {
     });
 
     test('should execute token direct purchase transition', async () => {
-      // Set up the token direct purchase transition
+      // Set up the token direct purchase transition using the shared contract
       await evoSdkPage.setupStateTransition('token', 'tokenDirectPurchase');
 
-      // Inject parameters (contractId, tokenPosition, amount, totalAgreedPrice, keyId, privateKey)
-      const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenDirectPurchase', 'testnet');
+      const success = await parameterInjector.injectStateTransitionParameters(
+        'token',
+        'tokenDirectPurchase',
+        'testnet',
+        { contractId: sharedTokenContractId }
+      );
       expect(success).toBe(true);
 
-      // Execute the purchase
       const result = await evoSdkPage.executeStateTransitionAndGetResult();
 
       // Check for expected platform responses indicating issues
       if (!result.success && result.result && result.result.includes('Missing response message')) {
-        // Skip the test with a descriptive reason
         test.skip(true, 'Platform returned "Missing response message". Possibly insufficient credits or tokens not available for purchase.');
       }
 
-      // Validate basic result structure
       validateBasicStateTransitionResult(result);
 
-      // Get test parameters for validation
       const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenDirectPurchase.testnet[0];
-
-      // Validate token direct purchase specific result
       validateTokenDirectPurchaseResult(result.result, testParams.amount, testParams.totalAgreedPrice);
     });
 
     test('should execute token config update transition', async () => {
-      // Set extended timeout for create + config update
-      test.setTimeout(180000);
+      await evoSdkPage.setupStateTransition('token', 'tokenConfigUpdate');
 
-      let tokenContractId;
+      const success = await parameterInjector.injectStateTransitionParameters(
+        'token',
+        'tokenConfigUpdate',
+        'testnet',
+        { contractId: sharedTokenContractId }
+      );
+      expect(success).toBe(true);
 
-      // Step 1: Create a token contract
-      await test.step('Create token contract', async () => {
-        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+      const result = await evoSdkPage.executeStateTransitionAndGetResult();
+      validateBasicStateTransitionResult(result);
 
-        const tokensJson = JSON.stringify({
-          "0": {
-            "$format_version": "0",
-            "conventions": {
-              "$format_version": "0",
-              "localizations": {
-                "en": {
-                  "$format_version": "0",
-                  "shouldCapitalize": false,
-                  "singularForm": "configtoken",
-                  "pluralForm": "configtokens"
-                }
-              },
-              "decimals": 8
-            },
-            "baseSupply": 100000,
-            "maxSupply": null,
-            "maxSupplyChangeRules": {
-              "V0": {
-                "authorized_to_make_change": "ContractOwner",
-                "admin_action_takers": "ContractOwner",
-                "changing_authorized_action_takers_to_no_one_allowed": false,
-                "changing_admin_action_takers_to_no_one_allowed": false,
-                "self_changing_admin_action_takers_allowed": false
-              }
-            }
-          }
-        });
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'dataContract',
-          'dataContractCreate',
-          'testnet',
-          { documentSchemas: '{}', tokens: tokensJson }
-        );
-        expect(success).toBe(true);
-
-        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(createResult);
-
-        const resultData = JSON.parse(createResult.result);
-        tokenContractId = resultData.contractId;
-        console.log('✅ Token contract created with ID:', tokenContractId);
-      });
-
-      // Step 2: Update token config
-      await test.step('Update token config', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenConfigUpdate');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenConfigUpdate',
-          'testnet',
-          { contractId: tokenContractId }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
-        validateBasicStateTransitionResult(result);
-
-        const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenConfigUpdate.testnet[0];
-        validateTokenConfigUpdateResult(result.result, testParams.configItemType, testParams.configValue);
-      });
+      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenConfigUpdate.testnet[0];
+      validateTokenConfigUpdateResult(result.result, testParams.configItemType, testParams.configValue);
     });
-
-    test('should show authentication inputs for token transitions', async () => {
-      await evoSdkPage.setupStateTransition('token', 'tokenTransfer');
-
-      // Check that authentication inputs are visible
-      const hasAuthInputs = await evoSdkPage.hasAuthenticationInputs();
-      expect(hasAuthInputs).toBe(true);
-    });
-  });
+    }); // Close Contract Operations describe
+  }); // Close Token State Transitions describe
 
   test.describe('Error Handling for State Transitions', () => {
     test('should handle invalid JSON schema gracefully', async () => {
