@@ -212,20 +212,13 @@ function validateIdentityCreditTransferResult(resultStr, expectedSenderId, expec
  * @param {number} expectedAmount - Expected withdrawal amount
  */
 function validateIdentityCreditWithdrawalResult(resultStr, expectedIdentityId, expectedWithdrawalAddress, expectedAmount) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
-  const withdrawalResponse = JSON.parse(resultStr);
-  expect(withdrawalResponse).toBeDefined();
-  expect(withdrawalResponse).toBeInstanceOf(Object);
+  // SDK returns remaining balance as a bigint (serialized as quoted string)
+  const remainingBalance = JSON.parse(resultStr);
+  expect(remainingBalance).toBeDefined();
+  expect(typeof remainingBalance).toBe('string');
+  expect(BigInt(remainingBalance)).toBeGreaterThanOrEqual(0n);
 
-  // Validate the response structure for identity credit withdrawal
-  expect(withdrawalResponse.status).toBe('success');
-  expect(withdrawalResponse.identityId).toBe(expectedIdentityId);
-  expect(withdrawalResponse.toAddress).toBe(expectedWithdrawalAddress);
-  expect(withdrawalResponse.amount).toBeDefined(); // Amount might be different due to fees
-  expect(withdrawalResponse.remainingBalance).toBeDefined();
-  expect(withdrawalResponse.message).toContain('withdrawn successfully');
-
-  return withdrawalResponse;
+  return { remainingBalance };
 }
 
 /**

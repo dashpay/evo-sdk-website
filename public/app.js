@@ -2071,8 +2071,10 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const { identity, signer } = await prepareIdentityAndSigner(c, n.senderId, n.privateKeyWif);
       return c.identities.creditTransfer({ identity, recipientId: n.recipientId, amount: BigInt(n.amount), signer });
     }
-    case 'identityCreditWithdrawal':
-      return c.identities.creditWithdrawal({ identityId: n.identityId, toAddress: n.toAddress, amount: n.amount, coreFeePerByte: n.coreFeePerByte, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+    case 'identityCreditWithdrawal': {
+      const { identity, signer } = await prepareIdentityAndSigner(c, n.identityId, n.privateKeyWif);
+      return c.identities.creditWithdrawal({ identity, amount: BigInt(n.amount), toAddress: n.toAddress, coreFeePerByte: n.coreFeePerByte, signer });
+    }
     case 'identityUpdate':
       return c.identities.update({ identityId: n.identityId, addPublicKeys: n.addPublicKeys, disablePublicKeyIds: n.disablePublicKeyIds, privateKeyWif: n.privateKeyWif });
 
