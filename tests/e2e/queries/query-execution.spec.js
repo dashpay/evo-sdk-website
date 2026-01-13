@@ -128,6 +128,7 @@ function validateResultWithProof(result) {
   // Parse the result as JSON to check the format
   const resultData = JSON.parse(result.result);
   // Note: 'data' field may be missing if the query returned undefined/null
+  expect(resultData).toHaveProperty('data');
   expect(resultData).toHaveProperty('metadata');
   expect(resultData).toHaveProperty('proof');
 
