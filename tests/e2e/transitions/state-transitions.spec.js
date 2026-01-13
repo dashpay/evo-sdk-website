@@ -195,11 +195,11 @@ function validateIdentityCreditTransferResult(resultStr, expectedSenderId, expec
   expect(transferResponse).toBeInstanceOf(Object);
 
   // Validate the response structure for identity credit transfer
-  expect(transferResponse.status).toBe('success');
-  expect(transferResponse.senderId).toBe(expectedSenderId);
-  expect(transferResponse.recipientId).toBe(expectedRecipientId);
-  expect(transferResponse.amount).toBe(expectedAmount);
-  expect(transferResponse.message).toBeDefined();
+  expect(transferResponse.senderBalance).toBeDefined();
+  expect(transferResponse.recipientBalance).toBeDefined();
+  // Balances are returned as strings (bigint serialized)
+  expect(typeof transferResponse.senderBalance).toBe('string');
+  expect(typeof transferResponse.recipientBalance).toBe('string');
 
   return transferResponse;
 }

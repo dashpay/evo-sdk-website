@@ -1595,6 +1595,51 @@
               "required": true
             }
           ],
+          "sdk_params": [
+            {
+              "name": "identity",
+              "type": "Identity",
+              "label": "Sender Identity",
+              "required": true,
+              "description": "The sender Identity object (fetched from platform)"
+            },
+            {
+              "name": "recipientId",
+              "type": "IdentifierLike",
+              "label": "Recipient Identity ID",
+              "required": true,
+              "description": "The identity ID of the recipient (base58 string or Identifier)"
+            },
+            {
+              "name": "amount",
+              "type": "bigint | number",
+              "label": "Amount",
+              "required": true,
+              "description": "The amount of credits to transfer"
+            },
+            {
+              "name": "signer",
+              "type": "IdentitySigner",
+              "label": "Identity Signer",
+              "required": true,
+              "description": "Signer containing the private key for the sender's transfer key"
+            },
+            {
+              "name": "signingKey",
+              "type": "IdentityPublicKey",
+              "label": "Signing Key",
+              "required": false,
+              "description": "Optional identity public key to use for signing. If not provided, auto-selects an available transfer key."
+            },
+            {
+              "name": "settings",
+              "type": "PutSettings",
+              "label": "Settings",
+              "required": false,
+              "description": "Optional settings for the broadcast operation (retries, timeouts, userFeeIncrease, etc.)"
+            }
+          ],
+          "sdk_example": "// First fetch the sender identity from platform\nconst senderIdentity = await client.identities.fetch(senderId);\n\n// Create a signer and add the transfer key\nconst signer = new IdentitySigner();\nsigner.addPrivateKey(transferPrivateKey, transferKeyId);\n\n// Transfer credits\nconst result = await client.identities.creditTransfer({\n  identity: senderIdentity,\n  recipientId: 'recipientIdentityId',\n  amount: 1000000n,\n  signer: signer\n});\n\nconsole.log('Sender balance:', result.senderBalance);\nconsole.log('Recipient balance:', result.recipientBalance);",
           "sdk_method": "identities.creditTransfer"
         },
         "identityCreditWithdrawal": {

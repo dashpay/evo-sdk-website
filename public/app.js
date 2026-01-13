@@ -1,4 +1,4 @@
-import { EvoSDK, wallet } from './dist/evo-sdk.module.js';
+import { EvoSDK, wallet, IdentitySigner } from './dist/evo-sdk.module.js';
 
 const identityIdInputEl = document.getElementById('identityId');
 const assetLockProofInputEl = document.getElementById('assetLockProof');
@@ -2049,8 +2049,15 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.identities.create({ assetLockProof: n.assetLockProof, assetLockPrivateKeyWif: n.assetLockPrivateKeyWif, publicKeys: n.publicKeys });
     case 'identityTopUp':
       return c.identities.topUp({ identityId: n.identityId, assetLockProof: n.assetLockProof, assetLockPrivateKeyWif: n.assetLockPrivateKeyWif });
-    case 'identityCreditTransfer':
-      return c.identities.creditTransfer({ senderId: n.senderId, recipientId: n.recipientId, amount: n.amount, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+    case 'identityCreditTransfer': {
+      const senderIdentity = await c.identities.fetch(n.senderId);
+      if (!senderIdentity) {
+        throw new Error(`Identity not found: ${n.senderId}`);
+      }
+      const signer = new IdentitySigner();
+      signer.addKeyFromWif(n.privateKeyWif);
+      return c.identities.creditTransfer({ identity: senderIdentity, recipientId: n.recipientId, amount: BigInt(n.amount), signer });
+    }
     case 'identityCreditWithdrawal':
       return c.identities.creditWithdrawal({ identityId: n.identityId, toAddress: n.toAddress, amount: n.amount, coreFeePerByte: n.coreFeePerByte, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
     case 'identityUpdate':
