@@ -1534,9 +1534,22 @@ function normalizeDocument(document) {
 
   if (!value || typeof value !== 'object') return null;
 
-  const data = value.data ?? value.value ?? {};
-  const revisionRaw = value.revision ?? null;
+  const revisionRaw = value['$revision'] ?? value.revision ?? null;
   const revision = revisionRaw != null ? Number(revisionRaw) : null;
+
+  // Try to extract data from nested 'data' or 'value' properties (v2 SDK format)
+  let data = value.data ?? value.value ?? null;
+
+  // If no nested data property, extract all non-$ prefixed properties as data (v3 SDK format)
+  // In v3, document properties are at top level alongside $-prefixed metadata
+  if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
+    data = {};
+    for (const key of Object.keys(value)) {
+      if (!key.startsWith('$')) {
+        data[key] = value[key];
+      }
+    }
+  }
 
   return { data, revision: Number.isNaN(revision) ? null : revision };
 }
@@ -1965,26 +1978,26 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.identities.fetchUnproved(n.id);
     case 'getIdentityKeys': {
       const specificKeyIds = toNumberArray(n.specificKeyIds);
-      if (useProof) {
-        if (n.keyRequestType === 'search') {
+      let request;
+      if (n.keyRequestType === 'all') {
+        request = { type: 'all' };
+      } else if (n.keyRequestType === 'specific') {
+        request = { type: 'specific', specificKeyIds };
+      } else if (n.keyRequestType === 'search') {
+        if (useProof) {
           throw new Error('Identity key search does not support proof responses. Disable proof to search by purpose.');
         }
-        return c.identities.getKeysWithProof({
-          identityId: n.identityId,
-          keyRequestType: n.keyRequestType,
-          specificKeyIds,
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-        });
+        request = { type: 'search', purposeMap: n.searchPurposeMap };
+      } else {
+        request = { type: 'all' };
       }
-      return c.identities.getKeys({
+      const query = {
         identityId: n.identityId,
-        keyRequestType: n.keyRequestType,
-        specificKeyIds,
-        searchPurposeMap: n.searchPurposeMap,
-        limit: n.limit ?? null,
-        offset: n.offset ?? null,
-      });
+        request,
+        limit: n.limit ?? undefined,
+        offset: n.offset ?? undefined,
+      };
+      return useProof ? c.identities.getKeysWithProof(query) : c.identities.getKeys(query);
     }
     case 'getIdentitiesContractKeys': {
       const identityIds = toStringArray(n.identityIds);
@@ -2011,8 +2024,8 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getIdentityByPublicKeyHash':
       return useProof ? c.identities.byPublicKeyHashWithProof(n.publicKeyHash) : c.identities.byPublicKeyHash(n.publicKeyHash);
     case 'getIdentityByNonUniquePublicKeyHash': {
-      const opts = { startAfter: n.startAfter || null };
-      return useProof ? c.identities.byNonUniquePublicKeyHashWithProof(n.publicKeyHash, opts) : c.identities.byNonUniquePublicKeyHash(n.publicKeyHash, opts);
+      const startAfter = n.startAfter || undefined;
+      return useProof ? c.identities.byNonUniquePublicKeyHashWithProof(n.publicKeyHash, startAfter) : c.identities.byNonUniquePublicKeyHash(n.publicKeyHash, startAfter);
     }
     case 'getIdentityTokenBalances': {
       const tokenIds = toStringArray(n.tokenIds);
@@ -2024,13 +2037,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     }
     case 'getIdentityTokenInfos': {
       const tokenIds = toStringArray(n.tokenIds);
-      if (useProof) {
-        return c.tokens.identityTokenInfosWithProof(n.identityId, tokenIds);
-      }
-      return c.tokens.identityTokenInfos(n.identityId, tokenIds, {
-        limit: n.limit ?? null,
-        offset: n.offset ?? null,
-      });
+      return useProof ? c.tokens.identityTokenInfosWithProof(n.identityId, tokenIds) : c.tokens.identityTokenInfos(n.identityId, tokenIds);
     }
     case 'getIdentitiesTokenInfos': {
       const identityIds = toStringArray(n.identityIds);
@@ -2052,10 +2059,14 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     // Data contracts
     case 'getDataContract':
       return useProof ? c.contracts.fetchWithProof(n.id) : c.contracts.fetch(n.id);
-    case 'getDataContractHistory':
-      return useProof
-        ? c.contracts.getHistoryWithProof({ contractId: n.dataContractId || n.id, limit: n.limit ?? null, startAtMs: n.startAtMs ?? null })
-        : c.contracts.getHistory({ contractId: n.dataContractId || n.id, limit: n.limit ?? null, startAtMs: n.startAtMs ?? null });
+    case 'getDataContractHistory': {
+      const query = {
+        dataContractId: n.dataContractId || n.id,
+        limit: n.limit ?? undefined,
+        startAtMs: n.startAtMs ?? undefined,
+      };
+      return useProof ? c.contracts.getHistoryWithProof(query) : c.contracts.getHistory(query);
+    }
     case 'getDataContracts':
       return useProof ? c.contracts.getManyWithProof(n.ids) : c.contracts.getMany(n.ids);
     case 'dataContractCreate': {
@@ -2080,8 +2091,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     // Documents
     case 'getDocuments': {
       const payload = {
-        contractId: n.dataContractId || n.contractId,
-        type: n.documentType,
+        // SDK v3 expects 'dataContractId' and 'documentTypeName'
+        dataContractId: n.dataContractId || n.contractId,
+        documentTypeName: n.documentType,
         where: n.where,
         orderBy: n.orderBy,
         limit: n.limit ?? null,
@@ -2143,7 +2155,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getDpnsUsername':
       return useProof ? c.dpns.usernameWithProof(n.identityId) : c.dpns.username(n.identityId);
     case 'getDpnsUsernames':
-      return useProof ? c.dpns.usernamesWithProof(n.identityId, { limit: n.limit ?? null }) : c.dpns.usernames(n.identityId, { limit: n.limit ?? null });
+      return useProof ? c.dpns.usernamesWithProof({ identityId: n.identityId, limit: n.limit ?? undefined }) : c.dpns.usernames({ identityId: n.identityId, limit: n.limit ?? undefined });
     case 'getDpnsUsernameByName':
       return useProof ? c.dpns.getUsernameByNameWithProof(n.username) : c.dpns.getUsernameByName(n.username);
     case 'dpnsResolve':
@@ -2191,18 +2203,24 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         : c.epoch.finalizedInfos({ startEpoch: n.startEpoch ?? null, count: n.count ?? null, ascending: n.ascending ?? null });
     case 'getEvonodesProposedEpochBlocksByIds':
       return useProof ? c.epoch.evonodesProposedBlocksByIdsWithProof(n.epoch, toStringArray(n.ids)) : c.epoch.evonodesProposedBlocksByIds(n.epoch, toStringArray(n.ids));
-    case 'getEvonodesProposedEpochBlocksByRange':
+    case 'getEvonodesProposedEpochBlocksByRange': {
+      const query = {
+        epoch: n.epoch,
+        limit: n.limit ?? undefined,
+        startAfter: n.startAfter ?? undefined,
+      };
       return useProof
-        ? c.epoch.evonodesProposedBlocksByRangeWithProof(n.epoch, { limit: n.limit ?? null, startAfter: n.startAfter ?? null, orderAscending: n.orderAscending ?? null })
-        : c.epoch.evonodesProposedBlocksByRange(n.epoch, { limit: n.limit ?? null, startAfter: n.startAfter ?? null, orderAscending: n.orderAscending ?? null });
+        ? c.epoch.evonodesProposedBlocksByRangeWithProof(query)
+        : c.epoch.evonodesProposedBlocksByRange(query);
+    }
 
     // Protocol
     case 'getProtocolVersionUpgradeState':
       return useProof ? c.protocol.versionUpgradeStateWithProof() : c.protocol.versionUpgradeState();
     case 'getProtocolVersionUpgradeVoteStatus':
       return useProof
-        ? c.protocol.versionUpgradeVoteStatusWithProof({ startProTxHash: n.startProTxHash ?? null, count: n.count ?? null })
-        : c.protocol.versionUpgradeVoteStatus({ startProTxHash: n.startProTxHash ?? null, count: n.count ?? null });
+        ? c.protocol.versionUpgradeVoteStatusWithProof(n.startProTxHash || '', n.count ?? 100)
+        : c.protocol.versionUpgradeVoteStatus(n.startProTxHash || '', n.count ?? 100);
 
     // Tokens
     case 'getTokenStatuses':
@@ -2223,7 +2241,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.tokens.priceByContract(contractId, tokenPosition);
     }
     case 'tokenMint':
-      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.recipientId, publicNote: n.publicNote });
+      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.issuedToIdentityId || n.recipientId, publicNote: n.publicNote });
     case 'tokenBurn':
       return c.tokens.burn({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
     case 'tokenTransfer':
@@ -2251,38 +2269,60 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     }
     case 'getGroupInfos': {
       const contractId = n.dataContractId || n.contractId;
-      return useProof ? c.group.infosWithProof(contractId, n.startAtInfo ?? null, n.count ?? null) : c.group.infos(contractId, n.startAtInfo ?? null, n.count ?? null);
+      const query = {
+        dataContractId: contractId,
+        startAt: n.startAtInfo ? { position: n.startAtInfo, included: false } : undefined,
+        limit: n.count ?? undefined,
+      };
+      return useProof ? c.group.infosWithProof(query) : c.group.infos(query);
     }
     case 'getGroupMembers': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
       const memberIds = toStringArray(n.memberIds);
-      const opts = { memberIds: memberIds.length ? memberIds : null, startAt: n.startAt ?? null, limit: n.limit ?? null };
-      return useProof ? c.group.membersWithProof(contractId, position, opts) : c.group.members(contractId, position, opts);
+      const query = {
+        dataContractId: contractId,
+        groupContractPosition: position,
+        memberIds: memberIds.length ? memberIds : undefined,
+        startAtMemberId: n.startAt ?? undefined,
+        limit: n.limit ?? undefined,
+      };
+      return useProof ? c.group.membersWithProof(query) : c.group.members(query);
     }
     case 'getGroupActions': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
-      const opts = { startAtInfo: n.startAtInfo ?? null, count: n.count ?? null };
-      return useProof ? c.group.actionsWithProof(contractId, position, n.status, opts) : c.group.actions(contractId, position, n.status, opts);
+      const query = {
+        dataContractId: contractId,
+        groupContractPosition: position,
+        status: n.status,
+        startAt: n.startAtInfo ? { actionId: n.startAtInfo, included: false } : undefined,
+        limit: n.count ?? undefined,
+      };
+      return useProof ? c.group.actionsWithProof(query) : c.group.actions(query);
     }
     case 'getGroupActionSigners': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
-      return useProof
-        ? c.group.actionSignersWithProof(contractId, position, n.status, n.actionId)
-        : c.group.actionSigners(contractId, position, n.status, n.actionId);
+      const query = {
+        dataContractId: contractId,
+        groupContractPosition: position,
+        status: n.status,
+        actionId: n.actionId,
+      };
+      return useProof ? c.group.actionSignersWithProof(query) : c.group.actionSigners(query);
     }
     case 'getIdentityGroups': {
       const memberDataContracts = toStringArray(n.memberDataContracts);
       const ownerDataContracts = toStringArray(n.ownerDataContracts);
       const moderatorDataContracts = toStringArray(n.moderatorDataContracts);
-      const opts = {
-        memberDataContracts: memberDataContracts.length ? memberDataContracts : null,
-        ownerDataContracts: ownerDataContracts.length ? ownerDataContracts : null,
-        moderatorDataContracts: moderatorDataContracts.length ? moderatorDataContracts : null,
+      const query = {
+        identityId: n.identityId,
+        memberDataContracts: memberDataContracts.length ? memberDataContracts : undefined,
+        ownerDataContracts: ownerDataContracts.length ? ownerDataContracts : undefined,
+        moderatorDataContracts: moderatorDataContracts.length ? moderatorDataContracts : undefined,
       };
-      return useProof ? c.group.identityGroupsWithProof(n.identityId, opts) : c.group.identityGroups(n.identityId, opts);
+      return useProof ? c.group.identityGroupsWithProof(query) : c.group.identityGroups(query);
     }
     case 'getGroupsDataContracts': {
       const contractIds = toStringArray(n.dataContractIds || n.contractIds);
@@ -2292,84 +2332,64 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     // Contested resources & voting
     case 'getContestedResources': {
       const contractId = n.dataContractId || n.contractId;
-      const payload = {
+      const query = {
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
-        contractId,
         indexName: n.indexName,
-        startAtValue: n.startAtValue ?? null,
-        limit: n.limit ?? null,
-        orderAscending: n.orderAscending ?? null,
+        startIndexValues: n.startAtValue ? [n.startAtValue] : undefined,
+        limit: n.limit ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
       };
-      return useProof ? c.group.contestedResourcesWithProof(payload) : c.group.contestedResources(payload);
+      return useProof ? c.group.contestedResourcesWithProof(query) : c.group.contestedResources(query);
     }
     case 'getContestedResourceVotersForIdentity': {
       const contractId = n.dataContractId || n.contractId;
-      const payload = {
-        contractId,
+      const indexValues = toStringArray(n.indexValues);
+      const query = {
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
         indexName: n.indexName,
-        indexValues: toStringArray(n.indexValues),
+        indexValues: indexValues.length ? indexValues : undefined,
         contestantId: n.contestantId,
-        orderAscending: n.orderAscending ?? null,
+        limit: n.limit ?? n.count ?? undefined,
+        startAtVoterId: n.startAtVoterInfo ?? n.startAtIdentifierInfo ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
       };
-      if (useProof) {
-        return c.group.contestedResourceVotersForIdentityWithProof({
-          ...payload,
-          startAtIdentifierInfo: n.startAtIdentifierInfo ?? null,
-          count: n.count ?? null,
-        });
-      }
-      return c.group.contestedResourceVotersForIdentity({
-        ...payload,
-        startAtVoterInfo: n.startAtVoterInfo ?? null,
-        limit: n.limit ?? null,
-      });
+      return useProof ? c.group.contestedResourceVotersForIdentityWithProof(query) : c.group.contestedResourceVotersForIdentity(query);
     }
     case 'getContestedResourceVoteState': {
       const contractId = n.dataContractId || n.contractId;
-      const payload = {
-        contractId,
+      const indexValues = toStringArray(n.indexValues);
+      const query = {
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
         indexName: n.indexName,
-        indexValues: toStringArray(n.indexValues),
-        resultType: n.resultType,
-        allowIncludeLockedAndAbstainingVoteTally: n.allowIncludeLockedAndAbstainingVoteTally ?? null,
-        startAtIdentifierInfo: n.startAtIdentifierInfo ?? null,
-        count: n.count ?? null,
-        orderAscending: n.orderAscending ?? null,
+        indexValues: indexValues.length ? indexValues : undefined,
+        resultType: n.resultType ?? undefined,
+        includeLockedAndAbstaining: n.allowIncludeLockedAndAbstainingVoteTally ?? undefined,
+        startAtContenderId: n.startAtIdentifierInfo ?? undefined,
+        limit: n.count ?? undefined,
       };
-      return useProof ? c.voting.contestedResourceVoteStateWithProof(payload) : c.voting.contestedResourceVoteState(payload);
+      return useProof ? c.voting.contestedResourceVoteStateWithProof(query) : c.voting.contestedResourceVoteState(query);
     }
     case 'getContestedResourceIdentityVotes': {
-      if (useProof) {
-        return c.voting.contestedResourceIdentityVotesWithProof(n.identityId, {
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-          orderAscending: n.orderAscending ?? null,
-        });
-      }
-      return c.voting.contestedResourceIdentityVotes(n.identityId, {
-        limit: n.limit ?? null,
-        startAtVotePollIdInfo: n.startAtVotePollIdInfo ?? null,
-        orderAscending: n.orderAscending ?? null,
-      });
+      const query = {
+        identityId: n.identityId,
+        limit: n.limit ?? undefined,
+        startAtVoteId: n.startAtVotePollIdInfo ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
+      };
+      return useProof ? c.voting.contestedResourceIdentityVotesWithProof(query) : c.voting.contestedResourceIdentityVotes(query);
     }
     case 'getVotePollsByEndDate': {
-      if (useProof) {
-        return c.voting.votePollsByEndDateWithProof({
-          startTimeMs: n.startTimeMs ?? null,
-          endTimeMs: n.endTimeMs ?? null,
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-          orderAscending: n.orderAscending ?? null,
-        });
-      }
-      return c.voting.votePollsByEndDate({
-        startTimeInfo: n.startTimeInfo ?? null,
-        endTimeInfo: n.endTimeInfo ?? null,
-        limit: n.limit ?? null,
-        orderAscending: n.orderAscending ?? null,
-      });
+      const query = {
+        startTimeMs: n.startTimeMs ?? n.startTimeInfo ?? undefined,
+        endTimeMs: n.endTimeMs ?? n.endTimeInfo ?? undefined,
+        limit: n.limit ?? undefined,
+        offset: n.offset ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
+      };
+      return useProof ? c.voting.votePollsByEndDateWithProof(query) : c.voting.votePollsByEndDate(query);
     }
 
     case 'masternodeVote': {
@@ -2434,12 +2454,99 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
   }
 }
 
+/**
+ * Convert a value to a plain JS object suitable for JSON serialization.
+ * Handles Maps, WASM objects with named properties, and nested structures.
+ */
+function toSerializable(value) {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+  if (typeof value === 'bigint') return value.toString();
+
+  // Handle Map objects - convert to object with string keys
+  if (value instanceof Map) {
+    const obj = {};
+    for (const [k, v] of value) {
+      // Use toString for Identifier keys, or string representation
+      const key = (k && typeof k.toString === 'function') ? k.toString() : String(k);
+      obj[key] = toSerializable(v);
+    }
+    return obj;
+  }
+
+  // Handle Arrays
+  if (Array.isArray(value)) {
+    return value.map(toSerializable);
+  }
+
+  // Handle Uint8Array and other typed arrays
+  if (ArrayBuffer.isView(value)) {
+    return Array.from(value);
+  }
+
+  // Handle objects - check for WASM objects with __wbg_ptr (these need special handling)
+  if (typeof value === 'object') {
+    // If it's a plain object, recursively convert
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const result = {};
+      for (const key of Object.keys(value)) {
+        if (key !== '__wbg_ptr' && key !== 'ptr') {
+          result[key] = toSerializable(value[key]);
+        }
+      }
+      return result;
+    }
+
+    // For WASM/class objects, try to extract properties via getOwnPropertyDescriptors
+    // This handles objects with getters like StatusResponse, TokenStatus, etc.
+    const result = {};
+    let hasProps = false;
+
+    // Get all properties from the prototype chain (including class prototypes)
+    // We need to check both the instance AND its prototype chain for getters
+    let obj = value;
+    while (obj && obj !== Object.prototype) {
+      const descriptors = Object.getOwnPropertyDescriptors(obj);
+      for (const [key, desc] of Object.entries(descriptors)) {
+        if (key === '__wbg_ptr' || key === 'ptr' || key === 'constructor' || key === 'free' || key.startsWith('__')) continue;
+        if (typeof desc.value === 'function') continue;
+        if (desc.get || (desc.value !== undefined && typeof desc.value !== 'function')) {
+          try {
+            const val = value[key]; // Always access from original value
+            if (typeof val !== 'function' && val !== undefined) {
+              result[key] = toSerializable(val);
+              hasProps = true;
+            }
+          } catch (_) { /* skip inaccessible properties */ }
+        }
+      }
+      obj = Object.getPrototypeOf(obj);
+    }
+
+    if (hasProps) return result;
+
+    // Fallback: try Object.keys for enumerable properties
+    for (const key of Object.keys(value)) {
+      if (key !== '__wbg_ptr' && key !== 'ptr') {
+        result[key] = toSerializable(value[key]);
+        hasProps = true;
+      }
+    }
+
+    return hasProps ? result : value;
+  }
+
+  return value;
+}
+
 function formatResult(value) {
   if (value === undefined) return 'Completed (no result returned)';
   if (value === null) return 'null';
   if (typeof value === 'string') return value;
   try {
-    return JSON.stringify(value, null, 2);
+    const serializable = toSerializable(value);
+    return JSON.stringify(serializable, null, 2);
   } catch (_) {
     return String(value);
   }
