@@ -90,7 +90,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         'getIdentityKeys': example(f"""
             return await sdk.identities.getKeys({{
                 identityId: '{data['identity_id']}',
-                request: {{ type: 'all' }},
+                keyRequestType: 'all',
                 limit: 10,
                 offset: 0
             }})
@@ -106,9 +106,9 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         """),
         'getDataContractHistory': example(f"""
             return await sdk.contracts.getHistory({{
-                dataContractId: '{data['data_contract_history_id']}',
+                contractId: '{data['data_contract_history_id']}',
                 limit: 10,
-                startAtMs: 0
+                startAtMs: '0'
             }})
         """),
         'getDataContracts': example(f"""
@@ -119,10 +119,10 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         """),
         'getDocuments': example(f"""
             return await sdk.documents.query({{
-                dataContractId: '{data['data_contract_id']}',
-                documentTypeName: '{data['document_type']}',
-                where: [["normalizedParentDomainName", "==", "dash"]],
-                orderBy: [["normalizedLabel", "asc"]],
+                contractId: '{data['data_contract_id']}',
+                type: '{data['document_type']}',
+                where: JSON.stringify([["normalizedParentDomainName", "==", "dash"]]),
+                orderBy: JSON.stringify([["normalizedLabel", "asc"]]),
                 limit: 10
             }})
         """),
@@ -137,7 +137,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.dpns.username('{data['identity_id']}')
         """),
         'getDpnsUsernames': example(f"""
-            return await sdk.dpns.usernames({{ identityId: '{data['identity_id']}', limit: 10 }})
+            return await sdk.dpns.usernames('{data['identity_id']}', {{ limit: 10 }})
         """),
         'getDpnsUsernameByName': example("""
             return await sdk.dpns.getUsernameByName('alice.dash')
@@ -159,7 +159,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         """),
         'getContestedResources': example(f"""
             return await sdk.group.contestedResources({{
-                dataContractId: '{data['data_contract_id']}',
+                contractId: '{data['data_contract_id']}',
                 documentTypeName: 'domain',
                 indexName: 'parentNameAndLabel',
                 startAtValue: null,
@@ -169,18 +169,18 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         """),
         'getContestedResourceVoteState': example(f"""
             return await sdk.voting.contestedResourceVoteState({{
-                dataContractId: '{data['data_contract_id']}',
+                contractId: '{data['data_contract_id']}',
                 documentTypeName: 'domain',
                 indexName: 'parentNameAndLabel',
                 indexValues: ['dash', 'alice'],
                 resultType: 'documents',
-                limit: 10,
+                count: 10,
                 orderAscending: true
             }})
         """),
         'getContestedResourceVotersForIdentity': example(f"""
             return await sdk.group.contestedResourceVotersForIdentity({{
-                dataContractId: '{data['data_contract_id']}',
+                contractId: '{data['data_contract_id']}',
                 documentTypeName: 'domain',
                 indexName: 'parentNameAndLabel',
                 indexValues: ['dash', 'alice'],
@@ -190,16 +190,15 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             }})
         """),
         'getContestedResourceIdentityVotes': example(f"""
-            return await sdk.voting.contestedResourceIdentityVotes({{
-                identityId: '{data['identity_id']}',
-                limit: 10,
-                orderAscending: true
-            }})
+            return await sdk.voting.contestedResourceIdentityVotes(
+                '{data['identity_id']}',
+                {{ limit: 10, orderAscending: true }}
+            )
         """),
         'getVotePollsByEndDate': example("""
             return await sdk.voting.votePollsByEndDate({
-                startTimeMs: null,
-                endTimeMs: null,
+                startTimeInfo: null,
+                endTimeInfo: null,
                 limit: 10,
                 orderAscending: true,
             })
@@ -208,7 +207,10 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.protocol.versionUpgradeState()
         """),
         'getProtocolVersionUpgradeVoteStatus': example(f"""
-            return await sdk.protocol.versionUpgradeVoteStatus('{data['pro_tx_hash']}', 10)
+            return await sdk.protocol.versionUpgradeVoteStatus({{
+                startProTxHash: '{data['pro_tx_hash']}',
+                count: 10
+            }})
         """),
         'getEpochsInfo': example(f"""
             return await sdk.epoch.epochsInfo({{
@@ -234,14 +236,10 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             )
         """),
         'getEvonodesProposedEpochBlocksByRange': example(f"""
-            return await sdk.epoch.evonodesProposedBlocksByRange({{
-                epoch: {data['epoch']},
+            return await sdk.epoch.evonodesProposedBlocksByRange({data['epoch']}, {{
                 limit: 5,
                 orderAscending: true
             }})
-        """),
-        'calculateTokenId': example(f"""
-            return await sdk.tokens.calculateId('{data['token_contract_id']}', 0)
         """),
         'getTokenStatuses': example(f"""
             return await sdk.tokens.statuses([
@@ -273,19 +271,19 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.group.info('{data['group_contract_id']}', 0)
         """),
         'getGroupInfos': example(f"""
-            return await sdk.group.infos({{ dataContractId: '{data['group_contract_id']}', startAt: null, limit: 10 }})
+            return await sdk.group.infos('{data['group_contract_id']}', null, 10)
         """),
         'getGroupMembers': example(f"""
-            return await sdk.group.members({{ dataContractId: '{data['group_contract_id']}', groupContractPosition: 0, limit: 10 }})
+            return await sdk.group.members('{data['group_contract_id']}', 0, {{ limit: 10 }})
         """),
         'getGroupActions': example(f"""
-            return await sdk.group.actions({{ dataContractId: '{data['group_contract_id']}', groupContractPosition: 0, status: 'ACTIVE', limit: 10 }})
+            return await sdk.group.actions('{data['group_contract_id']}', 0, 'ACTIVE', {{ count: 10 }})
         """),
         'getGroupActionSigners': example(f"""
-            return await sdk.group.actionSigners({{ dataContractId: '{data['group_contract_id']}', groupContractPosition: 0, status: 'ACTIVE', actionId: '6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ' }})
+            return await sdk.group.actionSigners('{data['group_contract_id']}', 0, 'ACTIVE', '6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ')
         """),
         'getIdentityGroups': example(f"""
-            return await sdk.group.identityGroups({{ identityId: '{data['identity_id']}' }})
+            return await sdk.group.identityGroups('{data['identity_id']}', {{}})
         """),
         'getGroupsDataContracts': example(f"""
             return await sdk.group.groupsDataContracts(['{data['data_contract_id']}'])
@@ -307,13 +305,6 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         """),
         'waitForStateTransitionResult': example("""
             return await sdk.system.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000')
-        """),
-        # Platform Addresses
-        'getPlatformAddress': example("""
-            return await sdk.addresses.get('tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm')
-        """),
-        'getPlatformAddresses': example("""
-            return await sdk.addresses.getMany(['tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm'])
         """),
         'getIdentityTokenBalances': example(f"""
             return await sdk.identities.tokenBalances('{data['identity_id']}', ['{data['token_id']}'])
@@ -346,7 +337,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.identities.byPublicKeyHash('{data['public_key_hash_unique']}')
         """),
         'getIdentityByNonUniquePublicKeyHash': example(f"""
-            return await sdk.identities.byNonUniquePublicKeyHash('{data['public_key_hash_non_unique']}')
+            return await sdk.identities.byNonUniquePublicKeyHash('{data['public_key_hash_non_unique']}', {{ startAfter: null }})
         """),
     }
     return examples.get(key)
@@ -360,7 +351,7 @@ def evo_example_for_transition(key: str):
         'identityCreditTransfer': "await client.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId })",
         'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId })",
         'identityUpdate': "await client.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif })",
-        'dataContractCreate': "await client.contracts.publish({ ownerId, definition, privateKeyWif, keyId })",
+        'dataContractCreate': "await client.contracts.create({ ownerId, definition, privateKeyWif, keyId })",
         'dataContractUpdate': "await client.contracts.update({ contractId, ownerId, updates, privateKeyWif, keyId })",
         # Documents
         'documentCreate': "await client.documents.create({ contractId, type: documentType, ownerId, data, entropyHex, privateKeyWif })",
@@ -376,21 +367,14 @@ def evo_example_for_transition(key: str):
         'tokenFreeze': "await client.tokens.freeze({ contractId, tokenPosition, identityToFreeze, freezerId, privateKeyWif, publicNote })",
         'tokenUnfreeze': "await client.tokens.unfreeze({ contractId, tokenPosition, identityToUnfreeze, unfreezerId, privateKeyWif, publicNote })",
         'tokenDestroyFrozen': "await client.tokens.destroyFrozen({ contractId, tokenPosition, identityId: frozenIdentityId, destroyerId, privateKeyWif, publicNote })",
-        'tokenSetPriceForDirectPurchase': "await client.tokens.setPrice({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote })",
+        'tokenSetPriceForDirectPurchase': "await client.tokens.setPriceForDirectPurchase({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote })",
         'tokenDirectPurchase': "await client.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif })",
         'tokenClaim': "await client.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote })",
-        'tokenEmergencyAction': "await client.tokens.emergencyAction({ contractId, tokenPosition, actionType, identityId, privateKeyWif, publicNote })",
+        'tokenConfigUpdate': "await client.tokens.configUpdate({ contractId, tokenPosition, configItemType, configValue, identityId, privateKeyWif, publicNote })",
         # Voting
         'dpnsUsername': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
         'masternodeVote': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
         'dpnsRegister': "await client.dpns.registerName({ label, identityId, publicKeyId, privateKeyWif, onPreorder })",
-        # Platform Addresses
-        'addressTransfer': "await client.addresses.transfer({ inputs, outputs, signer })",
-        'addressTopUpIdentity': "await client.addresses.topUpIdentity({ identityId, inputs, signer })",
-        'addressWithdraw': "await client.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer })",
-        'addressTransferFromIdentity': "await client.addresses.transferFromIdentity({ identityId, outputs, signer })",
-        'addressFundFromAssetLock': "await client.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer })",
-        'addressCreateIdentity': "await client.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner })",
     }
     return m.get(key)
 
@@ -637,92 +621,8 @@ def generate_docs_script() -> str:
             if (typeof output === 'string') {
                 return output;
             }
-
-            const seen = new WeakSet();
-
-            // Check if object is a WASM object (has __wbg_ptr and getter methods)
-            const isWasmObject = (val) => {
-                return val && typeof val === 'object' && '__wbg_ptr' in val;
-            };
-
-            // Try to extract meaningful data from WASM object
-            const extractWasmData = (val) => {
-                // Try toJSON first (works for Identity, DataContract, Document, ProofMetadataResponse, etc.)
-                if (typeof val.toJSON === 'function') {
-                    try { return val.toJSON(); } catch (_) {}
-                }
-                // Try toObject
-                if (typeof val.toObject === 'function') {
-                    try { return val.toObject(); } catch (_) {}
-                }
-                // Fallback: try toString
-                if (typeof val.toString === 'function' && val.toString !== Object.prototype.toString) {
-                    const str = val.toString();
-                    if (str && str !== '[object Object]') return str;
-                }
-                return null;
-            };
-
-            const toSerializable = (val) => {
-                if (val === undefined) return undefined;
-                if (val === null) return null;
-                const t = typeof val;
-                if (t === 'string' || t === 'number' || t === 'boolean') return val;
-                if (t === 'bigint') return val.toString();
-                if (t === 'function') return undefined;
-                if (t !== 'object') return String(val);
-
-                if (seen.has(val)) return '[Circular]';
-                seen.add(val);
-
-                // Handle WASM objects specially
-                if (isWasmObject(val)) {
-                    const extracted = extractWasmData(val);
-                    if (extracted !== null) return toSerializable(extracted);
-                }
-
-                if (typeof val.toJSON === 'function') {
-                    try { return toSerializable(val.toJSON()); } catch (_) {}
-                }
-                if (typeof val.toObject === 'function') {
-                    try { return toSerializable(val.toObject()); } catch (_) {}
-                }
-
-                if (val instanceof Map) {
-                    const obj = {};
-                    for (const [k, v] of val.entries()) {
-                        // Handle WASM Identifier keys
-                        let key;
-                        if (isWasmObject(k) && typeof k.toString === 'function') {
-                            key = k.toString();
-                        } else if (k && typeof k.toString === 'function') {
-                            key = k.toString();
-                        } else {
-                            key = String(k);
-                        }
-                        obj[key] = toSerializable(v);
-                    }
-                    return obj;
-                }
-
-                if (Array.isArray(val)) {
-                    return val.map(toSerializable);
-                }
-
-                if (ArrayBuffer.isView(val)) {
-                    return Array.from(val);
-                }
-
-                const result = {};
-                for (const [k, v] of Object.entries(val)) {
-                    if (k === '__wbg_ptr') continue; // Skip WASM pointer
-                    result[k] = toSerializable(v);
-                }
-                return result;
-            };
-
             try {
-                return JSON.stringify(toSerializable(output), null, 2);
+                return JSON.stringify(output, null, 2);
             } catch (error) {
                 return String(output);
             }

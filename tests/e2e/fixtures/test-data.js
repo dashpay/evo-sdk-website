@@ -77,18 +77,18 @@ const testData = {
       getIdentity: {
         testnet: [
           { id: "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk" },
-          { id: "4Aaj6bQz3jx1DdPvRewRzGX2m1nwWUR43WCyrcExEFXp" }
+          { id: "5RG84o6KsTaZudDqS8ytbaRB8QP4YYQ2uwzb6Hj8cfjX" }
         ]
       },
       getIdentityKeys: {
         testnet: [
           { 
             identityId: "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk",
-            requestType: "all"
+            keyRequestType: "all"
           },
           {
             identityId: "5RG84o6KsTaZudDqS8ytbaRB8QP4YYQ2uwzb6Hj8cfjX",
-            requestType: "specific",
+            keyRequestType: "specific",
             specificKeyIds: ["1", "2"]
           }
         ]
@@ -216,7 +216,7 @@ const testData = {
           { 
             dataContractId: "HLY575cNazmc5824FxqaEMEBuzFeE4a98GDRNKbyJqCM",
             limit: 10,
-            startAtMs: 0
+            offset: 0
           }
         ]
       }
@@ -227,7 +227,7 @@ const testData = {
         testnet: [
           {
             dataContractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
-            documentTypeName: "domain",
+            documentType: "domain",
             limit: 10,
             where: '[["normalizedParentDomainName", "==", "dash"], ["normalizedLabel", "startsWith", "test"]]',
             orderBy: '[["normalizedLabel", "asc"]]'
@@ -238,7 +238,7 @@ const testData = {
         testnet: [
           {
             dataContractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
-            documentTypeName: "domain",
+            documentType: "domain",
             documentId: "7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r"
           }
         ]
@@ -292,8 +292,8 @@ const testData = {
       getFinalizedEpochInfos: {
         testnet: [
           {
-            startEpoch: 100,
-            count: 5,
+            startEpoch: 8635,
+            count: 100,
             ascending: true
           }
         ]
@@ -438,9 +438,10 @@ const testData = {
         testnet: [
           {
             documentTypeName: "domain",
-            dataContractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
+            contractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
             indexName: "parentNameAndLabel",
             limit: 10,
+            offset: 0,
             orderAscending: true
           }
         ]
@@ -448,13 +449,13 @@ const testData = {
       getContestedResourceVoteState: {
         testnet: [
           {
-            dataContractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
+            contractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
             documentTypeName: "domain",
             indexName: "parentNameAndLabel",
             indexValues: ["dash", "alice"],
-            resultType: "documentsAndVoteTally",
-            includeLockedAndAbstaining: false,
-            limit: 10,
+            resultType: "contenders",
+            allowIncludeLockedAndAbstainingVoteTally: false,
+            count: 10,
             orderAscending: true
           }
         ]
@@ -462,12 +463,12 @@ const testData = {
       getContestedResourceVotersForIdentity: {
         testnet: [
           {
-            dataContractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
+            contractId: "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec",
             documentTypeName: "domain",
             indexName: "parentNameAndLabel",
             indexValues: ["dash", "alice"],
             contestantId: "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk",
-            limit: 10,
+            count: 10,
             orderAscending: true
           }
         ]
@@ -477,6 +478,7 @@ const testData = {
           {
             identityId: "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk",
             limit: 10,
+            offset: 0,
             orderAscending: true
           }
         ]
@@ -496,7 +498,7 @@ const testData = {
       getGroupInfo: {
         testnet: [
           {
-            dataContractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
+            contractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
             groupContractPosition: 0
           }
         ]
@@ -504,7 +506,7 @@ const testData = {
       getGroupInfos: {
         testnet: [
           {
-            dataContractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
+            contractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
             count: 100
           }
         ]
@@ -512,7 +514,7 @@ const testData = {
       getGroupActions: {
         testnet: [
           {
-            dataContractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
+            contractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
             groupContractPosition: 0,
             status: "ACTIVE",
             count: 10
@@ -522,7 +524,7 @@ const testData = {
       getGroupActionSigners: {
         testnet: [
           {
-            dataContractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
+            contractId: "49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N",
             groupContractPosition: 0,
             status: "ACTIVE",
             actionId: "6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ"
@@ -611,8 +613,8 @@ const testData = {
       documentCreate: {
         testnet: [
           {
-            dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract (will be created by dataContractCreate test)
-            documentTypeName: "note",
+            contractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract (will be created by dataContractCreate test)
+            documentType: "note",
             documentFields: {
               message: "Document created for WASM-SDK UI testing"
             },
@@ -625,8 +627,8 @@ const testData = {
       documentReplace: {
         testnet: [
           {
-            dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract
-            documentTypeName: "note",
+            contractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract
+            documentType: "note",
             documentId: "Dy19ZeYPpqbEDcpsPcLwkviY5GZqT7yJL2EY4YfxTYjn", // Persistent testnet document
             documentFields: {
               message: "Updated document message for automation testing"
@@ -640,8 +642,8 @@ const testData = {
       documentDelete: {
         testnet: [
           {
-            dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract
-            documentTypeName: "note",
+            contractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract
+            documentType: "note",
             documentId: "PLACEHOLDER_DOCUMENT_ID", // Will be set dynamically
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
@@ -654,8 +656,8 @@ const testData = {
           {
             identityId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG", // Current owner
             privateKey: process.env.TEST_PRIVATE_KEY_SECONDARY || "PLACEHOLDER_CONTRACT_KEY",
-            dataContractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
-            documentTypeName: "card",
+            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
             recipientId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC", // Transfer recipient
             description: "Transfer trading card ownership to secondary identity"
@@ -667,8 +669,8 @@ const testData = {
           {
             identityId: "HJDxtN6FJF3U3T9TMLWCqudfJ5VRkaUrxTsRp36djXAG", // Buyer identity
             privateKey: process.env.TEST_PRIVATE_KEY_SECONDARY || "PLACEHOLDER_SECONDARY_KEY",
-            dataContractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
-            documentTypeName: "card",
+            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
             price: 1000, // Price in credits
             description: "Purchase a priced trading card with secondary identity"
@@ -680,8 +682,8 @@ const testData = {
           {
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC", // Primary identity owns card after creation
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
-            dataContractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
-            documentTypeName: "card",
+            contractId: "HdRFTcxgwPSVgzdy6MTYutDLJdbpfLMXwuBaYLYKMVHv", // Use NFT contract
+            documentType: "card",
             documentId: "EypPkQLgT6Jijht7NYs4jmK5TGzkNd1Z4WrQdH1hND59", // Existing trading card document
             price: 1000, // Price in credits
             description: "Set price for a trading card"

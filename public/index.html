@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.7/dist/purify.min.js"
-  integrity="sha384-qJNkHwhlYywDHfyoEe1np+1lYvX/8x+3gHCKFhSSBMQyCFlvFnn+zXmaebXl21rV" crossorigin="anonymous"></script>
+        integrity="sha384-qJNkHwhlYywDHfyoEe1np+1lYvX/8x+3gHCKFhSSBMQyCFlvFnn+zXmaebXl21rV"
+        crossorigin="anonymous"></script>
 
 <head>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
   <title>Dash Platform Evo JS SDK</title>
   <link rel="icon" type="image/svg+xml" href="https://media.dash.org/wp-content/uploads/blue-d.svg">
   <link rel="alternate icon" type="image/png" href="https://media.dash.org/wp-content/uploads/blue-d-250.png">
@@ -28,12 +28,10 @@
   </div>
 
   <!-- Error Banner for API definitions loading failures -->
-  <div id="apiErrorBanner"
-    style="display: none; background-color: #f8d7da; color: #721c24; padding: 15px; margin: 0; border-bottom: 1px solid #f5c6cb; text-align: center;">
+  <div id="apiErrorBanner" style="display: none; background-color: #f8d7da; color: #721c24; padding: 15px; margin: 0; border-bottom: 1px solid #f5c6cb; text-align: center;">
     <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
       <span id="apiErrorMessage">Failed to load API definitions. Please check your connection and try again.</span>
-      <button id="apiRetryButton"
-        style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">Retry</button>
+      <button id="apiRetryButton" style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">Retry</button>
     </div>
   </div>
 
@@ -67,8 +65,7 @@
 
       <!-- SDK Configuration Section (Collapsible) -->
       <details class="sdk-config" style="margin: 0; padding: 0; border-bottom: 1px solid #e0e0e0;">
-        <summary
-          style="padding: 15px 20px; background-color: #f8f9fa; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+        <summary style="padding: 15px 20px; background-color: #f8f9fa; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-weight: 500; color: #333;">Advanced SDK Configuration</span>
           <span style="font-size: 0.8em; color: #666;">▼</span>
         </summary>
@@ -104,9 +101,7 @@
             </div>
           </details>
 
-          <button id="applyConfig"
-            style="margin-top: 15px; padding: 8px 15px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Apply
-            Configuration</button>
+          <button id="applyConfig" style="margin-top: 15px; padding: 8px 15px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Apply Configuration</button>
         </div>
       </details>
 
@@ -161,11 +156,8 @@
           </label>
         </div>
 
-        <div class="no-proof-info"
-          style="display: none; margin: 15px 0; padding: 10px; background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; text-align: center;"
-          id="noProofInfoContainer">
-          <span style="color: #6c757d; font-size: 0.9em;">Note: this query does not provide cryptographic proof
-            verification.</span>
+        <div class="no-proof-info" style="display: none; margin: 15px 0; padding: 10px; background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; text-align: center;" id="noProofInfoContainer">
+          <span style="color: #6c757d; font-size: 0.9em;">Note: this query does not provide cryptographic proof verification.</span>
         </div>
 
         <button id="executeQuery" class="execute-button" style="display: none;">Execute</button>
@@ -182,16 +174,14 @@
         </div>
       </div>
       <div id="resultSplitContainer" class="result-split-container">
-        <div id="identityInfo" class="result-content empty">No data fetched yet. Select a query category and type to
-          begin.</div>
+        <div id="identityInfo" class="result-content empty">No data fetched yet. Select a query category and type to begin.</div>
       </div>
     </div>
   </div>
 
-  <div id="statusBanner" class="status-banner loading">Initializing Evo SDK...</div>
+    <div id="statusBanner" class="status-banner loading">Initializing Evo SDK...</div>
 
   <script type="module" src="./app.js"></script>
 
 </body>
-
 </html>

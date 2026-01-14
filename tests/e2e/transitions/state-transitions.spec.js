@@ -473,14 +473,7 @@ async function executeStateTransitionWithCustomParams(evoSdkPage, parameterInjec
   return result;
 }
 
-// Skip all state transition tests if required environment variables are not set
-const hasRequiredEnvVars = process.env.TEST_PRIVATE_KEY_CONTRACT &&
-                           process.env.TEST_PRIVATE_KEY_CONTRACT !== 'PLACEHOLDER_CONTRACT_KEY';
-
 test.describe('Evo SDK State Transition Tests', () => {
-  // Skip entire suite if credentials are not configured
-  test.skip(!hasRequiredEnvVars, 'Skipping state transition tests: TEST_PRIVATE_KEY_CONTRACT not configured in tests/e2e/.env');
-
   let evoSdkPage;
   let parameterInjector;
 

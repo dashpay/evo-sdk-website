@@ -16,7 +16,7 @@ class ParameterInjector {
   async injectParameters(category, queryType, network = 'testnet', parameterSetIndex = 0) {
     try {
       const allParameters = getAllTestParameters(category, queryType, network);
-
+      
       if (allParameters.length === 0) {
         console.warn(`⚠️  No test parameters found for ${category}.${queryType} on ${network}`);
         return false;
@@ -40,17 +40,17 @@ class ParameterInjector {
     try {
       // Get base parameters from test data
       const allParameters = getAllStateTransitionParameters(category, transitionType, network);
-
+      
       if (allParameters.length === 0) {
         console.warn(`⚠️  No state transition test parameters found for ${category}.${transitionType} on ${network}`);
         return false;
       }
-
+      
       const baseParameters = allParameters[0];
-
+      
       // Merge base parameters with custom overrides
       const parameters = { ...baseParameters, ...customParams };
-
+      
       console.log(`📝 Injecting state transition parameters for ${category}.${transitionType}`);
 
       await this.page.fillStateTransitionParameters(parameters);
@@ -72,52 +72,50 @@ class ParameterInjector {
       'identityId': ['[name="identityId"]', '#identityId', 'input[placeholder*="Identity ID"]'],
       'identityIds': ['input[placeholder="Enter value"]', '.array-input-container input[type="text"]', '[data-array-name="identityIds"] input[type="text"]', '.array-input-container[data-array-name="identityIds"] input', '#identityIds', '[name="identityIds"]', 'input[placeholder*="Identity IDs"]'],
       'identitiesIds': ['input[placeholder="Enter value"]', '.array-input-container input[type="text"]', '[data-array-name="identitiesIds"] input[type="text"]', '.array-input-container[data-array-name="identitiesIds"] input', '#identitiesIds', '[name="identitiesIds"]', 'input[placeholder*="Identity IDs"]'],
-
+      
       // Data contract parameters
       'dataContractId': ['#dataContractId', '[name="dataContractId"]', 'input[placeholder*="Contract ID"]'],
       'contractId': ['#contractId', '[name="contractId"]', 'input[placeholder*="Contract ID"]'],
       'ids': ['input[placeholder="Enter value"]', '.array-input-container input[type="text"]', '[data-array-name="ids"] input[type="text"]', '.array-input-container[data-array-name="ids"] input', '#ids', '[name="ids"]', 'input[placeholder*="Contract IDs"]', 'input[placeholder*="Data Contract ID"]'],
-
+      
       // Document parameters
       'documentType': ['#documentType', '[name="documentType"]', 'input[placeholder*="Document Type"]'],
-      'documentTypeName': ['#documentTypeName', '[name="documentTypeName"]', 'input[placeholder*="Document Type"]'],
       'documentId': ['#documentId', '[name="documentId"]', 'input[placeholder*="Document ID"]'],
-
+      
       // Key parameters
       'publicKeyHash': ['#publicKeyHash', '[name="publicKeyHash"]', 'input[placeholder*="Public Key Hash"]'],
       'keyRequestType': ['#keyRequestType', '[name="keyRequestType"]', 'select[name="keyRequestType"]'],
-      'requestType': ['#requestType', '[name="requestType"]', 'select[name="requestType"]'],
       'specificKeyIds': ['#specificKeyIds', '[name="specificKeyIds"]'],
-
+      
       // Token parameters
       'tokenId': ['#tokenId', '[name="tokenId"]', 'input[placeholder*="Token ID"]'],
       'tokenIds': ['input[placeholder="Enter value"]', '.array-input-container input[type="text"]', '[data-array-name="tokenIds"] input[type="text"]', '.array-input-container[data-array-name="tokenIds"] input', '#tokenIds', '[name="tokenIds"]', 'input[placeholder*="Token IDs"]'],
-
+      
       // DPNS parameters
       'label': ['#label', '[name="label"]', 'input[placeholder*="Username"]', 'input[placeholder*="Label"]'],
       'name': ['#name', '[name="name"]', 'input[placeholder*="Name"]', 'input[placeholder*="DPNS"]'],
       'prefix': ['#prefix', '[name="prefix"]', 'input[placeholder*="prefix"]', 'input[placeholder*="Prefix"]'],
-
+      
       // Query modifiers
       'limit': ['#limit', '[name="limit"]', 'input[placeholder*="limit" i]'],
       'offset': ['#offset', '[name="offset"]', 'input[placeholder*="offset" i]'],
       'count': ['#count', '[name="count"]', 'input[placeholder*="count" i]'],
-
+      
       // Epoch parameters
       'epoch': ['#epoch', '[name="epoch"]', 'input[placeholder*="epoch" i]'],
       'startEpoch': ['#startEpoch', '[name="startEpoch"]'],
       'ascending': ['#ascending', '[name="ascending"]', 'input[type="checkbox"][name="ascending"]'],
       'orderAscending': ['#orderAscending', '[name="orderAscending"]', 'input[type="checkbox"][name="orderAscending"]'],
       'startAfter': ['#startAfter', '[name="startAfter"]', 'input[placeholder*="startAfter" i]'],
-
+      
       // ProTx parameters
       'startProTxHash': ['#startProTxHash', '[name="startProTxHash"]'],
       'proTxHashes': ['#proTxHashes', '[name="proTxHashes"]'],
-
+      
       // Where clause and ordering
       'whereClause': ['#whereClause', '[name="whereClause"]', 'textarea[placeholder*="Where"]'],
       'orderBy': ['#orderBy', '[name="orderBy"]', 'textarea[placeholder*="Order"]'],
-
+      
       // Voting parameters
       'documentTypeName': ['#documentTypeName', '[name="documentTypeName"]'],
       'indexName': ['#indexName', '[name="indexName"]'],
@@ -125,9 +123,8 @@ class ParameterInjector {
       'resultType': ['#resultType', '[name="resultType"]'],
       'contestantId': ['#contestantId', '[name="contestantId"]'],
       'allowIncludeLockedAndAbstainingVoteTally': ['#allowIncludeLockedAndAbstainingVoteTally', '[name="allowIncludeLockedAndAbstainingVoteTally"]', 'input[type="checkbox"][name="allowIncludeLockedAndAbstainingVoteTally"]'],
-      'includeLockedAndAbstaining': ['#includeLockedAndAbstaining', '[name="includeLockedAndAbstaining"]', 'input[type="checkbox"][name="includeLockedAndAbstaining"]'],
       'startAtIdentifierInfo': ['#startAtIdentifierInfo', '[name="startAtIdentifierInfo"]'],
-
+      
       // Group parameters
       'groupContractPosition': ['#groupContractPosition', '[name="groupContractPosition"]'],
       'startAtGroupContractPosition': ['#startAtGroupContractPosition', '[name="startAtGroupContractPosition"]'],
@@ -136,7 +133,7 @@ class ParameterInjector {
       'actionId': ['#actionId', '[name="actionId"]'],
       'startActionId': ['#startActionId', '[name="startActionId"]'],
       'startActionIdIncluded': ['#startActionIdIncluded', '[name="startActionIdIncluded"]', 'input[type="checkbox"][name="startActionIdIncluded"]'],
-
+      
       // Time parameters
       'startTimeMs': ['#startTimeMs', '[name="startTimeMs"]'],
       'endTimeMs': ['#endTimeMs', '[name="endTimeMs"]']
@@ -153,7 +150,7 @@ class ParameterInjector {
 
     for (const [paramName, value] of Object.entries(parameters)) {
       const success = await this.tryFillParameter(paramName, value, fieldMapping);
-
+      
       if (success) {
         filledFields.push(paramName);
       } else {
@@ -174,7 +171,7 @@ class ParameterInjector {
    */
   async tryFillParameter(paramName, value, fieldMapping) {
     const possibleSelectors = fieldMapping[paramName] || [];
-
+    
     // Add generic fallback selectors
     possibleSelectors.push(
       `#${paramName}`,
@@ -189,10 +186,10 @@ class ParameterInjector {
       try {
         const element = this.page.page.locator(selector).first();
         const count = await element.count();
-
+        
         if (count > 0) {
           const isVisible = await element.isVisible();
-
+          
           if (isVisible) {
             await this.page.fillInputByType(element, value);
             // console.log(`📝 Filled ${paramName} using selector: ${selector}`);
@@ -212,7 +209,7 @@ class ParameterInjector {
    */
   createParameterizedTests(category, queryType, network = 'testnet') {
     const allParameters = getAllTestParameters(category, queryType, network);
-
+    
     return allParameters.map((params, index) => ({
       testName: `${category}.${queryType} - Test Set ${index + 1}`,
       parameters: params,
@@ -266,11 +263,11 @@ class ParameterInjector {
     // Base58 alphabet: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
     // (excludes 0, O, I, l to avoid confusion)
     const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{43,44}$/;
-
+    
     if (!base58Regex.test(id)) {
       return false;
     }
-
+    
     return true;
   }
 

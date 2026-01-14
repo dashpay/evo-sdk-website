@@ -82,7 +82,7 @@ Example:
 ```javascript
 const result = await sdk.identities.getKeys({
     identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
-    request: { type: 'all' },
+    keyRequestType: 'all',
     limit: 10,
     offset: 0
 });
@@ -195,7 +195,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.identities.byNonUniquePublicKeyHash('518038dc858461bcee90478fd994bba8057b7531');
+const result = await sdk.identities.byNonUniquePublicKeyHash('518038dc858461bcee90478fd994bba8057b7531', { startAfter: null });
 ```
 
 **Get Identity Token Balances** - `identities.tokenBalances`
@@ -237,6 +237,10 @@ Parameters:
 
 - `Token IDs (optional)` (array, optional)
   - Example: `["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]`
+
+- `Limit` (number, optional)
+
+- `Offset` (number, optional)
 
 Example:
 ```javascript
@@ -286,9 +290,9 @@ Parameters:
 Example:
 ```javascript
 const result = await sdk.contracts.getHistory({
-    dataContractId: 'HLY575cNazmc5824FxqaEMEBuzFeE4a98GDRNKbyJqCM',
+    contractId: 'HLY575cNazmc5824FxqaEMEBuzFeE4a98GDRNKbyJqCM',
     limit: 10,
-    startAtMs: 0
+    startAtMs: '0'
 });
 ```
 
@@ -334,10 +338,10 @@ Parameters:
 Example:
 ```javascript
 const result = await sdk.documents.query({
-    dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-    documentTypeName: 'domain',
-    where: [["normalizedParentDomainName", "==", "dash"]],
-    orderBy: [["normalizedLabel", "asc"]],
+    contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+    type: 'domain',
+    where: JSON.stringify([["normalizedParentDomainName", "==", "dash"]]),
+    orderBy: JSON.stringify([["normalizedLabel", "asc"]]),
     limit: 10
 });
 ```
@@ -389,7 +393,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.dpns.usernames({ identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', limit: 10 });
+const result = await sdk.dpns.usernames('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', { limit: 10 });
 ```
 
 **Get Username by Name** - `dpns.getUsernameByName`
@@ -478,11 +482,6 @@ Parameters:
 
 - `Index Name` (text, required)
 
-- `Start Index Values` (json, optional)
-  - Example: `["dash","alice"]`
-
-- `End Index Values` (json, optional)
-
 - `Start At Value` (text, optional)
 
 - `Limit` (number, optional)
@@ -492,7 +491,7 @@ Parameters:
 Example:
 ```javascript
 const result = await sdk.group.contestedResources({
-    dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+    contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
     startAtValue: null,
@@ -521,9 +520,7 @@ Parameters:
 
 - `Include Locked & Abstaining Tallies` (checkbox, optional)
 
-- `Start At Contender ID` (text, optional)
-
-- `Include Start Contender` (checkbox, optional)
+- `Start At Identifier Info` (text, optional)
 
 - `Count` (number, optional)
 
@@ -532,12 +529,12 @@ Parameters:
 Example:
 ```javascript
 const result = await sdk.voting.contestedResourceVoteState({
-    dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+    contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
     indexValues: ['dash', 'alice'],
     resultType: 'documents',
-    limit: 10,
+    count: 10,
     orderAscending: true
 });
 ```
@@ -560,18 +557,20 @@ Parameters:
 - `Contestant Identity ID` (text, required)
   - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
 
-- `Start At Voter ID` (text, optional)
+- `Start At Voter Info` (text, optional)
 
-- `Include Start Voter` (checkbox, optional)
+- `Start At Identifier Info (Proof)` (text, optional)
 
 - `Limit` (number, optional)
+
+- `Count (Proof)` (number, optional)
 
 - `Order Ascending` (checkbox, optional)
 
 Example:
 ```javascript
 const result = await sdk.group.contestedResourceVotersForIdentity({
-    dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+    contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
     indexValues: ['dash', 'alice'],
@@ -590,44 +589,43 @@ Parameters:
 
 - `Limit` (number, optional)
 
-- `Start At Vote ID` (text, optional)
+- `Start At Vote Poll Info` (text, optional)
 
-- `Include Start Vote` (checkbox, optional)
+- `Offset (Proof)` (number, optional)
 
 - `Order Ascending` (checkbox, optional)
 
 Example:
 ```javascript
-const result = await sdk.voting.contestedResourceIdentityVotes({
-    identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
-    limit: 10,
-    orderAscending: true
-});
+const result = await sdk.voting.contestedResourceIdentityVotes(
+    '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
+    { limit: 10, orderAscending: true }
+);
 ```
 
 **Get Vote Polls by End Date** - `voting.votePollsByEndDate`
-*Fetch vote polls filtered by end time using millisecond timestamps.*
+*Fetch vote polls filtered by end time. Use JSON time info for standard responses or millisecond timestamps with proof.*
 
 Parameters:
-- `Start Time (ms)` (number, optional)
+- `Start Time Info (JSON)` (json, optional)
 
-- `Include Start Time` (checkbox, optional)
+- `End Time Info (JSON)` (json, optional)
+
+- `Start Time (ms)` (number, optional)
 
 - `End Time (ms)` (number, optional)
 
-- `Include End Time` (checkbox, optional)
-
 - `Limit` (number, optional)
 
-- `Offset` (number, optional)
+- `Offset (Proof)` (number, optional)
 
 - `Order Ascending` (checkbox, optional)
 
 Example:
 ```javascript
 const result = await sdk.voting.votePollsByEndDate({
-    startTimeMs: null,
-    endTimeMs: null,
+    startTimeInfo: null,
+    endTimeInfo: null,
     limit: 10,
     orderAscending: true,
 });
@@ -656,7 +654,10 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.protocol.versionUpgradeVoteStatus('143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113', 10);
+const result = await sdk.protocol.versionUpgradeVoteStatus({
+    startProTxHash: '143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113',
+    count: 10
+});
 ```
 
 #### Epoch & Block Queries
@@ -741,29 +742,13 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.epoch.evonodesProposedBlocksByRange({
-    epoch: 8635,
+const result = await sdk.epoch.evonodesProposedBlocksByRange(8635, {
     limit: 5,
     orderAscending: true
 });
 ```
 
 #### Token Queries
-
-**Calculate Token ID** - `tokens.calculateId`
-*Calculate a token ID from a contract ID and token position. This is a utility method that does not require network connection.*
-
-Parameters:
-- `Contract ID` (text, required)
-  - Example: `ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A`
-
-- `Token Position` (number, required)
-  - Example: `0`
-
-Example:
-```javascript
-const result = await sdk.tokens.calculateId('ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A', 0);
-```
 
 **Get Token Statuses** - `tokens.statuses`
 *Retrieve status information for one or more tokens.*
@@ -881,7 +866,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.group.infos({ dataContractId: '49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', startAt: null, limit: 10 });
+const result = await sdk.group.infos('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', null, 10);
 ```
 
 **Get Group Members** - `group.members`
@@ -902,7 +887,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.group.members({ dataContractId: '49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', groupContractPosition: 0, limit: 10 });
+const result = await sdk.group.members('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, { limit: 10 });
 ```
 
 **Get Group Actions** - `group.actions`
@@ -924,7 +909,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.group.actions({ dataContractId: '49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', groupContractPosition: 0, status: 'ACTIVE', limit: 10 });
+const result = await sdk.group.actions('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, 'ACTIVE', { count: 10 });
 ```
 
 **Get Group Action Signers** - `group.actionSigners`
@@ -944,7 +929,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.group.actionSigners({ dataContractId: '49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', groupContractPosition: 0, status: 'ACTIVE', actionId: '6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ' });
+const result = await sdk.group.actionSigners('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N', 0, 'ACTIVE', '6XJzL6Qb8Zhwxt4HFwh8NAn7q1u4dwdoUf8EmgzDudFZ');
 ```
 
 **Get Identity Groups** - `group.identityGroups`
@@ -962,7 +947,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.group.identityGroups({ identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk' });
+const result = await sdk.group.identityGroups('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', {});
 ```
 
 **Get Groups Data Contracts** - `group.groupsDataContracts`
@@ -1048,32 +1033,6 @@ Example:
 const result = await sdk.system.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000');
 ```
 
-#### Platform Address Queries
-
-**Get Platform Address** - `addresses.get`
-*Fetch information about a Platform address including its nonce and balance.*
-
-Parameters:
-- `Platform Address` (text, required)
-  - Example: `tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm`
-
-Example:
-```javascript
-const result = await sdk.addresses.get('tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm');
-```
-
-**Get Multiple Platform Addresses** - `addresses.getMany`
-*Fetch information about multiple Platform addresses.*
-
-Parameters:
-- `Platform Addresses` (array, required)
-  - Example: `["tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm"]`
-
-Example:
-```javascript
-const result = await sdk.addresses.getMany(['tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm']);
-```
-
 ## State Transition Operations
 
 ### Pattern
@@ -1092,7 +1051,7 @@ Parameters:
 - `Asset Lock Proof` (string, required)
   - Hex-encoded JSON asset lock proof
 
-- `Asset Lock Private Key (WIF)` (string, required)
+- `Asset Lock Proof Private Key` (string, required)
   - WIF format private key
 
 - `Public Keys` (string, required)
@@ -1102,7 +1061,7 @@ Example:
 ```javascript
 // Asset lock proof is a hex-encoded JSON object
 const assetLockProof = "a9147d3b... (hex-encoded)";
-const assetLockPrivateKeyWif = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
 
 // Public keys array with proper key types
 const publicKeys = JSON.stringify([
@@ -1135,7 +1094,7 @@ const publicKeys = JSON.stringify([
   }
 ]);
 
-const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys });
+const result = await sdk.identities.create({ assetLockProof, assetLockProofPrivateKey, publicKeys });
 ```
 
 **Identity Top Up** - `identities.topup`
@@ -1148,16 +1107,16 @@ Parameters:
 - `Asset Lock Proof` (string, required)
   - Hex-encoded JSON asset lock proof
 
-- `Asset Lock Private Key (WIF)` (string, required)
+- `Asset Lock Proof Private Key` (string, required)
   - WIF format private key
 
 Example:
 ```javascript
 const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
 const assetLockProof = "a9147d3b... (hex-encoded)";
-const assetLockPrivateKeyWif = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+const assetLockProofPrivateKey = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
 
-const result = await sdk.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif });
+const result = await sdk.identities.topup({ identityId, assetLockProof, assetLockProofPrivateKey });
 ```
 
 **Identity Update** - `identities.update`
@@ -1205,7 +1164,7 @@ const result = await sdk.identities.creditWithdrawal({ identityId, toAddress, am
 
 #### Data Contract Transitions
 
-**Data Contract Create** - `contracts.publish`
+**Data Contract Create** - `contracts.create`
 *Create a new data contract*
 
 Parameters (payload fields):
@@ -1253,7 +1212,7 @@ Parameters (payload fields):
 
 Example:
 ```javascript
-const result = await sdk.contracts.publish({ ownerId, definition, privateKeyWif, keyId });
+const result = await sdk.contracts.create({ ownerId, definition, privateKeyWif, keyId });
 ```
 
 **Data Contract Update** - `contracts.update`
@@ -1461,7 +1420,7 @@ Example:
 const result = await sdk.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote });
 ```
 
-**Token Set Price** - `tokens.setPrice`
+**Token Set Price** - `tokens.setPriceForDirectPurchase`
 *Set or update the price for direct token purchases*
 
 Parameters (payload fields):
@@ -1479,7 +1438,7 @@ Parameters (payload fields):
 
 Example:
 ```javascript
-const result = await sdk.tokens.setPrice({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote });
+const result = await sdk.tokens.setPriceForDirectPurchase({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote });
 ```
 
 **Token Direct Purchase** - `tokens.directPurchase`
@@ -1499,22 +1458,24 @@ Example:
 const result = await sdk.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif });
 ```
 
-**Token Emergency Action** - `tokens.emergencyAction`
-*Perform an emergency action on a token*
+**Token Config Update** - `tokens.configUpdate`
+*Update token configuration settings*
 
 Parameters (payload fields):
 - `Data Contract ID` (text, required)
 
 - `Token Contract Position` (number, required)
 
-- `Action Type` (select, required)
-  - Options: `pause` (Pause), `resume` (Resume)
+- `Config Item Type` (select, required)
+  - Options: `conventions` (Conventions), `max_supply` (Max Supply), `perpetual_distribution` (Perpetual Distribution), `new_tokens_destination_identity` (New Tokens Destination Identity), `minting_allow_choosing_destination` (Minting Allow Choosing Destination), `manual_minting` (Manual Minting), `manual_burning` (Manual Burning), `conventions_control_group` (Conventions Control Group), `conventions_admin_group` (Conventions Admin Group), `max_supply_control_group` (Max Supply Control Group), `max_supply_admin_group` (Max Supply Admin Group)
+
+- `Config Value (JSON or specific value)` (text, required)
 
 - `Public Note` (text, optional)
 
 Example:
 ```javascript
-const result = await sdk.tokens.emergencyAction({ contractId, tokenPosition, actionType, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.configUpdate({ contractId, tokenPosition, configItemType, configValue, identityId, privateKeyWif, publicNote });
 ```
 
 **Token Transfer** - `tokens.transfer`
@@ -1627,119 +1588,6 @@ Parameters (payload fields):
 Example:
 ```javascript
 const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif });
-```
-
-#### Platform Address Transitions
-
-**Address Transfer** - `addresses.transfer`
-*Transfer credits between Platform addresses*
-
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
-
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-Example:
-```javascript
-const result = await sdk.addresses.transfer({ inputs, outputs, signer });
-```
-
-**Top Up Identity from Address** - `addresses.topUpIdentity`
-*Top up an identity using Platform address credits*
-
-Parameters (payload fields):
-- `Identity ID to Top Up` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
-
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
-
-Example:
-```javascript
-const result = await sdk.addresses.topUpIdentity({ identityId, inputs, signer });
-```
-
-**Withdraw to Core** - `addresses.withdraw`
-*Withdraw Platform address credits to Dash Core*
-
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
-
-- `Dash Core Address` (text, required)
-  - Example: `yXxx...`
-
-- `Core Fee Per Byte` (number, optional)
-  - Example: `1`
-
-Example:
-```javascript
-const result = await sdk.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer });
-```
-
-**Transfer from Identity to Address** - `addresses.transferFromIdentity`
-*Transfer credits from an identity to Platform addresses*
-
-Parameters (payload fields):
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Amount (credits)` (text, required)
-
-Example:
-```javascript
-const result = await sdk.addresses.transferFromIdentity({ identityId, outputs, signer });
-```
-
-**Fund Address from Asset Lock** - `addresses.fundFromAssetLock`
-*Fund Platform addresses from an asset lock*
-
-Parameters (payload fields):
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Amount (credits)` (text, required)
-
-Example:
-```javascript
-const result = await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer });
-```
-
-**Create Identity from Address** - `addresses.createIdentity`
-*Create a new identity funded from Platform addresses*
-
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
-
-- `Public Keys (JSON)` (json, required)
-  - Example: `[{"id":0,"type":0,"purpose":0,"securityLevel":0,"data":"..."}]`
-
-Example:
-```javascript
-const result = await sdk.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner });
 ```
 
 ## Common Patterns
