@@ -46,7 +46,7 @@
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             },
             {
-              "name": "keyRequestType",
+              "name": "requestType",
               "type": "select",
               "label": "Key Request Type",
               "required": true,
@@ -71,20 +71,20 @@
               "label": "Specific Key IDs",
               "placeholder": "[0,1,2]",
               "dependsOn": {
-                "field": "keyRequestType",
+                "field": "requestType",
                 "values": [
                   "specific"
                 ]
               }
             },
             {
-              "name": "searchPurposeMap",
+              "name": "purposeMap",
               "type": "json",
               "label": "Search Purpose Map",
               "help": "JSON map of purpose -> security level -> filter (e.g. {\"0\": {\"0\": \"current\"}}).",
               "placeholder": "{\"0\": {\"0\": \"current\"}, \"1\": {\"0\": \"all\"}}",
               "dependsOn": {
-                "field": "keyRequestType",
+                "field": "requestType",
                 "values": [
                   "search"
                 ]
@@ -320,16 +320,6 @@
               "type": "array",
               "label": "Token IDs (optional)",
               "placeholder": "[\"Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv\"]"
-            },
-            {
-              "name": "limit",
-              "type": "number",
-              "label": "Limit"
-            },
-            {
-              "name": "offset",
-              "type": "number",
-              "label": "Offset"
             }
           ],
           "sdk_method": "tokens.identityTokenInfos"
@@ -429,7 +419,7 @@
               "placeholder": "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec"
             },
             {
-              "name": "documentType",
+              "name": "documentTypeName",
               "type": "text",
               "label": "Document Type",
               "required": true,
@@ -479,7 +469,7 @@
               "placeholder": "GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec"
             },
             {
-              "name": "documentType",
+              "name": "documentTypeName",
               "type": "text",
               "label": "Document Type",
               "required": true,
@@ -634,7 +624,7 @@
               "placeholder": "domain"
             },
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Data Contract ID",
               "required": true,
@@ -645,6 +635,19 @@
               "type": "text",
               "label": "Index Name",
               "required": true
+            },
+            {
+              "name": "startIndexValues",
+              "type": "json",
+              "label": "Start Index Values",
+              "placeholder": "[\"dash\",\"alice\"]",
+              "help": "Optional lower bound for range queries."
+            },
+            {
+              "name": "endIndexValues",
+              "type": "json",
+              "label": "End Index Values",
+              "help": "Optional upper bound for range queries."
             },
             {
               "name": "startAtValue",
@@ -669,7 +672,7 @@
           "description": "Retrieve vote tallies for a contested resource.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Data Contract ID",
               "required": true,
@@ -703,17 +706,22 @@
               "placeholder": "documents"
             },
             {
-              "name": "allowIncludeLockedAndAbstainingVoteTally",
+              "name": "includeLockedAndAbstaining",
               "type": "checkbox",
               "label": "Include Locked & Abstaining Tallies"
             },
             {
-              "name": "startAtIdentifierInfo",
+              "name": "startAtContenderId",
               "type": "text",
-              "label": "Start At Identifier Info"
+              "label": "Start At Contender ID"
             },
             {
-              "name": "count",
+              "name": "startAtIncluded",
+              "type": "checkbox",
+              "label": "Include Start Contender"
+            },
+            {
+              "name": "limit",
               "type": "number",
               "label": "Count"
             },
@@ -730,7 +738,7 @@
           "description": "List voters that voted for a specific identity in a contested resource.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Data Contract ID",
               "required": true,
@@ -764,24 +772,19 @@
               "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
             },
             {
-              "name": "startAtVoterInfo",
+              "name": "startAtVoterId",
               "type": "text",
-              "label": "Start At Voter Info"
+              "label": "Start At Voter ID"
             },
             {
-              "name": "startAtIdentifierInfo",
-              "type": "text",
-              "label": "Start At Identifier Info (Proof)"
+              "name": "startAtIncluded",
+              "type": "checkbox",
+              "label": "Include Start Voter"
             },
             {
               "name": "limit",
               "type": "number",
               "label": "Limit"
-            },
-            {
-              "name": "count",
-              "type": "number",
-              "label": "Count (Proof)"
             },
             {
               "name": "orderAscending",
@@ -808,14 +811,14 @@
               "label": "Limit"
             },
             {
-              "name": "startAtVotePollIdInfo",
+              "name": "startAtVoteId",
               "type": "text",
-              "label": "Start At Vote Poll Info"
+              "label": "Start At Vote ID"
             },
             {
-              "name": "offset",
-              "type": "number",
-              "label": "Offset (Proof)"
+              "name": "startAtIncluded",
+              "type": "checkbox",
+              "label": "Include Start Vote"
             },
             {
               "name": "orderAscending",
@@ -827,31 +830,29 @@
         },
         "getVotePollsByEndDate": {
           "label": "Get Vote Polls by End Date",
-          "description": "Fetch vote polls filtered by end time. Use JSON time info for standard responses or millisecond timestamps with proof.",
+          "description": "Fetch vote polls filtered by end time using millisecond timestamps.",
           "inputs": [
-            {
-              "name": "startTimeInfo",
-              "type": "json",
-              "label": "Start Time Info (JSON)",
-              "help": "Used when proofs are disabled."
-            },
-            {
-              "name": "endTimeInfo",
-              "type": "json",
-              "label": "End Time Info (JSON)",
-              "help": "Used when proofs are disabled."
-            },
             {
               "name": "startTimeMs",
               "type": "number",
               "label": "Start Time (ms)",
-              "help": "Used when proofs are enabled."
+              "help": "Optional lower bound timestamp."
+            },
+            {
+              "name": "startTimeIncluded",
+              "type": "checkbox",
+              "label": "Include Start Time"
             },
             {
               "name": "endTimeMs",
               "type": "number",
               "label": "End Time (ms)",
-              "help": "Used when proofs are enabled."
+              "help": "Optional upper bound timestamp."
+            },
+            {
+              "name": "endTimeIncluded",
+              "type": "checkbox",
+              "label": "Include End Time"
             },
             {
               "name": "limit",
@@ -861,7 +862,7 @@
             {
               "name": "offset",
               "type": "number",
-              "label": "Offset (Proof)"
+              "label": "Offset"
             },
             {
               "name": "orderAscending",
@@ -1009,6 +1010,27 @@
     "token": {
       "label": "Token Queries",
       "queries": {
+        "calculateTokenId": {
+          "label": "Calculate Token ID",
+          "description": "Calculate a token ID from a contract ID and token position. This is a utility method that does not require network connection.",
+          "inputs": [
+            {
+              "name": "contractId",
+              "type": "text",
+              "label": "Contract ID",
+              "required": true,
+              "placeholder": "ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A"
+            },
+            {
+              "name": "tokenPosition",
+              "type": "number",
+              "label": "Token Position",
+              "required": true,
+              "placeholder": "0"
+            }
+          ],
+          "sdk_method": "tokens.calculateId"
+        },
         "getTokenStatuses": {
           "label": "Get Token Statuses",
           "description": "Retrieve status information for one or more tokens.",
@@ -1117,7 +1139,7 @@
           "description": "Fetch metadata for a specific group contract position.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Group Contract ID",
               "required": true,
@@ -1138,7 +1160,7 @@
           "description": "List group information entries for a contract.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Group Contract ID",
               "required": true,
@@ -1162,7 +1184,7 @@
           "description": "Retrieve member entries for a group.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Group Contract ID",
               "required": true,
@@ -1198,7 +1220,7 @@
           "description": "Fetch actions associated with a group.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Group Contract ID",
               "required": true,
@@ -1253,7 +1275,7 @@
           "description": "List signers for a specific group action.",
           "inputs": [
             {
-              "name": "contractId",
+              "name": "dataContractId",
               "type": "text",
               "label": "Group Contract ID",
               "required": true,
@@ -1415,6 +1437,39 @@
           "sdk_method": "system.waitForStateTransitionResult"
         }
       }
+    },
+    "address": {
+      "label": "Platform Address Queries",
+      "queries": {
+        "getPlatformAddress": {
+          "label": "Get Platform Address",
+          "description": "Fetch information about a Platform address including its nonce and balance.",
+          "inputs": [
+            {
+              "name": "address",
+              "type": "text",
+              "label": "Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm"
+            }
+          ],
+          "sdk_method": "addresses.get"
+        },
+        "getPlatformAddresses": {
+          "label": "Get Multiple Platform Addresses",
+          "description": "Fetch information about multiple Platform addresses.",
+          "inputs": [
+            {
+              "name": "addresses",
+              "type": "array",
+              "label": "Platform Addresses",
+              "required": true,
+              "placeholder": "[\"tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm\"]"
+            }
+          ],
+          "sdk_method": "addresses.getMany"
+        }
+      }
     }
   },
   "transitions": {
@@ -1501,9 +1556,9 @@
               "description": "Hex-encoded JSON asset lock proof"
             },
             {
-              "name": "assetLockProofPrivateKey",
+              "name": "assetLockPrivateKeyWif",
               "type": "string",
-              "label": "Asset Lock Proof Private Key",
+              "label": "Asset Lock Private Key (WIF)",
               "required": true,
               "description": "WIF format private key"
             },
@@ -1515,7 +1570,7 @@
               "description": "JSON array of public keys. Key requirements: ECDSA_SECP256K1 requires privateKeyHex or privateKeyWif for signing, BLS12_381 requires privateKeyHex for signing, ECDSA_HASH160 requires either the data field (base64-encoded 20-byte public key hash) or privateKeyHex (produces empty signatures)."
             }
           ],
-          "sdk_example": "// Asset lock proof is a hex-encoded JSON object\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\n// Public keys array with proper key types\nconst publicKeys = JSON.stringify([\n  {\n    id: 0,\n    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3\n    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, WITHDRAW = 4, VOTING = 5, OWNER = 6\n    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3\n    data: \"A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2\" // Required for ECDSA_SECP256K1 signing\n  },\n  {\n    id: 1,\n    type: 0, // ECDSA_SECP256K1\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"AnotherBase64EncodedPublicKeyHere\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XAnotherPrivateKeyInWIFFormat\" // Required for signing\n  },\n  {\n    id: 2,\n    type: 2, // ECDSA_HASH160\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"ripemd160hash20bytes1234\", // Base64-encoded 20-byte RIPEMD160 hash\n    readOnly: false\n    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)\n  }\n]);\n\nconst result = await client.identities.create({ assetLockProof, assetLockProofPrivateKey, publicKeys });",
+          "sdk_example": "// Asset lock proof is a hex-encoded JSON object\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockPrivateKeyWif = \"XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\n// Public keys array with proper key types\nconst publicKeys = JSON.stringify([\n  {\n    id: 0,\n    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3\n    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, WITHDRAW = 4, VOTING = 5, OWNER = 6\n    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3\n    data: \"A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2\" // Required for ECDSA_SECP256K1 signing\n  },\n  {\n    id: 1,\n    type: 0, // ECDSA_SECP256K1\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"AnotherBase64EncodedPublicKeyHere\", // Base64-encoded public key\n    readOnly: false,\n    privateKeyWif: \"XAnotherPrivateKeyInWIFFormat\" // Required for signing\n  },\n  {\n    id: 2,\n    type: 2, // ECDSA_HASH160\n    purpose: 0, // AUTHENTICATION\n    securityLevel: 2, // HIGH\n    data: \"ripemd160hash20bytes1234\", // Base64-encoded 20-byte RIPEMD160 hash\n    readOnly: false\n    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)\n  }\n]);\n\nconst result = await client.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys });",
           "sdk_method": "identities.create"
         },
         "identityTopUp": {
@@ -1547,14 +1602,14 @@
               "description": "Hex-encoded JSON asset lock proof"
             },
             {
-              "name": "assetLockProofPrivateKey",
+              "name": "assetLockPrivateKeyWif",
               "type": "string",
-              "label": "Asset Lock Proof Private Key",
+              "label": "Asset Lock Private Key (WIF)",
               "required": true,
               "description": "WIF format private key"
             }
           ],
-          "sdk_example": "const identityId = \"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"; // base58\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockProofPrivateKey = \"XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\nconst result = await sdk.identities.topup({ identityId, assetLockProof, assetLockProofPrivateKey });",
+          "sdk_example": "const identityId = \"5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk\"; // base58\nconst assetLockProof = \"a9147d3b... (hex-encoded)\";\nconst assetLockPrivateKeyWif = \"XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1\"; // WIF format\n\nconst result = await sdk.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif });",
           "sdk_method": "identities.topup"
         },
         "identityUpdate": {
@@ -1715,7 +1770,7 @@
               "required": false
             }
           ],
-          "sdk_method": "contracts.create"
+          "sdk_method": "contracts.publish"
         },
         "dataContractUpdate": {
           "label": "Data Contract Update",
@@ -2115,7 +2170,7 @@
               "required": false
             }
           ],
-          "sdk_method": "tokens.setPriceForDirectPurchase"
+          "sdk_method": "tokens.setPrice"
         },
         "tokenDirectPurchase": {
           "label": "Token Direct Purchase",
@@ -2148,9 +2203,9 @@
           ],
           "sdk_method": "tokens.directPurchase"
         },
-        "tokenConfigUpdate": {
-          "label": "Token Config Update",
-          "description": "Update token configuration settings",
+        "tokenEmergencyAction": {
+          "label": "Token Emergency Action",
+          "description": "Perform an emergency action on a token",
           "inputs": [
             {
               "name": "contractId",
@@ -2165,62 +2220,20 @@
               "required": true
             },
             {
-              "name": "configItemType",
+              "name": "actionType",
               "type": "select",
-              "label": "Config Item Type",
+              "label": "Action Type",
               "required": true,
               "options": [
                 {
-                  "value": "conventions",
-                  "label": "Conventions"
+                  "value": "pause",
+                  "label": "Pause"
                 },
                 {
-                  "value": "max_supply",
-                  "label": "Max Supply"
-                },
-                {
-                  "value": "perpetual_distribution",
-                  "label": "Perpetual Distribution"
-                },
-                {
-                  "value": "new_tokens_destination_identity",
-                  "label": "New Tokens Destination Identity"
-                },
-                {
-                  "value": "minting_allow_choosing_destination",
-                  "label": "Minting Allow Choosing Destination"
-                },
-                {
-                  "value": "manual_minting",
-                  "label": "Manual Minting"
-                },
-                {
-                  "value": "manual_burning",
-                  "label": "Manual Burning"
-                },
-                {
-                  "value": "conventions_control_group",
-                  "label": "Conventions Control Group"
-                },
-                {
-                  "value": "conventions_admin_group",
-                  "label": "Conventions Admin Group"
-                },
-                {
-                  "value": "max_supply_control_group",
-                  "label": "Max Supply Control Group"
-                },
-                {
-                  "value": "max_supply_admin_group",
-                  "label": "Max Supply Admin Group"
+                  "value": "resume",
+                  "label": "Resume"
                 }
               ]
-            },
-            {
-              "name": "configValue",
-              "type": "text",
-              "label": "Config Value (JSON or specific value)",
-              "required": true
             },
             {
               "name": "publicNote",
@@ -2229,7 +2242,7 @@
               "required": false
             }
           ],
-          "sdk_method": "tokens.configUpdate"
+          "sdk_method": "tokens.emergencyAction"
         },
         "tokenTransfer": {
           "label": "Token Transfer",
@@ -2466,6 +2479,194 @@
             }
           ],
           "sdk_method": "voting.masternodeVote"
+        }
+      }
+    },
+    "address": {
+      "label": "Platform Address Transitions",
+      "transitions": {
+        "addressTransfer": {
+          "label": "Address Transfer",
+          "description": "Transfer credits between Platform addresses",
+          "inputs": [
+            {
+              "name": "senderAddress",
+              "type": "text",
+              "label": "Sender Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "senderNonce",
+              "type": "number",
+              "label": "Sender Nonce",
+              "required": true,
+              "placeholder": "0"
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            },
+            {
+              "name": "recipientAddress",
+              "type": "text",
+              "label": "Recipient Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            }
+          ],
+          "sdk_method": "addresses.transfer"
+        },
+        "addressTopUpIdentity": {
+          "label": "Top Up Identity from Address",
+          "description": "Top up an identity using Platform address credits",
+          "inputs": [
+            {
+              "name": "identityId",
+              "type": "text",
+              "label": "Identity ID to Top Up",
+              "required": true,
+              "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
+            },
+            {
+              "name": "senderAddress",
+              "type": "text",
+              "label": "Sender Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "senderNonce",
+              "type": "number",
+              "label": "Sender Nonce",
+              "required": true,
+              "placeholder": "0"
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            }
+          ],
+          "sdk_method": "addresses.topUpIdentity"
+        },
+        "addressWithdraw": {
+          "label": "Withdraw to Core",
+          "description": "Withdraw Platform address credits to Dash Core",
+          "inputs": [
+            {
+              "name": "senderAddress",
+              "type": "text",
+              "label": "Sender Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "senderNonce",
+              "type": "number",
+              "label": "Sender Nonce",
+              "required": true,
+              "placeholder": "0"
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            },
+            {
+              "name": "toAddress",
+              "type": "text",
+              "label": "Dash Core Address",
+              "required": true,
+              "placeholder": "yXxx..."
+            },
+            {
+              "name": "coreFeePerByte",
+              "type": "number",
+              "label": "Core Fee Per Byte",
+              "required": false,
+              "placeholder": "1"
+            }
+          ],
+          "sdk_method": "addresses.withdraw"
+        },
+        "addressTransferFromIdentity": {
+          "label": "Transfer from Identity to Address",
+          "description": "Transfer credits from an identity to Platform addresses",
+          "inputs": [
+            {
+              "name": "recipientAddress",
+              "type": "text",
+              "label": "Recipient Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            }
+          ],
+          "sdk_method": "addresses.transferFromIdentity"
+        },
+        "addressFundFromAssetLock": {
+          "label": "Fund Address from Asset Lock",
+          "description": "Fund Platform addresses from an asset lock",
+          "inputs": [
+            {
+              "name": "recipientAddress",
+              "type": "text",
+              "label": "Recipient Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            }
+          ],
+          "sdk_method": "addresses.fundFromAssetLock"
+        },
+        "addressCreateIdentity": {
+          "label": "Create Identity from Address",
+          "description": "Create a new identity funded from Platform addresses",
+          "inputs": [
+            {
+              "name": "senderAddress",
+              "type": "text",
+              "label": "Sender Platform Address",
+              "required": true,
+              "placeholder": "tdashevo1..."
+            },
+            {
+              "name": "senderNonce",
+              "type": "number",
+              "label": "Sender Nonce",
+              "required": true,
+              "placeholder": "0"
+            },
+            {
+              "name": "amount",
+              "type": "text",
+              "label": "Amount (credits)",
+              "required": true
+            },
+            {
+              "name": "publicKeys",
+              "type": "json",
+              "label": "Public Keys (JSON)",
+              "required": true,
+              "placeholder": "[{\"id\":0,\"type\":0,\"purpose\":0,\"securityLevel\":0,\"data\":\"...\"}]"
+            }
+          ],
+          "sdk_method": "addresses.createIdentity"
         }
       }
     }

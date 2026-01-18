@@ -2,19 +2,43 @@ const { BaseTest } = require('./base-test');
 const { expect } = require('@playwright/test');
 
 // Configuration for dynamic array parameters that require special handling
+// These are arrays where each element is added as a separate input field
 const DYNAMIC_ARRAY_PARAMETERS = {
   'ids': true,
   'identityIds': true,
   'identitiesIds': true,
-  'tokenIds': true,
-  'indexValues': true
+  'tokenIds': true
+};
+
+// Array parameters that should be serialized as JSON directly (not individual items)
+const JSON_ARRAY_PARAMETERS = {
+  'indexValues': true,
+  'startIndexValues': true,
+  'endIndexValues': true,
+  'path': true,  // getPathElements path segments
+  'keys': true   // getPathElements keys
 };
 
 const PARAM_SPECIFIC_FALLBACK_SELECTORS = {
-  contractId: ['input[placeholder*="Contract ID"]'],
-  documentType: ['input[placeholder*="Document Type"]'],
+  contractId: ['input[name="contractId"]', 'input[placeholder*="Contract ID"]'],
+  dataContractId: ['input[name="contractId"]', 'input[placeholder*="Contract ID"]'],  // Maps to contractId input
+  documentType: ['input[name="documentType"]', 'input[placeholder*="Document Type"]'],
   json: ['textarea[placeholder*="JSON"]'],
-  schema: ['textarea[placeholder*="Schema"]']
+  schema: ['textarea[placeholder*="Schema"]'],
+  indexValues: ['.index-values-group textarea', 'textarea[placeholder*="value1"]'],
+  startIndexValues: ['textarea[placeholder*="value1"]'],
+  endIndexValues: ['textarea[placeholder*="value1"]'],
+  // Path Elements query parameters - use exact placeholder match
+  path: ['input[placeholder=\'["32"]\']'],
+  keys: ['input[placeholder=\'["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]\']']
+};
+
+// Mapping from test data parameter names to UI input field names
+// Only applied for state transitions - queries use the standard SDK naming
+// Note: Most parameters match directly, only add mappings for mismatches
+const PARAM_NAME_MAPPING_FOR_TRANSITIONS = {
+  documentTypeName: 'documentType',
+  dataContractId: 'contractId'  // UI uses contractId, test data uses dataContractId
 };
 
 /**
@@ -127,9 +151,22 @@ class EvoSdkPage extends BaseTest {
   /**
    * Fill a specific parameter by name
    */
-  async fillParameterByName(paramName, value) {
-    // Special handling for multiselect checkboxes (like purposes)
-    if (paramName === 'purposes' && Array.isArray(value)) {
+  async fillParameterByName(paramName, value, isStateTransition = false) {
+    // Map parameter names for state transitions only (queries use standard SDK naming)
+    const uiParamName = isStateTransition && PARAM_NAME_MAPPING_FOR_TRANSITIONS[paramName]
+      ? PARAM_NAME_MAPPING_FOR_TRANSITIONS[paramName]
+      : paramName;
+
+    // Special handling for multiselect (like purposes) - uses <select multiple>
+    if (uiParamName === 'purposes' && Array.isArray(value)) {
+      const selectSelector = `select[name="${uiParamName}"][multiple]`;
+      const selectElement = this.page.locator(selectSelector);
+      if (await selectElement.count() > 0) {
+        // Select multiple options by their values
+        await selectElement.selectOption(value.map(v => v.toString()));
+        return;
+      }
+      // Fallback to checkbox approach if select not found
       for (const purposeValue of value) {
         const checkboxSelector = `input[name="purposes_${purposeValue}"][type="checkbox"]`;
         const checkbox = this.page.locator(checkboxSelector);
@@ -139,36 +176,45 @@ class EvoSdkPage extends BaseTest {
       }
       return;
     }
-    
+
+    // Special handling for JSON array parameters (like indexValues) - convert to JSON string
+    if (JSON_ARRAY_PARAMETERS[uiParamName] && Array.isArray(value)) {
+      value = JSON.stringify(value);
+    }
+
     // Special handling for array parameters that use dynamic input fields
-    if (DYNAMIC_ARRAY_PARAMETERS[paramName]) {
+    if (DYNAMIC_ARRAY_PARAMETERS[uiParamName]) {
       const enterValueInput = this.page.locator('input[placeholder="Enter value"]').first();
       const count = await enterValueInput.count();
-      
+
       if (count > 0 && await enterValueInput.isVisible()) {
         await this.fillInputByType(enterValueInput, value);
         return;
       }
     }
-    
-    const inputSelector = `input[name="${paramName}"], select[name="${paramName}"], textarea[name="${paramName}"]`;
+
+    const inputSelector = `input[name="${uiParamName}"], select[name="${uiParamName}"], textarea[name="${uiParamName}"]`;
     const input = this.page.locator(inputSelector).first();
-    
+
     // Check if input exists
     if (await input.count() === 0) {
       // Try alternative selectors based on common patterns
-      const alternativeSelectors = [
-        `#${paramName}`,
-        `[id*="${paramName}"]`,
-        `[placeholder*="${paramName}"]`,
-        `label:has-text("${paramName}") + input`,
-        `label:has-text("${paramName}") + select`,
-        `label:has-text("${paramName}") + textarea`,
-      ];
+      // Start with specific fallback selectors if defined (they are more reliable)
+      const alternativeSelectors = [];
 
-      if (PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]) {
-        alternativeSelectors.push(...PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]);
+      if (PARAM_SPECIFIC_FALLBACK_SELECTORS[uiParamName]) {
+        alternativeSelectors.push(...PARAM_SPECIFIC_FALLBACK_SELECTORS[uiParamName]);
       }
+
+      // Then add generic selectors
+      alternativeSelectors.push(
+        `#${uiParamName}`,
+        `[id*="${uiParamName}"]`,
+        `[placeholder*="${uiParamName}"]`,
+        `label:has-text("${uiParamName}") + input`,
+        `label:has-text("${uiParamName}") + select`,
+        `label:has-text("${uiParamName}") + textarea`,
+      );
       
       let found = false;
       for (const selector of alternativeSelectors) {
@@ -181,15 +227,15 @@ class EvoSdkPage extends BaseTest {
       }
       
       if (!found) {
-        console.warn(`⚠️  Could not find input for parameter: ${paramName}. Trying by label text...`);
-        
+        console.warn(`⚠️  Could not find input for parameter: ${uiParamName}. Trying by label text...`);
+
         // Try finding by label text as last resort
         const labelSelectors = [
-          `label:text-is("${paramName}") + input`,
-          `label:text-is("${paramName}") + textarea`,
-          `label:text-is("${paramName}") + select`
+          `label:text-is("${uiParamName}") + input`,
+          `label:text-is("${uiParamName}") + textarea`,
+          `label:text-is("${uiParamName}") + select`
         ];
-        
+
         for (const selector of labelSelectors) {
           const labelInput = this.page.locator(selector).first();
           if (await labelInput.count() > 0) {
@@ -198,9 +244,9 @@ class EvoSdkPage extends BaseTest {
             break;
           }
         }
-        
+
         if (!found) {
-          console.warn(`⚠️  Could not find input for parameter: ${paramName} - skipping`);
+          console.warn(`⚠️  Could not find input for parameter: ${uiParamName} (original: ${paramName}) - skipping`);
         }
       }
     } else {
@@ -246,10 +292,12 @@ class EvoSdkPage extends BaseTest {
     try {
       // Look for existing input fields first (prioritize array container inputs)
       const arrayContainerInputs = this.page.locator('.array-input-container input[type="text"]');
-      const allInputs = this.page.locator('input[type="text"], textarea').filter({
+      // Exclude authentication inputs (identityId, privateKey, assetLockProof) which are hidden for queries
+      // and only select visible inputs within the dynamicInputs or queryInputs sections
+      const allInputs = this.page.locator('#dynamicInputs input[type="text"]:visible, #dynamicInputs textarea:visible, #queryInputs input[type="text"]:visible, #queryInputs textarea:visible').filter({
         hasNot: this.page.locator('[readonly]')
       });
-      
+
       // Use array container inputs if available, otherwise use all inputs
       const existingInputs = await arrayContainerInputs.count() > 0 ? arrayContainerInputs : allInputs;
       const existingCount = await existingInputs.count();
@@ -298,7 +346,7 @@ class EvoSdkPage extends BaseTest {
 
         // Find all input fields again (should be one more now)
         const currentArrayInputs = this.page.locator('.array-input-container input[type="text"]');
-        const currentAllInputs = this.page.locator('input[type="text"], textarea').filter({
+        const currentAllInputs = this.page.locator('#dynamicInputs input[type="text"]:visible, #dynamicInputs textarea:visible, #queryInputs input[type="text"]:visible, #queryInputs textarea:visible').filter({
           hasNot: this.page.locator('[readonly]')
         });
 
@@ -601,7 +649,8 @@ class EvoSdkPage extends BaseTest {
         console.log('Skipping description field (documentation only)');
       } else {
         // Use the general parameter filling method for other parameters
-        await this.fillParameterByName(key, value);
+        // Pass true for isStateTransition to apply naming convention mapping
+        await this.fillParameterByName(key, value, true);
       }
     }
   }
