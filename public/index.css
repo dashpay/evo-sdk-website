@@ -638,56 +638,73 @@ details.sdk-config summary span:last-child {
   border-radius: 4px;
 }
 
-/* SDK Configuration section overrides for dark mode */
+/* SDK Configuration section */
 .sdk-config {
-  border-bottom: 1px solid var(--border-color) !important;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .sdk-config summary {
-  background-color: var(--bg-tertiary) !important;
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-.sdk-config summary span:first-child {
-  color: var(--text-primary) !important;
+.sdk-config summary span {
+  color: var(--text-primary);
 }
 
 .sdk-config summary span:last-child {
-  color: var(--text-tertiary) !important;
+  color: var(--text-muted);
 }
 
 .sdk-config > div {
-  background-color: var(--bg-tertiary) !important;
+  background-color: var(--bg-tertiary);
 }
 
 .sdk-config label {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .sdk-config small {
-  color: var(--text-muted) !important;
+  color: var(--text-muted);
 }
 
 .sdk-config input,
 .sdk-config select {
-  background-color: var(--bg-input) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-light) !important;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+}
+
+.sdk-config input::placeholder {
+  color: var(--text-placeholder);
 }
 
 .sdk-config details summary {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .sdk-config #latestVersionInfo {
-  color: var(--text-tertiary) !important;
+  color: var(--text-secondary);
 }
 
 .sdk-config #applyConfig {
-  background-color: var(--accent-primary) !important;
+  background-color: var(--accent-primary);
+  color: white;
 }
 
 .sdk-config #applyConfig:hover {
-  background-color: var(--accent-primary-hover) !important;
+  background-color: var(--accent-primary-hover);
+}
+
+/* Nested details in SDK config (Request Settings) */
+.sdk-config details {
+  background-color: transparent;
+}
+
+.sdk-config details > div {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-color);
+  margin-left: 5px;
 }
 
 /* Proof toggle label */
