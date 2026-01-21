@@ -1,4 +1,4 @@
-import { EvoSDK, wallet, IdentitySigner } from './dist/evo-sdk.module.js';
+import { EvoSDK, wallet, IdentitySigner, Document, DataContract, PrivateKey } from './dist/evo-sdk.module.js';
 
 /**
  * Fetches an identity and creates a signer with the provided private key.
@@ -9,13 +9,51 @@ import { EvoSDK, wallet, IdentitySigner } from './dist/evo-sdk.module.js';
  * @returns {Promise<{identity: Identity, signer: IdentitySigner}>}
  */
 async function prepareIdentityAndSigner(client, identityId, privateKeyWif) {
+  if (!identityId) {
+    throw new Error('Identity ID is required for this operation');
+  }
+  if (!privateKeyWif) {
+    throw new Error('Private key is required for this operation');
+  }
   const identity = await client.identities.fetch(identityId);
   if (!identity) {
     throw new Error(`Identity not found: ${identityId}`);
   }
+  if (typeof IdentitySigner !== 'function') {
+    throw new Error('IdentitySigner is not available. SDK may not be properly initialized.');
+  }
   const signer = new IdentitySigner();
   signer.addKeyFromWif(privateKeyWif);
   return { identity, signer };
+}
+
+/**
+ * Prepares all components needed for document operations in SDK RC1.
+ * Returns identity, a suitable identity key, and signer.
+ * @param {Object} client - The EvoSDK client instance
+ * @param {string} ownerId - The owner identity ID
+ * @param {string} privateKeyWif - The private key in WIF format
+ * @returns {Promise<{identity: Identity, identityKey: IdentityPublicKey, signer: IdentitySigner}>}
+ */
+async function prepareDocumentOperation(client, ownerId, privateKeyWif) {
+  const { identity, signer } = await prepareIdentityAndSigner(client, ownerId, privateKeyWif);
+  // Get public keys from the identity
+  const publicKeys = identity.getPublicKeys();
+  if (!publicKeys || publicKeys.length === 0) {
+    throw new Error('Identity has no public keys available for signing');
+  }
+  // Get the public key hash from the provided private key
+  const privKey = PrivateKey.fromWIF(privateKeyWif);
+  const privateKeyHash = privKey.getPublicKeyHash();
+  // Find the identity key that matches the provided private key
+  const identityKey = publicKeys.find(key => {
+    const keyHash = key.getPublicKeyHash();
+    return keyHash === privateKeyHash;
+  });
+  if (!identityKey) {
+    throw new Error(`No matching identity key found for the provided private key. Private key hash: ${privateKeyHash}. Available key hashes: ${publicKeys.map(k => k.getPublicKeyHash()).join(', ')}`);
+  }
+  return { identity, identityKey, signer };
 }
 
 const identityIdInputEl = document.getElementById('identityId');
@@ -1869,12 +1907,18 @@ function buildContractDefinition(params) {
   // Get keywords
   const keywords = params.keywords ? params.keywords.split(',').map(k => k.trim()).filter(k => k) : [];
 
+  // Determine format version based on whether tokens are present
+  // V1 is required for tokens, groups, keywords, and description
+  const hasTokens = tokens && Object.keys(tokens).length > 0;
+  const hasGroups = groups && Object.keys(groups).length > 0;
+  const formatVersion = (hasTokens || hasGroups) ? "1" : "0";
+
   // Build the contract object
   const contractData = {
-    "$format_version": "1",
+    "$format_version": formatVersion,
     "id": "11111111111111111111111111111111", // Will be replaced by SDK
     "config": {
-      "$format_version": "1",
+      "$format_version": "0",
       "canBeDeleted": params.canBeDeleted || false,
       "readonly": params.readonly || false,
       "keepsHistory": params.keepsHistory || false,
@@ -1907,6 +1951,14 @@ function buildContractDefinition(params) {
 function buildContractUpdates(params) {
   // Start with the complete existing contract
   let contractData = { ...params.existingContract };
+
+  // Ensure $format_version fields exist (required for RC1)
+  if (!contractData['$format_version']) {
+    contractData['$format_version'] = '0';
+  }
+  if (contractData.config && !contractData.config['$format_version']) {
+    contractData.config = { ...contractData.config, '$format_version': '0' };
+  }
 
   // Increment the version for updates
   contractData.version = (contractData.version || 1) + 1;
@@ -2092,8 +2144,27 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getDataContracts':
       return useProof ? c.contracts.getManyWithProof(n.ids) : c.contracts.getMany(n.ids);
     case 'dataContractCreate': {
-      const definition = buildContractDefinition(n);
-      return c.contracts.create({ ownerId: n.ownerId, definition: definition, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+      const definitionStr = buildContractDefinition(n);
+      const definition = JSON.parse(definitionStr);
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Determine platform version: V9+ needed for contracts with tokens (DataContractV1)
+      // PLATFORM_V1 uses contract_structure_version=0 (DataContractV0, no tokens)
+      // PLATFORM_V9 uses contract_structure_version=1 (DataContractV1, with tokens)
+      const hasTokens = definition.tokens && Object.keys(definition.tokens).length > 0;
+      const platformVersion = hasTokens ? 9 : undefined;
+      // Create DataContract from object definition (RC1 API takes object, not JSON string)
+      const dataContract = DataContract.fromJSON(definition, false, platformVersion);
+      // contracts.publish returns the published contract with the actual ID
+      const publishedContract = await c.contracts.publish({ dataContract, identityKey, signer });
+      const contractId = publishedContract.id.toString();
+      return {
+        status: 'success',
+        contractId,
+        ownerId: n.ownerId,
+        version: 1,
+        documentTypes: Object.keys(definition.documentSchemas || {}),
+        message: `Data contract created successfully with ID: ${contractId}`,
+      };
     }
     case 'dataContractUpdate': {
       // First fetch the existing contract to get its current state
@@ -2102,12 +2173,23 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const contractJson = normalizeContract(existingContract);
 
       // Build updates using the entire existing contract as base
-      const updates = buildContractUpdates({
+      const updatesStr = buildContractUpdates({
         ...n,
         existingContract: contractJson
       });
+      const updates = JSON.parse(updatesStr);
+      const newVersion = updates.version;
 
-      return c.contracts.update({ contractId: contractId, ownerId: n.ownerId, updates: updates, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Create updated DataContract from object (RC1 API takes object, not JSON string)
+      const dataContract = DataContract.fromJSON(updates, false, undefined);
+      await c.contracts.update({ dataContract, identityKey, signer });
+      return {
+        status: 'success',
+        contractId,
+        version: newVersion,
+        message: `Data contract updated successfully to version ${newVersion}`,
+      };
     }
 
     // Documents
@@ -2134,15 +2216,28 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (!data) {
         throw new Error('Document data is required. Click "Fetch Schema" and fill the document fields.');
       }
-      const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
-      return c.documents.create({
-        contractId: n.contractId,
-        type: n.documentType,
-        ownerId: n.ownerId,
-        data,
-        entropyHex,
-        privateKeyWif: n.privateKeyWif,
-      });
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Create Document object for RC1 SDK
+      // Constructor: (data, documentTypeName, revision, dataContractId, ownerId, documentId)
+      // For new documents: revision=1, documentId=undefined (auto-generated)
+      // The Document constructor generates entropy internally and computes the document ID from it
+      const document = new Document(data, n.documentType, 1n, n.contractId, n.ownerId, undefined);
+      // RC1 SDK returns void, so we extract document info before calling create
+      const documentId = document.id.toString();
+      await c.documents.create({ document, identityKey, signer });
+      // Return structured response with document details
+      return {
+        type: 'DocumentCreated',
+        documentId,
+        document: {
+          id: documentId,
+          ownerId: n.ownerId,
+          dataContractId: n.contractId,
+          documentType: n.documentType,
+          revision: 1,
+          data,
+        },
+      };
     }
     case 'documentReplace': {
       const dynamic = (typeof n.documentFields === 'object' && n.documentFields !== null) ? n.documentFields : {};
@@ -2154,24 +2249,104 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (revision == null) {
         throw new Error('Document revision is missing. Click "Load Document" before replacing.');
       }
-      return c.documents.replace({
-        contractId: n.contractId,
-        type: n.documentType,
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Create Document object with incremented revision
+      // Constructor: (data, documentTypeName, revision, dataContractId, ownerId, documentId)
+      const newRevision = BigInt(Number(revision) + 1);
+      const document = new Document(data, n.documentType, newRevision, n.contractId, n.ownerId, n.documentId);
+      await c.documents.replace({ document, identityKey, signer });
+      // Return structured response with document details
+      return {
+        type: 'DocumentReplaced',
         documentId: n.documentId,
-        ownerId: n.ownerId,
-        data,
-        revision,
-        privateKeyWif: n.privateKeyWif,
-      });
+        document: {
+          id: n.documentId,
+          ownerId: n.ownerId,
+          dataContractId: n.contractId,
+          documentType: n.documentType,
+          revision: Number(newRevision),
+          data,
+        },
+      };
     }
-    case 'documentDelete':
-      return c.documents.delete({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, privateKeyWif: n.privateKeyWif });
-    case 'documentTransfer':
-      return c.documents.transfer({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, recipientId: n.recipientId, privateKeyWif: n.privateKeyWif });
-    case 'documentPurchase':
-      return c.documents.purchase({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, buyerId: n.buyerId, price: n.price, privateKeyWif: n.privateKeyWif });
-    case 'documentSetPrice':
-      return c.documents.setPrice({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, price: n.price, privateKeyWif: n.privateKeyWif });
+    case 'documentDelete': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // For delete, we can pass document identifiers instead of full Document object
+      const document = {
+        id: n.documentId,
+        ownerId: n.ownerId,
+        dataContractId: n.contractId,
+        documentTypeName: n.documentType,
+      };
+      await c.documents.delete({ document, identityKey, signer });
+      return {
+        type: 'DocumentDeleted',
+        documentId: n.documentId,
+        deleted: true,
+      };
+    }
+    case 'documentTransfer': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Fetch the existing document to get its current state
+      const existingDoc = await c.documents.get(n.contractId, n.documentType, n.documentId);
+      if (!existingDoc) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+      // Bump revision for the update (platform expects revision = current + 1)
+      const currentRevision = existingDoc.revision;
+      if (currentRevision == null) {
+        throw new Error('Document has no revision');
+      }
+      existingDoc.revision = currentRevision + 1;
+      await c.documents.transfer({ document: existingDoc, recipientId: n.recipientId, identityKey, signer });
+      return {
+        type: 'DocumentTransferred',
+        documentId: n.documentId,
+        newOwnerId: n.recipientId,
+      };
+    }
+    case 'documentPurchase': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.buyerId, n.privateKeyWif);
+      // Fetch the existing document to get its current state
+      const existingDoc = await c.documents.get(n.contractId, n.documentType, n.documentId);
+      if (!existingDoc) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+      // Bump revision for the update (platform expects revision = current + 1)
+      const currentRevision = existingDoc.revision;
+      if (currentRevision == null) {
+        throw new Error('Document has no revision');
+      }
+      existingDoc.revision = currentRevision + 1;
+      await c.documents.purchase({ document: existingDoc, price: BigInt(n.price), identityKey, signer });
+      return {
+        type: 'DocumentPurchased',
+        documentId: n.documentId,
+        buyerId: n.buyerId,
+        price: n.price,
+      };
+    }
+    case 'documentSetPrice': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.ownerId, n.privateKeyWif);
+      // Fetch the existing document to get its current state
+      const existingDoc = await c.documents.get(n.contractId, n.documentType, n.documentId);
+      if (!existingDoc) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+      // Bump revision for the update (platform expects revision = current + 1)
+      const currentRevision = existingDoc.revision;
+      if (currentRevision == null) {
+        throw new Error('Document has no revision');
+      }
+      existingDoc.revision = currentRevision + 1;
+      await c.documents.setPrice({ document: existingDoc, price: BigInt(n.price), identityKey, signer });
+      return {
+        type: 'DocumentPriceSet',
+        documentId: n.documentId,
+        price: n.price,
+        priceSet: true,
+      };
+    }
 
     // DPNS
     case 'getDpnsUsername':

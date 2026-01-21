@@ -1137,14 +1137,44 @@ const result = await sdk.identities.update({ identityId, addPublicKeys, disableP
 **Identity Credit Transfer** - `identities.creditTransfer`
 *Transfer credits between identities*
 
-Parameters (payload fields):
-- `Recipient Identity ID` (text, required)
+Parameters:
+- `Sender Identity` (Identity, required)
+  - The sender Identity object (fetched from platform)
 
-- `Amount (credits)` (number, required)
+- `Recipient Identity ID` (IdentifierLike, required)
+  - The identity ID of the recipient (base58 string or Identifier)
+
+- `Amount` (bigint | number, required)
+  - The amount of credits to transfer
+
+- `Identity Signer` (IdentitySigner, required)
+  - Signer containing the private key for the sender's transfer key
+
+- `Signing Key` (IdentityPublicKey, optional)
+  - Optional identity public key to use for signing. If not provided, auto-selects an available transfer key.
+
+- `Settings` (PutSettings, optional)
+  - Optional settings for the broadcast operation (retries, timeouts, userFeeIncrease, etc.)
 
 Example:
 ```javascript
-const result = await sdk.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId });
+// First fetch the sender identity from platform
+const senderIdentity = await sdk.identities.fetch(senderId);
+
+// Create a signer and add the transfer key
+const signer = new IdentitySigner();
+signer.addPrivateKey(transferPrivateKey, transferKeyId);
+
+// Transfer credits
+const result = await sdk.identities.creditTransfer({
+  identity: senderIdentity,
+  recipientId: 'recipientIdentityId',
+  amount: 1000000n,
+  signer: signer
+});
+
+console.log('Sender balance:', result.senderBalance);
+console.log('Recipient balance:', result.recipientBalance);
 ```
 
 **Identity Credit Withdrawal** - `identities.creditWithdrawal`

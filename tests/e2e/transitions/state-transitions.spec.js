@@ -42,6 +42,48 @@ function validateBasicStateTransitionResult(result) {
 }
 
 /**
+ * Execute a state transition with retry logic for transient network errors.
+ * @param {Function} executeFn - Async function that executes the state transition and returns result
+ * @param {Object} options - Retry options
+ * @param {number} options.maxRetries - Maximum retry attempts (default: 3)
+ * @param {number} options.delayMs - Delay between retries in ms (default: 3000)
+ * @param {string[]} options.retryableErrors - Error substrings that trigger retry (default: ['not found', 'timeout'])
+ * @returns {Promise<Object>} - The successful state transition result
+ */
+async function executeWithRetry(executeFn, options = {}) {
+  const {
+    maxRetries = 3,
+    delayMs = 3000,
+    retryableErrors = ['not found', 'timeout', 'unavailable']
+  } = options;
+
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await executeFn();
+
+    // Check if successful
+    if (result.success && !result.hasError) {
+      return result;
+    }
+
+    // Check if error is retryable
+    const errorMsg = (result.result || '').toLowerCase();
+    const isRetryable = retryableErrors.some(err => errorMsg.includes(err.toLowerCase()));
+
+    if (!isRetryable || attempt === maxRetries) {
+      return result; // Return the failed result for validation to handle
+    }
+
+    console.log(`⚠️ Attempt ${attempt}/${maxRetries} failed with retryable error, retrying in ${delayMs}ms...`);
+    console.log(`   Error: ${result.result?.substring(0, 100)}...`);
+    lastError = result;
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  return lastError;
+}
+
+/**
  * Filter out placeholder options from dropdown arrays
  * @param {string[]} options - Array of dropdown options
  * @returns {string[]} - Filtered array without placeholders
@@ -800,7 +842,11 @@ test.describe('Evo SDK State Transition Tests', () => {
         );
         expect(success).toBe(true);
 
-        const purchaseResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        // Use retry logic for purchase since the SDK's internal identity fetch can fail transiently
+        const purchaseResult = await executeWithRetry(
+          () => evoSdkPage.executeStateTransitionAndGetResult(),
+          { maxRetries: 3, delayMs: 3000 }
+        );
         validateBasicStateTransitionResult(purchaseResult);
 
         validateDocumentPurchaseResult(purchaseResult.result, documentId, secondaryIdentityId, purchasePrice);
