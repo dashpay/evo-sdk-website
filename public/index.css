@@ -1,17 +1,18 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: #f5f5f5;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .header {
-  background-color: #2c3e50;
-  color: white;
+  background-color: var(--header-bg);
+  color: var(--header-text);
   padding: 15px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px var(--shadow-light);
 }
 
 .header h1 {
@@ -23,18 +24,19 @@ body {
 .version-info {
   font-size: 14px;
   font-weight: normal;
-  color: #a0b3c7;
+  color: var(--header-text-muted);
   margin-left: 12px;
   opacity: 0.9;
 }
 
 .header-nav {
   display: flex;
+  align-items: center;
   gap: 20px;
 }
 
 .header-nav a {
-  color: white;
+  color: var(--header-text);
   text-decoration: none;
   font-weight: 500;
   transition: opacity 0.2s;
@@ -48,7 +50,7 @@ body {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--preloader-overlay);
   z-index: 1000;
   align-items: center;
   justify-content: center;
@@ -57,7 +59,7 @@ body {
 .preloader-content {
   width: min(420px, calc(100% - 40px));
   text-align: center;
-  background: #111827;
+  background: var(--preloader-bg);
   padding: 32px 40px;
   border-radius: 12px;
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
@@ -66,14 +68,14 @@ body {
 .preloader-text {
   font-size: 18px;
   margin-bottom: 18px;
-  color: #f9fafb;
+  color: var(--preloader-text);
   font-weight: 500;
 }
 
 .progress-bar {
   width: 100%;
   height: 18px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--progress-bg);
   border-radius: 999px;
   overflow: hidden;
   margin-bottom: 12px;
@@ -81,7 +83,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4CAF50, #45a049);
+  background: var(--progress-fill);
   width: 0%;
   transition: width 0.3s ease;
   border-radius: 999px;
@@ -90,7 +92,7 @@ body {
 .progress-percent {
   font-size: 14px;
   font-weight: 600;
-  color: #a7f3d0;
+  color: var(--progress-text);
 }
 
 .app-container {
@@ -101,8 +103,8 @@ body {
 
 .sidebar {
   width: 450px;
-  background-color: white;
-  border-right: 1px solid #e0e0e0;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -110,14 +112,14 @@ body {
 
 .network-toggle {
   padding: 20px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .network-toggle label {
   margin-right: 15px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .network-indicator {
@@ -130,19 +132,19 @@ body {
 }
 
 .network-indicator.testnet {
-  background-color: #ff9800;
+  background-color: var(--warning);
   color: white;
 }
 
 .network-indicator.mainnet {
-  background-color: #4caf50;
+  background-color: var(--success);
   color: white;
 }
 
 .proof-toggle {
   padding: 15px 20px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -150,7 +152,7 @@ body {
 
 .proof-toggle label {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -174,7 +176,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
+  background-color: var(--toggle-off);
   transition: .4s;
   border-radius: 34px;
 }
@@ -186,13 +188,13 @@ body {
   width: 16px;
   left: 4px;
   bottom: 4px;
-  background-color: white;
+  background-color: var(--toggle-knob);
   transition: .4s;
   border-radius: 50%;
 }
 
 input:checked + .toggle-slider {
-  background-color: #4CAF50;
+  background-color: var(--toggle-on);
 }
 
 input:checked + .toggle-slider:before {
@@ -228,14 +230,15 @@ details.sdk-config summary span:last-child {
   width: 100%;
   padding: 10px;
   font-size: 14px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background-color: white;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .query-inputs {
-  background-color: #f8f9fa;
+  background-color: var(--bg-tertiary);
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 15px;
@@ -249,21 +252,23 @@ details.sdk-config summary span:last-child {
   display: block;
   margin-bottom: 5px;
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .input-group input[type="text"],
 .input-group input[type="password"] {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .query-inputs h4 {
   margin: 0 0 15px 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1em;
 }
 
@@ -274,7 +279,7 @@ details.sdk-config summary span:last-child {
 .input-group label {
   display: block;
   margin-bottom: 5px;
-  color: #555;
+  color: var(--text-secondary);
   font-size: 0.9em;
 }
 
@@ -282,10 +287,12 @@ details.sdk-config summary span:last-child {
 .input-group select {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   font-size: 14px;
   box-sizing: border-box;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .input-group input[type="checkbox"] {
@@ -304,7 +311,7 @@ details.sdk-config summary span:last-child {
 }
 
 .optional-label {
-  color: #888;
+  color: var(--text-muted);
   font-size: 0.85em;
   font-style: italic;
 }
@@ -312,7 +319,7 @@ details.sdk-config summary span:last-child {
 .execute-button {
   width: 100%;
   padding: 12px;
-  background-color: #1976d2;
+  background-color: var(--accent-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -323,17 +330,17 @@ details.sdk-config summary span:last-child {
 }
 
 .execute-button:hover {
-  background-color: #1565c0;
+  background-color: var(--accent-primary-hover);
 }
 
 .execute-button:disabled {
-  background-color: #ccc;
+  background-color: var(--toggle-off);
   cursor: not-allowed;
 }
 
 .result-container {
   flex: 1;
-  background-color: white;
+  background-color: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -352,32 +359,32 @@ details.sdk-config summary span:last-child {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .result-proof-section {
   border-bottom: none;
-  background-color: #f8f9fa;
+  background-color: var(--bg-tertiary);
 }
 
 .section-header {
   padding: 10px 20px;
-  background-color: #e3f2fd;
-  border-bottom: 1px solid #ccc;
+  background-color: var(--section-data-bg);
+  border-bottom: 1px solid var(--border-color);
   font-weight: 600;
-  color: #1976d2;
+  color: var(--section-data-text);
   font-size: 14px;
 }
 
 .result-proof-section .section-header {
-  background-color: #f3e5f5;
-  color: #7b1fa2;
+  background-color: var(--section-proof-bg);
+  color: var(--section-proof-text);
 }
 
 .result-header {
   padding: 20px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -385,22 +392,23 @@ details.sdk-config summary span:last-child {
 
 .result-header h2 {
   margin: 0;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.3em;
 }
 
 .result-actions button {
   margin-left: 10px;
   padding: 8px 16px;
-  border: 1px solid #ddd;
-  background-color: white;
+  border: 1px solid var(--border-light);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
 }
 
 .result-actions button:hover {
-  background-color: #f5f5f5;
+  background-color: var(--bg-tertiary);
 }
 
 .result-content {
@@ -415,7 +423,7 @@ details.sdk-config summary span:last-child {
 }
 
 .result-content.empty {
-  color: #888;
+  color: var(--text-muted);
   font-style: italic;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
@@ -439,30 +447,30 @@ details.sdk-config summary span:last-child {
 }
 
 .status-banner.success {
-  background-color: #4caf50;
+  background-color: var(--success);
   color: white;
 }
 
 .status-banner.error {
-  background-color: #f44336;
+  background-color: var(--error);
   color: white;
 }
 
 .status-banner.loading {
-  background-color: #ff9800;
+  background-color: var(--warning);
   color: white;
 }
 
 .error-result {
-  color: #d32f2f;
-  background-color: #ffebee;
-  border: 1px solid #ffcdd2;
+  color: var(--error-text);
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 4px;
   padding: 10px;
 }
 
 .credits-value {
-  color: #1976d2;
+  color: var(--accent-primary);
   cursor: help;
   text-decoration: underline;
   text-decoration-style: dotted;
@@ -471,7 +479,7 @@ details.sdk-config summary span:last-child {
 }
 
 .credits-value:hover {
-  background-color: #e3f2fd;
+  background-color: var(--credits-hover-bg);
   border-radius: 3px;
   padding: 0 2px;
 }
@@ -482,8 +490,8 @@ details.sdk-config summary span:last-child {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #333;
-  color: white;
+  background-color: var(--tooltip-bg);
+  color: var(--tooltip-text);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -500,13 +508,13 @@ details.sdk-config summary span:last-child {
 }
 
 .nonce-value {
-  color: #9c27b0;
+  color: var(--nonce-color);
   cursor: help;
   position: relative;
 }
 
 .nonce-value:hover {
-  background-color: #f3e5f5;
+  background-color: var(--nonce-hover-bg);
   border-radius: 3px;
   padding: 0 2px;
 }
@@ -518,8 +526,8 @@ details.sdk-config summary span:last-child {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #333;
-  color: white;
+  background-color: var(--tooltip-bg);
+  color: var(--tooltip-text);
   padding: 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -531,7 +539,7 @@ details.sdk-config summary span:last-child {
   margin-bottom: 5px;
   z-index: 1000;
   max-width: 500px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px var(--shadow-medium);
 }
 
 .nonce-value:hover::after {
@@ -539,7 +547,7 @@ details.sdk-config summary span:last-child {
 }
 
 .json-key {
-  color: #d73a49;
+  color: var(--json-key);
   font-weight: 500;
 }
 
@@ -556,10 +564,10 @@ details.sdk-config summary span:last-child {
 }
 
 .array-input-container {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 10px;
-  background-color: #fafafa;
+  background-color: var(--array-bg);
 }
 
 .array-item {
@@ -574,7 +582,7 @@ details.sdk-config summary span:last-child {
 
 .array-item button {
   padding: 5px 10px;
-  background-color: #ff5252;
+  background-color: var(--array-remove-btn);
   color: white;
   border: none;
   border-radius: 3px;
@@ -583,7 +591,7 @@ details.sdk-config summary span:last-child {
 
 .add-array-item {
   padding: 5px 15px;
-  background-color: #4caf50;
+  background-color: var(--array-add-btn);
   color: white;
   border: none;
   border-radius: 3px;
@@ -593,17 +601,17 @@ details.sdk-config summary span:last-child {
 
 .query-description {
   font-size: 0.85em;
-  color: #666;
+  color: var(--text-tertiary);
   margin-bottom: 15px;
   padding: 10px;
-  background-color: #e3f2fd;
+  background-color: var(--info-bg);
   border-radius: 4px;
   line-height: 1.4;
 }
 
 .action-button {
   padding: 8px 16px;
-  background-color: #2196f3;
+  background-color: var(--accent-secondary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -612,22 +620,113 @@ details.sdk-config summary span:last-child {
 }
 
 .action-button:hover {
-  background-color: #1976d2;
+  background-color: var(--accent-primary);
 }
 
 .dynamic-fields-container {
   margin-top: 10px;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-light);
   border-radius: 4px;
-  background-color: #fafafa;
+  background-color: var(--dynamic-fields-bg);
 }
 
 .field-group {
   margin-bottom: 10px;
   padding: 8px;
-  background-color: white;
+  background-color: var(--field-group-bg);
   border-radius: 4px;
+}
+
+/* SDK Configuration section overrides for dark mode */
+.sdk-config {
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.sdk-config summary {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.sdk-config summary span:first-child {
+  color: var(--text-primary) !important;
+}
+
+.sdk-config summary span:last-child {
+  color: var(--text-tertiary) !important;
+}
+
+.sdk-config > div {
+  background-color: var(--bg-tertiary) !important;
+}
+
+.sdk-config label {
+  color: var(--text-primary) !important;
+}
+
+.sdk-config small {
+  color: var(--text-muted) !important;
+}
+
+.sdk-config input,
+.sdk-config select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.sdk-config details summary {
+  color: var(--text-primary) !important;
+}
+
+.sdk-config #latestVersionInfo {
+  color: var(--text-tertiary) !important;
+}
+
+.sdk-config #applyConfig {
+  background-color: var(--accent-primary) !important;
+}
+
+.sdk-config #applyConfig:hover {
+  background-color: var(--accent-primary-hover) !important;
+}
+
+/* Proof toggle label */
+.proof-toggle span[style*="color: #333"] {
+  color: var(--text-primary) !important;
+}
+
+/* No proof info container */
+.no-proof-info {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.no-proof-info span {
+  color: var(--text-muted) !important;
+}
+
+/* API Error Banner for dark mode */
+.api-error-banner {
+  background-color: var(--error-banner-bg);
+  color: var(--error-banner-text);
+  padding: 15px;
+  margin: 0;
+  border-bottom: 1px solid var(--error-banner-border);
+  text-align: center;
+}
+
+.api-retry-button {
+  background-color: var(--error);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.api-retry-button:hover {
+  opacity: 0.9;
 }
 
 .field-group label {
@@ -644,8 +743,8 @@ details.sdk-config summary span:last-child {
 
 .operator-select {
   width: 80px;
-  background-color: white;
-  color: #333;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
   padding: 8px 35px 8px 10px;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -662,12 +761,12 @@ details.sdk-config summary span:last-child {
 }
 
 .operator-select option {
-  background-color: white;
-  color: #333;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
 }
 
 .operator-select option:checked {
-  background-color: #007bff;
+  background-color: var(--accent-primary);
   color: white;
 }
 
@@ -687,24 +786,24 @@ details.sdk-config summary span:last-child {
 }
 
 .index-property-first {
-  background-color: #4caf50;
+  background-color: var(--badge-first);
   color: white;
 }
 
 .index-property-second {
-  background-color: #2196f3;
+  background-color: var(--badge-second);
   color: white;
 }
 
 .index-property-third {
-  background-color: #ff9800;
+  background-color: var(--badge-third);
   color: white;
 }
 
 .compound-index-warning {
-  background-color: #fff3cd;
-  border: 1px solid #ffeaa7;
-  color: #856404;
+  background-color: var(--compound-warning-bg);
+  border: 1px solid var(--compound-warning-border);
+  color: var(--compound-warning-text);
   padding: 10px;
   border-radius: 4px;
   margin: 10px 0;
@@ -712,8 +811,8 @@ details.sdk-config summary span:last-child {
 }
 
 .query-preview {
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-light);
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
@@ -723,33 +822,33 @@ details.sdk-config summary span:last-child {
 
 .query-preview h5 {
   margin-top: 0;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .operator-help {
   font-size: 0.85em;
-  color: #666;
+  color: var(--text-tertiary);
   margin-left: 5px;
   cursor: help;
 }
 
 .range-group {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-color);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 10px;
-  background-color: #f9f9f9;
+  background-color: var(--range-bg);
 }
 
 .range-group-header {
   font-weight: 500;
   margin-bottom: 8px;
-  color: #1976d2;
+  color: var(--range-header);
 }
 
 .add-range-button {
   padding: 4px 12px;
-  background-color: #1976d2;
+  background-color: var(--accent-primary);
   color: white;
   border: none;
   border-radius: 3px;
@@ -759,27 +858,27 @@ details.sdk-config summary span:last-child {
 }
 
 .add-range-button:hover {
-  background-color: #1565c0;
+  background-color: var(--accent-primary-hover);
 }
 
 .between-info {
-  background-color: #e3f2fd;
+  background-color: var(--between-bg);
   padding: 8px;
   border-radius: 3px;
   margin-top: 8px;
   font-size: 0.85em;
-  color: #1565c0;
+  color: var(--between-text);
 }
 
 .validation-error {
-  color: #d32f2f;
+  color: var(--error-text);
   font-size: 0.85em;
   margin-top: 5px;
 }
 
 .field-type-indicator {
   font-size: 0.8em;
-  color: #666;
+  color: var(--text-tertiary);
   margin-left: 5px;
   font-style: italic;
 }
