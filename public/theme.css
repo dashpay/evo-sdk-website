@@ -261,6 +261,12 @@
   height: 18px;
 }
 
+/* Theme toggle container */
+#themeToggle {
+  display: flex;
+  align-items: center;
+}
+
 /* Theme selector dropdown */
 .theme-selector {
   position: relative;

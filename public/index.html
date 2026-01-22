@@ -188,12 +188,20 @@
   <script type="module" src="./app.js"></script>
   <script>
     // Initialize theme selector
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.ThemeManager) {
-        window.ThemeManager.createThemeSelector('themeToggle');
-        window.ThemeManager.setupSystemThemeListener();
+    (function() {
+      function initThemeUI() {
+        if (window.ThemeManager) {
+          window.ThemeManager.createThemeSelector('themeToggle');
+          window.ThemeManager.setupSystemThemeListener();
+        }
       }
-    });
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initThemeUI);
+      } else {
+        initThemeUI();
+      }
+    })();
   </script>
 
 </body>
