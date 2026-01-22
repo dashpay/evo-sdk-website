@@ -7,11 +7,14 @@
 <head>
   <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2c3e50">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
   <title>Dash Platform Evo JS SDK</title>
   <link rel="icon" type="image/svg+xml" href="https://media.dash.org/wp-content/uploads/blue-d.svg">
   <link rel="alternate icon" type="image/png" href="https://media.dash.org/wp-content/uploads/blue-d-250.png">
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="index.css">
+  <script src="theme.js"></script>
 </head>
 
 <body>
@@ -24,14 +27,15 @@
       <a href="docs.html">Documentation</a>
       <a href="AI_REFERENCE.md">AI Reference</a>
       <a href="https://github.com/dashpay/evo-sdk-website" target="_blank">GitHub</a>
+      <div id="themeToggle"></div>
     </nav>
   </div>
 
   <!-- Error Banner for API definitions loading failures -->
-  <div id="apiErrorBanner" style="display: none; background-color: #f8d7da; color: #721c24; padding: 15px; margin: 0; border-bottom: 1px solid #f5c6cb; text-align: center;">
+  <div id="apiErrorBanner" class="api-error-banner" style="display: none;">
     <div style="display: flex; justify-content: center; align-items: center; gap: 15px; flex-wrap: wrap;">
       <span id="apiErrorMessage">Failed to load API definitions. Please check your connection and try again.</span>
-      <button id="apiRetryButton" style="background-color: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">Retry</button>
+      <button id="apiRetryButton" class="api-retry-button">Retry</button>
     </div>
   </div>
 
@@ -64,19 +68,19 @@
       </div>
 
       <!-- SDK Configuration Section (Collapsible) -->
-      <details class="sdk-config" style="margin: 0; padding: 0; border-bottom: 1px solid #e0e0e0;">
-        <summary style="padding: 15px 20px; background-color: #f8f9fa; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-weight: 500; color: #333;">Advanced SDK Configuration</span>
-          <span style="font-size: 0.8em; color: #666;">▼</span>
+      <details class="sdk-config" style="margin: 0; padding: 0;">
+        <summary style="padding: 15px 20px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 500;">Advanced SDK Configuration</span>
+          <span style="font-size: 0.8em;">▼</span>
         </summary>
-        <div style="padding: 15px 20px; background-color: #f0f4f8;">
+        <div style="padding: 15px 20px;">
           <div style="margin-bottom: 10px;">
             <label style="display: block; margin-bottom: 5px; font-weight: 500;">Platform Version:</label>
             <div style="display: flex; gap: 10px; align-items: center;">
               <input type="number" id="platformVersion" placeholder="Latest" style="flex: 1; padding: 5px;" min="1">
-              <span id="latestVersionInfo" style="font-size: 0.9em; color: #666;"></span>
+              <span id="latestVersionInfo" style="font-size: 0.9em;"></span>
             </div>
-            <small style="color: #666;">Leave empty for latest version</small>
+            <small>Leave empty for latest version</small>
           </div>
 
           <details style="margin-top: 10px;">
@@ -101,7 +105,7 @@
             </div>
           </details>
 
-          <button id="applyConfig" style="margin-top: 15px; padding: 8px 15px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Apply Configuration</button>
+          <button id="applyConfig" style="margin-top: 15px; padding: 8px 15px; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">Apply Configuration</button>
         </div>
       </details>
 
@@ -152,12 +156,12 @@
               <input type="checkbox" id="proofToggle">
               <span class="toggle-slider"></span>
             </span>
-            <span style="margin-left: 60px; font-weight: 500; color: #333;">With Proof Info</span>
+            <span style="margin-left: 60px; font-weight: 500;">With Proof Info</span>
           </label>
         </div>
 
-        <div class="no-proof-info" style="display: none; margin: 15px 0; padding: 10px; background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px; text-align: center;" id="noProofInfoContainer">
-          <span style="color: #6c757d; font-size: 0.9em;">Note: this query does not provide cryptographic proof verification.</span>
+        <div class="no-proof-info" style="display: none; margin: 15px 0; padding: 10px; border-radius: 4px; text-align: center;" id="noProofInfoContainer">
+          <span style="font-size: 0.9em;">Note: this query does not provide cryptographic proof verification.</span>
         </div>
 
         <button id="executeQuery" class="execute-button" style="display: none;">Execute</button>
@@ -182,6 +186,5 @@
     <div id="statusBanner" class="status-banner loading">Initializing Evo SDK...</div>
 
   <script type="module" src="./app.js"></script>
-
 </body>
 </html>
