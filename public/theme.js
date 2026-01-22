@@ -261,3 +261,20 @@ if (typeof window !== 'undefined') {
     setupSystemThemeListener
   };
 }
+
+// Auto-initialize theme selector when DOM is ready
+(function() {
+  function initThemeUI() {
+    const container = document.getElementById('themeToggle');
+    if (container && window.ThemeManager) {
+      window.ThemeManager.createThemeSelector('themeToggle');
+      window.ThemeManager.setupSystemThemeListener();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeUI);
+  } else {
+    initThemeUI();
+  }
+})();
