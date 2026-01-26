@@ -1475,7 +1475,8 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateTokenDirectPurchaseResult(result.result, testParams.amount, testParams.totalAgreedPrice);
     });
 
-    test('should execute token config update transition', async () => {
+    test.skip('should execute token config update transition', async () => {
+      // Skip: tokenConfigUpdate is not supported in SDK RC1
       await evoSdkPage.setupStateTransition('token', 'tokenConfigUpdate');
 
       const success = await parameterInjector.injectStateTransitionParameters(

@@ -2297,12 +2297,13 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (currentRevision == null) {
         throw new Error('Document has no revision');
       }
-      existingDoc.revision = currentRevision + 1;
+      existingDoc.revision = currentRevision + 1n;
       await c.documents.transfer({ document: existingDoc, recipientId: n.recipientId, identityKey, signer });
       return {
         type: 'DocumentTransferred',
         documentId: n.documentId,
         newOwnerId: n.recipientId,
+        transferred: true,
       };
     }
     case 'documentPurchase': {
@@ -2317,13 +2318,18 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (currentRevision == null) {
         throw new Error('Document has no revision');
       }
-      existingDoc.revision = currentRevision + 1;
-      await c.documents.purchase({ document: existingDoc, price: BigInt(n.price), identityKey, signer });
+      const newRevision = currentRevision + 1n;
+      existingDoc.revision = newRevision;
+      await c.documents.purchase({ document: existingDoc, buyerId: n.buyerId, price: BigInt(n.price), identityKey, signer });
       return {
         type: 'DocumentPurchased',
         documentId: n.documentId,
-        buyerId: n.buyerId,
-        price: n.price,
+        status: 'success',
+        newOwnerId: n.buyerId,
+        pricePaid: Number(n.price),
+        message: 'Document purchased successfully',
+        documentUpdated: true,
+        revision: Number(newRevision),
       };
     }
     case 'documentSetPrice': {
@@ -2338,7 +2344,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (currentRevision == null) {
         throw new Error('Document has no revision');
       }
-      existingDoc.revision = currentRevision + 1;
+      existingDoc.revision = currentRevision + 1n;
       await c.documents.setPrice({ document: existingDoc, price: BigInt(n.price), identityKey, signer });
       return {
         type: 'DocumentPriceSet',
@@ -2437,26 +2443,44 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const tokenPosition = toNumber(n.tokenPosition, 0);
       return c.tokens.priceByContract(contractId, tokenPosition);
     }
-    case 'tokenMint':
-      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.issuedToIdentityId || n.recipientId, publicNote: n.publicNote });
-    case 'tokenBurn':
-      return c.tokens.burn({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenTransfer':
-      return c.tokens.transfer({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, senderId: n.senderId, recipientId: n.recipientId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenFreeze':
-      return c.tokens.freeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToFreeze: n.identityToFreeze, freezerId: n.freezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenUnfreeze':
-      return c.tokens.unfreeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToUnfreeze: n.identityToUnfreeze, unfreezerId: n.unfreezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenDestroyFrozen':
-      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.frozenIdentityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenSetPriceForDirectPurchase':
-      return c.tokens.setPriceForDirectPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, priceType: n.priceType, priceData: n.priceData, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenDirectPurchase':
-      return c.tokens.directPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, totalAgreedPrice: n.totalAgreedPrice, privateKeyWif: n.privateKeyWif });
-    case 'tokenClaim':
-      return c.tokens.claim({ contractId: n.contractId, tokenPosition: n.tokenPosition, distributionType: n.distributionType, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
+    case 'tokenMint': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.identityId, n.privateKeyWif);
+      return c.tokens.mint({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), amount: BigInt(n.amount), identityId: n.identityId, recipientId: n.issuedToIdentityId || n.recipientId, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenBurn': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.identityId, n.privateKeyWif);
+      return c.tokens.burn({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), amount: BigInt(n.amount), identityId: n.identityId, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenTransfer': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.senderId, n.privateKeyWif);
+      return c.tokens.transfer({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), amount: BigInt(n.amount), senderId: n.senderId, recipientId: n.recipientId, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenFreeze': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.freezerId, n.privateKeyWif);
+      return c.tokens.freeze({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), authorityId: n.freezerId, frozenIdentityId: n.identityToFreeze, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenUnfreeze': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.unfreezerId, n.privateKeyWif);
+      return c.tokens.unfreeze({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), authorityId: n.unfreezerId, frozenIdentityId: n.identityToUnfreeze, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenDestroyFrozen': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.destroyerId, n.privateKeyWif);
+      return c.tokens.destroyFrozen({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), authorityId: n.destroyerId, frozenIdentityId: n.frozenIdentityId, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenSetPriceForDirectPurchase': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.identityId, n.privateKeyWif);
+      return c.tokens.setPrice({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), authorityId: n.identityId, price: n.priceData ? BigInt(n.priceData) : null, identityKey, signer, publicNote: n.publicNote });
+    }
+    case 'tokenDirectPurchase': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.identityId, n.privateKeyWif);
+      return c.tokens.directPurchase({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), buyerId: n.identityId, amount: BigInt(n.amount), maxTotalCost: BigInt(n.totalAgreedPrice), identityKey, signer });
+    }
+    case 'tokenClaim': {
+      const { identityKey, signer } = await prepareDocumentOperation(c, n.identityId, n.privateKeyWif);
+      return c.tokens.claim({ dataContractId: n.contractId, tokenPosition: toNumber(n.tokenPosition, 0), identityId: n.identityId, distributionType: n.distributionType || 'perpetual', identityKey, signer, publicNote: n.publicNote });
+    }
     case 'tokenConfigUpdate':
-      return c.tokens.configUpdate({ contractId: n.contractId, tokenPosition: n.tokenPosition, configItemType: n.configItemType, configValue: n.configValue, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
+      throw new Error('tokenConfigUpdate is not supported in SDK RC1');
 
     // Group queries
     case 'getGroupInfo': {
