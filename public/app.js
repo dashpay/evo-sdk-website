@@ -2566,6 +2566,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         throw new Error(`Document not found: ${n.documentId}`);
       }
 
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
+
       await c.documents.transfer({
         document,
         recipientId: n.recipientId,
@@ -2616,6 +2619,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (!document) {
         throw new Error(`Document not found: ${n.documentId}`);
       }
+
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
 
       await c.documents.purchase({
         document,
@@ -2669,6 +2675,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (!document) {
         throw new Error(`Document not found: ${n.documentId}`);
       }
+
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
 
       await c.documents.setPrice({
         document,
