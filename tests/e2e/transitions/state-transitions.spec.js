@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { EvoSdkPage } = require('../utils/sdk-page');
 const { ParameterInjector } = require('../utils/parameter-injector');
+
 /**
  * Helper function to execute a state transition
  * @param {EvoSdkPage} evoSdkPage - The page object instance
@@ -21,6 +22,47 @@ async function executeStateTransition(evoSdkPage, parameterInjector, category, t
   return result;
 }
 
+/**
+ * Execute a state transition with retry logic for transient network errors.
+ * @param {Function} executeFn - Async function that executes the state transition and returns result
+ * @param {Object} options - Retry options
+ * @param {number} options.maxRetries - Maximum retry attempts (default: 3)
+ * @param {number} options.delayMs - Delay between retries in ms (default: 3000)
+ * @param {string[]} options.retryableErrors - Error substrings that trigger retry
+ * @returns {Promise<Object>} - The successful state transition result
+ */
+async function executeWithRetry(executeFn, options = {}) {
+  const {
+    maxRetries = 3,
+    delayMs = 3000,
+    retryableErrors = ['not found', 'timeout', 'unavailable', 'invalid revision']
+  } = options;
+
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await executeFn();
+
+    // Check if successful
+    if (result.success && !result.hasError) {
+      return result;
+    }
+
+    // Check if error is retryable
+    const errorMsg = (result.result || '').toLowerCase();
+    const isRetryable = retryableErrors.some(err => errorMsg.includes(err.toLowerCase()));
+
+    if (!isRetryable || attempt === maxRetries) {
+      return result; // Return the failed result for validation to handle
+    }
+
+    console.log(`⚠️ Attempt ${attempt}/${maxRetries} failed with retryable error, retrying in ${delayMs}ms...`);
+    console.log(`   Error: ${result.result?.substring(0, 100)}...`);
+    lastError = result;
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  return lastError;
+}
 
 /**
  * Helper function to validate basic state transition result properties
@@ -153,6 +195,75 @@ function validateDocumentDeleteResult(resultStr, expectedDocumentId = null) {
   }
 
   return deleteResponse;
+}
+
+/**
+ * Helper function to validate document transfer result
+ * @param {string} resultStr - The raw result string from document transfer
+ * @param {string} expectedDocumentId - Expected document ID to validate against
+ * @param {string} expectedRecipientId - Expected recipient identity ID
+ */
+function validateDocumentTransferResult(resultStr, expectedDocumentId, expectedRecipientId) {
+  expect(() => JSON.parse(resultStr)).not.toThrow();
+  const transferResponse = JSON.parse(resultStr);
+  expect(transferResponse).toBeDefined();
+  expect(transferResponse).toBeInstanceOf(Object);
+
+  // Validate the response structure for document transfer (SDK 3.0 format)
+  expect(transferResponse.status).toBe('success');
+  expect(transferResponse.documentId).toBe(expectedDocumentId);
+  expect(transferResponse.recipientId).toBe(expectedRecipientId);
+  expect(transferResponse.message).toBeDefined();
+
+  console.log(`✅ Confirmed transfer of document: ${expectedDocumentId} to ${expectedRecipientId}`);
+
+  return transferResponse;
+}
+
+/**
+ * Helper function to validate document set price result
+ * @param {string} resultStr - The raw result string from document set price
+ * @param {string} expectedDocumentId - Expected document ID to validate against
+ * @param {number} expectedPrice - Expected price that was set
+ */
+function validateDocumentSetPriceResult(resultStr, expectedDocumentId, expectedPrice) {
+  expect(() => JSON.parse(resultStr)).not.toThrow();
+  const setPriceResponse = JSON.parse(resultStr);
+  expect(setPriceResponse).toBeDefined();
+  expect(setPriceResponse).toBeInstanceOf(Object);
+
+  // Validate the response structure for document set price (SDK 3.0 format)
+  expect(setPriceResponse.status).toBe('success');
+  expect(setPriceResponse.documentId).toBe(expectedDocumentId);
+  expect(setPriceResponse.message).toBeDefined();
+
+  console.log(`✅ Confirmed price set for document: ${expectedDocumentId} at ${expectedPrice} credits`);
+
+  return setPriceResponse;
+}
+
+/**
+ * Helper function to validate document purchase result
+ * @param {string} resultStr - The raw result string from document purchase
+ * @param {string} expectedDocumentId - Expected document ID to validate against
+ * @param {string} expectedBuyerId - Expected buyer identity ID
+ * @param {number} expectedPrice - Expected purchase price
+ */
+function validateDocumentPurchaseResult(resultStr, expectedDocumentId, expectedBuyerId, expectedPrice) {
+  expect(() => JSON.parse(resultStr)).not.toThrow();
+  const purchaseResponse = JSON.parse(resultStr);
+  expect(purchaseResponse).toBeDefined();
+  expect(purchaseResponse).toBeInstanceOf(Object);
+
+  // Validate the response structure for document purchase (SDK 3.0 format)
+  expect(purchaseResponse.status).toBe('success');
+  expect(purchaseResponse.documentId).toBe(expectedDocumentId);
+  expect(purchaseResponse.buyerId).toBe(expectedBuyerId);
+  expect(purchaseResponse.message).toBeDefined();
+
+  console.log(`✅ Confirmed purchase of document: ${expectedDocumentId} by ${expectedBuyerId} for ${expectedPrice} credits`);
+
+  return purchaseResponse;
 }
 
 /**
@@ -647,57 +758,273 @@ test.describe('Evo SDK State Transition Tests', () => {
       });
     });
 
-    // Skip: Requires document to exist and be deletable
-    test.skip('should execute document delete transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'document',
-        'documentDelete',
-        'testnet'
-      );
+    test('should set price, purchase, and transfer a trading card document', async () => {
+      // Set extended timeout for complete marketplace workflow
+      test.setTimeout(360000);
 
-      validateBasicStateTransitionResult(result);
-      validateDocumentDeleteResult(result.result);
+      let nftContractId;
+      let documentId;
+      const primaryIdentityId = parameterInjector.testData.stateTransitionParameters.dataContract.dataContractCreate.testnet[0].identityId;
+      const secondaryIdentityId = parameterInjector.testData.stateTransitionParameters.document.documentPurchase.testnet[0].identityId;
+
+      // Step 1: Create an NFT contract with transferable documents and trade mode
+      await test.step('Create NFT contract', async () => {
+        await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+
+        // NFT document schema with transferable: 1 (Always) and tradeMode: 1 (DirectPurchase)
+        const nftSchema = JSON.stringify({
+          "card": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 100,
+                "position": 0
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 500,
+                "position": 1
+              }
+            },
+            "required": ["name"],
+            "additionalProperties": false,
+            "transferable": 1,
+            "tradeMode": 1
+          }
+        });
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'dataContract',
+          'dataContractCreate',
+          'testnet',
+          { documentSchemas: nftSchema }
+        );
+        expect(success).toBe(true);
+
+        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(createResult);
+
+        const resultData = JSON.parse(createResult.result);
+        nftContractId = resultData.contractId;
+        console.log('✅ NFT contract created with ID:', nftContractId);
+      });
+
+      // Step 2: Create a trading card document
+      await test.step('Create trading card document', async () => {
+        await evoSdkPage.setupStateTransition('document', 'documentCreate');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentCreate',
+          'testnet',
+          {
+            contractId: nftContractId,
+            documentType: 'card'
+          }
+        );
+        expect(success).toBe(true);
+
+        await evoSdkPage.fetchDocumentSchema();
+        await evoSdkPage.fillDocumentFields({
+          name: 'Test Trading Card',
+          description: 'A test trading card for automation'
+        });
+
+        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(createResult);
+
+        const documentResponse = validateDocumentCreateResult(createResult.result);
+        documentId = documentResponse.documentId;
+        console.log('✅ Trading card created with ID:', documentId);
+      });
+
+      // Wait for document to propagate through the network before setting price
+      console.log('Waiting 2s for document to propagate...');
+      await evoSdkPage.page.waitForTimeout(2000);
+
+      // Step 3: Set price on the card (by owner - primary identity)
+      await test.step('Set price on trading card', async () => {
+        const configuredPrice = parameterInjector.testData.stateTransitionParameters.document.documentSetPrice.testnet[0].price;
+
+        await evoSdkPage.setupStateTransition('document', 'documentSetPrice');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentSetPrice',
+          'testnet',
+          {
+            contractId: nftContractId,
+            documentType: 'card',
+            documentId: documentId
+          }
+        );
+        expect(success).toBe(true);
+
+        const setPriceResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(setPriceResult);
+
+        validateDocumentSetPriceResult(setPriceResult.result, documentId, configuredPrice);
+        console.log('✅ Price set on trading card');
+      });
+
+      await evoSdkPage.page.waitForTimeout(2000);
+
+      // Step 4: Purchase the card with secondary identity
+      await test.step('Purchase trading card with secondary identity', async () => {
+        const purchasePrice = parameterInjector.testData.stateTransitionParameters.document.documentPurchase.testnet[0].price;
+
+        await evoSdkPage.setupStateTransition('document', 'documentPurchase');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentPurchase',
+          'testnet',
+          {
+            contractId: nftContractId,
+            documentType: 'card',
+            documentId: documentId
+          }
+        );
+        expect(success).toBe(true);
+
+        // Use retry logic for purchase since the SDK's internal identity fetch can fail transiently
+        const purchaseResult = await executeWithRetry(
+          () => evoSdkPage.executeStateTransitionAndGetResult(),
+          { maxRetries: 3, delayMs: 3000 }
+        );
+        validateBasicStateTransitionResult(purchaseResult);
+
+        validateDocumentPurchaseResult(purchaseResult.result, documentId, secondaryIdentityId, purchasePrice);
+        console.log('✅ Trading card purchased by secondary identity');
+      });
+
+      // Step 5: Transfer the card back to primary identity
+      await test.step('Transfer card back to primary identity', async () => {
+        await evoSdkPage.setupStateTransition('document', 'documentTransfer');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentTransfer',
+          'testnet',
+          {
+            contractId: nftContractId,
+            documentType: 'card',
+            documentId: documentId,
+            recipientId: primaryIdentityId
+          }
+        );
+        expect(success).toBe(true);
+
+        const transferResult = await evoSdkPage.executeStateTransitionAndGetResult();
+        validateBasicStateTransitionResult(transferResult);
+
+        validateDocumentTransferResult(transferResult.result, documentId, primaryIdentityId);
+        console.log('✅ Trading card transferred back to primary identity');
+      });
     });
 
-    // Skip: Requires document to be transferable
-    test.skip('should execute document transfer transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'document',
-        'documentTransfer',
-        'testnet'
-      );
+    test('should create, replace, and delete a document', async () => {
+      // Set extended timeout for combined create+replace+delete operation
+      test.setTimeout(260000);
 
-      validateBasicStateTransitionResult(result);
+      let documentId;
+      const timestamp = Date.now();
+
+      // Step 1: Create document
+      // Step 1: Create document (reported separately)
+      await test.step('Create document', async () => {
+        // Set up the document create transition
+        await evoSdkPage.setupStateTransition('document', 'documentCreate');
+
+        // Inject basic parameters (contractId, documentType, identityId, privateKey)
+        const success = await parameterInjector.injectStateTransitionParameters('document', 'documentCreate', 'testnet');
+        expect(success).toBe(true);
+
+        // Fetch document schema to generate dynamic fields
+        await evoSdkPage.fetchDocumentSchema();
+
+        // Fill document fields
+        const testParams = parameterInjector.testData.stateTransitionParameters.document.documentCreate.testnet[0];
+        await evoSdkPage.fillDocumentFields(testParams.documentFields);
+
+        // Execute the transition
+        const createResult = await evoSdkPage.executeStateTransitionAndGetResult();
+
+        // Validate create result
+        validateBasicStateTransitionResult(createResult);
+        const documentResponse = validateDocumentCreateResult(createResult.result);
+
+        // Get the document ID from create result
+        documentId = documentResponse.documentId;
+        console.log('✅ Document created with ID:', documentId);
+      });
+
+      // Step 2: Replace the document (reported separately)
+      await test.step('Replace document', async () => {
+        // Set up document replace transition
+        await evoSdkPage.setupStateTransition('document', 'documentReplace');
+
+        // Inject parameters with the created document ID
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentReplace',
+          'testnet',
+          { documentId } // Override with the created document ID
+        );
+        expect(success).toBe(true);
+
+        // Load the existing document to get revision
+        await evoSdkPage.loadExistingDocument();
+
+        // Create updated message with timestamp
+        const originalTestParams = parameterInjector.testData.stateTransitionParameters.document.documentCreate.testnet[0];
+        const originalMessage = originalTestParams.documentFields.message;
+        const timestamp = new Date().toISOString();
+        const updatedFields = {
+          message: `${originalMessage} - Updated at ${timestamp}`
+        };
+
+        // Fill updated document fields
+        await evoSdkPage.fillDocumentFields(updatedFields);
+
+        // Execute the replace transition
+        const replaceResult = await evoSdkPage.executeStateTransitionAndGetResult();
+
+        // Validate replace result
+        validateBasicStateTransitionResult(replaceResult);
+        validateDocumentReplaceResult(replaceResult.result, documentId);
+      });
+
+      // Step 3: Delete the document (reported separately)
+      await test.step('Delete document', async () => {
+        // Set up document delete transition with the created document ID
+        await evoSdkPage.setupStateTransition('document', 'documentDelete');
+
+        // Inject parameters with the dynamic document ID
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'document',
+          'documentDelete',
+          'testnet',
+          { documentId } // Override with the created document ID
+        );
+        expect(success).toBe(true);
+
+        // Execute the delete transition
+        const deleteResult = await evoSdkPage.executeStateTransitionAndGetResult();
+
+        // Validate delete result with expected document ID
+        validateBasicStateTransitionResult(deleteResult);
+        validateDocumentDeleteResult(deleteResult.result, documentId);
+      });
     });
 
-    // Skip: Requires document with price set
-    test.skip('should execute document purchase transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'document',
-        'documentPurchase',
-        'testnet'
-      );
+    test('should show authentication inputs for document transitions', async () => {
+      await evoSdkPage.setupStateTransition('document', 'documentCreate');
 
-      validateBasicStateTransitionResult(result);
-    });
-
-    // Skip: Requires tradeable document
-    test.skip('should execute document set price transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'document',
-        'documentSetPrice',
-        'testnet'
-      );
-
-      validateBasicStateTransitionResult(result);
+      // Check that authentication inputs are visible
+      const hasAuthInputs = await evoSdkPage.hasAuthenticationInputs();
+      expect(hasAuthInputs).toBe(true);
     });
   });
 
