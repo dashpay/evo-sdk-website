@@ -2269,6 +2269,24 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         undefined            // js_platform_version
       );
 
+      // Apply config settings if any are specified
+      // The DataContract constructor uses default config, so we need to set it explicitly
+      const hasConfigSettings = n.canBeDeleted || n.readonly || n.keepsHistory ||
+        n.documentsKeepHistoryContractDefault || n.documentsMutableContractDefault === false ||
+        n.documentsCanBeDeletedContractDefault === false;
+
+      if (hasConfigSettings) {
+        const config = {
+          canBeDeleted: n.canBeDeleted || false,
+          readonly: n.readonly || false,
+          keepsHistory: n.keepsHistory || false,
+          documentsKeepHistoryContractDefault: n.documentsKeepHistoryContractDefault || false,
+          documentsMutableContractDefault: n.documentsMutableContractDefault !== false, // Default true
+          documentsCanBeDeletedContractDefault: n.documentsCanBeDeletedContractDefault !== false, // Default true
+        };
+        dataContract.setConfig(config); // SDK method to set contract config
+      }
+
       const publishedContract = await c.contracts.publish({ dataContract, identityKey, signer });
 
       // Return in expected format for UI/tests
