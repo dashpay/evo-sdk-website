@@ -676,7 +676,7 @@ const testData = {
             canBeDeleted: false,
             readonly: false,
             keepsHistory: false,
-            documentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0}}, "additionalProperties": false}}',
+            documentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0, "description": "Evo SDK site contract create test"}}, "additionalProperties": false}}',
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Create simple test data contract with document schema"
@@ -687,7 +687,7 @@ const testData = {
         testnet: [
           {
             dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Sample contract ID
-            newDocumentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0}, "author": {"type": "string", "position": 1}}, "additionalProperties": false}}',
+            newDocumentSchemas: '{"note": {"type": "object", "properties": {"message": {"type": "string", "position": 0, "description": "Evo SDK site contract update test"}, "author": {"type": "string", "position": 1}}, "additionalProperties": false}}',
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",
             description: "Update existing note document schema to add author field"
@@ -702,7 +702,7 @@ const testData = {
             dataContractId: "5kMgvQ9foEQ9TzDhz5jvbJ9Lhv5qqBpUeYEezHNEa6Ti", // Use simple note contract (will be created by dataContractCreate test)
             documentTypeName: "note",
             documentFields: {
-              message: "Document created for WASM-SDK UI testing"
+              message: "Document created for Evo SDK website UI testing"
             },
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             privateKey: process.env.TEST_PRIVATE_KEY_CONTRACT || "PLACEHOLDER_CONTRACT_KEY",

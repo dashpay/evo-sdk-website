@@ -1,6 +1,26 @@
 const { test, expect } = require('@playwright/test');
 const { EvoSdkPage } = require('../utils/sdk-page');
 const { ParameterInjector } = require('../utils/parameter-injector');
+/**
+ * Helper function to execute a state transition
+ * @param {EvoSdkPage} evoSdkPage - The page object instance
+ * @param {ParameterInjector} parameterInjector - The parameter injector instance
+ * @param {string} category - State transition category (e.g., 'identity', 'dataContract')
+ * @param {string} transitionType - Transition type (e.g., 'identityCreate')
+ * @param {string} network - Network to use ('testnet' or 'mainnet')
+ * @returns {Promise<Object>} - The transition result object
+ */
+async function executeStateTransition(evoSdkPage, parameterInjector, category, transitionType, network = 'testnet') {
+  await evoSdkPage.setupStateTransition(category, transitionType);
+
+  const success = await parameterInjector.injectStateTransitionParameters(category, transitionType, network);
+  expect(success).toBe(true);
+
+  const result = await evoSdkPage.executeStateTransitionAndGetResult();
+
+  return result;
+}
+
 
 /**
  * Helper function to validate basic state transition result properties
@@ -454,31 +474,26 @@ test.describe('Evo SDK State Transition Tests', () => {
 
       validateBasicStateTransitionResult(result);
     });
+
+    test('should show authentication inputs for identity transitions', async () => {
+      await evoSdkPage.setupStateTransition('identity', 'identityCreditTransfer');
+
+      // Check that authentication inputs are visible
+      const hasAuthInputs = await evoSdkPage.hasAuthenticationInputs();
+      expect(hasAuthInputs).toBe(true);
+    });
   });
 
   test.describe('Data Contract State Transitions', () => {
-    test('should execute data contract create transition', async () => {
-      // Generate unique schema with timestamp to avoid "tx already exists" error
-      const timestamp = Date.now();
-      const uniqueSchema = JSON.stringify({
-        note: {
-          type: "object",
-          properties: {
-            message: { type: "string", position: 0 },
-            createdAt: { type: "integer", position: 1, description: `Test timestamp ${timestamp}` }
-          },
-          additionalProperties: false
-        }
-      });
-
-      // Execute the data contract create transition with unique schema
+    test('should create data contract with history enabled', async () => {
+      // Execute the data contract create transition with keepsHistory: true
       const result = await executeStateTransitionWithCustomParams(
         evoSdkPage,
         parameterInjector,
         'dataContract',
         'dataContractCreate',
         'testnet',
-        { documentSchemas: uniqueSchema }
+        { keepsHistory: true } // Override to enable history
       );
 
       // Validate basic result structure
@@ -488,34 +503,20 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateDataContractResult(result.result, false);
     });
 
-    test('should execute data contract update transition', async () => {
+    test('should create data contract and then update it with author field', async () => {
       // Set extended timeout for combined create+update operation
       test.setTimeout(180000);
-
-      // Generate unique schema with timestamp to avoid "tx already exists" error
-      const timestamp = Date.now();
-      const uniqueSchema = JSON.stringify({
-        note: {
-          type: "object",
-          properties: {
-            message: { type: "string", position: 0 },
-            createdAt: { type: "integer", position: 1, description: `Update test ${timestamp}` }
-          },
-          additionalProperties: false
-        }
-      });
 
       let contractId;
 
       // Step 1: Create contract first
       await test.step('Create data contract', async () => {
-        const createResult = await executeStateTransitionWithCustomParams(
+        const createResult = await executeStateTransition(
           evoSdkPage,
           parameterInjector,
           'dataContract',
           'dataContractCreate',
-          'testnet',
-          { documentSchemas: uniqueSchema }
+          'testnet'
         );
 
         validateBasicStateTransitionResult(createResult);
@@ -526,31 +527,27 @@ test.describe('Evo SDK State Transition Tests', () => {
       });
 
       // Step 2: Update contract with backward-compatible schema
-      await test.step('Update data contract', async () => {
-        const updateSchema = JSON.stringify({
-          note: {
-            type: "object",
-            properties: {
-              message: { type: "string", position: 0 },
-              createdAt: { type: "integer", position: 1, description: `Update test ${timestamp}` },
-              author: { type: "string", position: 2 }
-            },
-            additionalProperties: false
-          }
-        });
-
+      await test.step('Update data contract with author field', async () => {
         const updateResult = await executeStateTransitionWithCustomParams(
           evoSdkPage,
           parameterInjector,
           'dataContract',
           'dataContractUpdate',
           'testnet',
-          { dataContractId: contractId, newDocumentSchemas: updateSchema }
+          { dataContractId: contractId } // Override with dynamic contract ID
         );
 
         validateBasicStateTransitionResult(updateResult);
         validateDataContractResult(updateResult.result, true);
       });
+    });
+
+    test('should show authentication inputs for data contract transitions', async () => {
+      await evoSdkPage.setupStateTransition('dataContract', 'dataContractCreate');
+
+      // Check that authentication inputs are visible
+      const hasAuthInputs = await evoSdkPage.hasAuthenticationInputs();
+      expect(hasAuthInputs).toBe(true);
     });
   });
 
