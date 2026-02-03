@@ -439,16 +439,45 @@ function validateTokenSetPriceResult(resultStr, expectedPriceType, expectedPrice
   return setPriceResponse;
 }
 
-function validateTokenDirectPurchaseResult(resultStr, expectedAmount, expectedTotalPrice) {
+function validateTokenDirectPurchaseResult(resultStr, expectedAmount) {
   expect(() => JSON.parse(resultStr)).not.toThrow();
   const purchaseResponse = JSON.parse(resultStr);
   expect(purchaseResponse).toBeDefined();
   expect(purchaseResponse).toBeInstanceOf(Object);
 
-  // Token direct purchase returns an empty object {} on success
-  console.log(`✅ Token direct purchase transaction submitted successfully - Amount: ${expectedAmount} tokens, Total price: ${expectedTotalPrice} credits`);
+  expect(purchaseResponse.status).toBe('success');
+  expect(purchaseResponse.message).toContain('Purchased');
+  expect(purchaseResponse.message).toContain(expectedAmount);
+
+  console.log(`✅ Token direct purchase successful: ${purchaseResponse.message}`);
 
   return purchaseResponse;
+}
+
+function validateTokenConfigUpdateResult(resultStr, expectedConfigType, expectedConfigValue) {
+  expect(() => JSON.parse(resultStr)).not.toThrow();
+  const configUpdateResponse = JSON.parse(resultStr);
+  expect(configUpdateResponse).toBeDefined();
+  expect(configUpdateResponse).toBeInstanceOf(Object);
+
+  // Token config update returns an empty object {} on success
+  console.log(`✅ Token config update transaction submitted successfully - Type: ${expectedConfigType}, Value: ${expectedConfigValue}`);
+
+  return configUpdateResponse;
+}
+
+function validateTokenEmergencyActionResult(resultStr, expectedActionType) {
+  expect(() => JSON.parse(resultStr)).not.toThrow();
+  const emergencyActionResponse = JSON.parse(resultStr);
+  expect(emergencyActionResponse).toBeDefined();
+  expect(emergencyActionResponse).toBeInstanceOf(Object);
+
+  expect(emergencyActionResponse.status).toBe('success');
+  expect(emergencyActionResponse.message).toContain(expectedActionType);
+
+  console.log(`✅ Token emergency action ${expectedActionType} executed successfully`);
+
+  return emergencyActionResponse;
 }
 
 /**
@@ -1085,6 +1114,20 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateTokenFreezeResult(result.result, testParams.identityToFreeze);
     });
 
+    test('should execute token destroy frozen transition', async () => {
+      await evoSdkPage.setupStateTransition('token', 'tokenDestroyFrozen');
+
+      const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenDestroyFrozen', 'testnet');
+      expect(success).toBe(true);
+
+      const result = await evoSdkPage.executeStateTransitionAndGetResult();
+
+      validateBasicStateTransitionResult(result);
+
+      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenDestroyFrozen.testnet[0];
+      validateTokenDestroyFrozenResult(result.result, testParams.frozenIdentityId);
+    });
+
     test('should execute token unfreeze transition', async () => {
       await evoSdkPage.setupStateTransition('token', 'tokenUnfreeze');
 
@@ -1097,21 +1140,6 @@ test.describe('Evo SDK State Transition Tests', () => {
 
       const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenUnfreeze.testnet[0];
       validateTokenUnfreezeResult(result.result, testParams.identityToUnfreeze);
-    });
-
-    // Skip: Requires frozen tokens to exist (identity is not frozen)
-    test.skip('should execute token destroy frozen transition', async () => {
-      await evoSdkPage.setupStateTransition('token', 'tokenDestroyFrozen');
-
-      const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenDestroyFrozen', 'testnet');
-      expect(success).toBe(true);
-
-      const result = await evoSdkPage.executeStateTransitionAndGetResult();
-
-      validateBasicStateTransitionResult(result);
-
-      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenDestroyFrozen.testnet[0];
-      validateTokenDestroyFrozenResult(result.result, testParams.frozenIdentityId);
     });
 
     test('should execute token set price for direct purchase transition', async () => {
@@ -1128,8 +1156,7 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateTokenSetPriceResult(result.result, testParams.priceType, testParams.priceData);
     });
 
-    // Skip: Website bug - passes identityId but SDK expects buyerId
-    test.skip('should execute token direct purchase transition', async () => {
+    test('should execute token direct purchase transition', async () => {
       await evoSdkPage.setupStateTransition('token', 'tokenDirectPurchase');
 
       const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenDirectPurchase', 'testnet');
@@ -1140,11 +1167,10 @@ test.describe('Evo SDK State Transition Tests', () => {
       validateBasicStateTransitionResult(result);
 
       const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenDirectPurchase.testnet[0];
-      validateTokenDirectPurchaseResult(result.result, testParams.amount, testParams.totalAgreedPrice);
+      validateTokenDirectPurchaseResult(result.result, testParams.amount);
     });
 
-    // Skip: Requires pre-distributed tokens available for claiming
-    test.skip('should execute token claim transition', async () => {
+    test('should execute token claim transition', async () => {
       await evoSdkPage.setupStateTransition('token', 'tokenClaim');
 
       const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenClaim', 'testnet');
@@ -1152,23 +1178,73 @@ test.describe('Evo SDK State Transition Tests', () => {
 
       const result = await evoSdkPage.executeStateTransitionAndGetResult();
 
-      validateBasicStateTransitionResult(result);
+      // Tokens may not be available if recently claimed
+      if (result.result && result.result.includes('No current rewards available')) {
+        test.skip(true, 'No rewards available - tokens were recently claimed');
+        return;
+      }
 
+      validateBasicStateTransitionResult(result);
       const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenClaim.testnet[0];
       validateTokenClaimResult(result.result, testParams.distributionType);
     });
 
-    // Skip: tokenEmergencyAction requires special permissions
-    test.skip('should execute token emergency action transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'token',
-        'tokenEmergencyAction',
-        'testnet'
-      );
+    // Skip: tokenConfigUpdate was inadvertently removed in SDK 3.0 but will return in the next release
+    test.skip('should execute token config update transition', async () => {
+      // Set up the token config update transition
+      await evoSdkPage.setupStateTransition('token', 'tokenConfigUpdate');
 
+      // Inject parameters (contractId, tokenPosition, configItemType, configValue, privateKey)
+      const success = await parameterInjector.injectStateTransitionParameters('token', 'tokenConfigUpdate', 'testnet');
+      expect(success).toBe(true);
+
+      // Execute the config update
+      const result = await evoSdkPage.executeStateTransitionAndGetResult();
+
+      // Validate basic result structure
       validateBasicStateTransitionResult(result);
+
+      // Get test parameters for validation
+      const testParams = parameterInjector.testData.stateTransitionParameters.token.tokenConfigUpdate.testnet[0];
+
+      // Validate token config update specific result
+      validateTokenConfigUpdateResult(result.result, testParams.configItemType, testParams.configValue);
+    });
+
+    test('should execute token emergency action transition (pause and resume)', async () => {
+      await test.step('Pause token', async () => {
+        await evoSdkPage.setupStateTransition('token', 'tokenEmergencyAction');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'token',
+          'tokenEmergencyAction',
+          'testnet',
+          { actionType: 'pause' }
+        );
+        expect(success).toBe(true);
+
+        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+
+        validateBasicStateTransitionResult(result);
+        validateTokenEmergencyActionResult(result.result, 'pause');
+      });
+
+      await test.step('Resume token', async () => {
+        await evoSdkPage.setupStateTransition('token', 'tokenEmergencyAction');
+
+        const success = await parameterInjector.injectStateTransitionParameters(
+          'token',
+          'tokenEmergencyAction',
+          'testnet',
+          { actionType: 'resume' }
+        );
+        expect(success).toBe(true);
+
+        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+
+        validateBasicStateTransitionResult(result);
+        validateTokenEmergencyActionResult(result.result, 'resume');
+      });
     });
   });
 
