@@ -119,7 +119,6 @@ class ParameterInjector {
       'orderBy': ['#orderBy', '[name="orderBy"]', 'textarea[placeholder*="Order"]'],
 
       // Voting parameters
-      'documentTypeName': ['#documentTypeName', '[name="documentTypeName"]'],
       'indexName': ['#indexName', '[name="indexName"]'],
       'indexValues': ['#indexValues', '[name="indexValues"]', 'textarea[name="indexValues"]', 'input[placeholder*="indexValues"]'],
       'resultType': ['#resultType', '[name="resultType"]'],
