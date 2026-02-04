@@ -1636,10 +1636,10 @@ const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId
 
 Parameters:
 - `Inputs` (array, required)
-  - Array of {address, nonce, amount} objects for sender addresses
+  - Array of {address, nonce, amount (credits)} objects for sender addresses
 
 - `Outputs` (array, required)
-  - Array of {address, amount} objects for recipient addresses
+  - Array of {address, amount (credits)} objects for recipient addresses
 
 - `Signer` (object, required)
   - PlatformAddressSigner instance
@@ -1657,7 +1657,7 @@ Parameters:
   - Base58 identity ID to top up
 
 - `Inputs` (array, required)
-  - Array of {address, nonce, amount} objects
+  - Array of {address, nonce, amount (credits)} objects
 
 - `Signer` (object, required)
   - PlatformAddressSigner instance
@@ -1672,7 +1672,7 @@ const result = await sdk.addresses.topUpIdentity({ identityId, inputs, signer })
 
 Parameters:
 - `Inputs` (array, required)
-  - Array of {address, nonce, amount} objects
+  - Array of {address, nonce, amount (credits)} objects
 
 - `Core Fee Per Byte` (number, optional)
   - Fee per byte for Core transaction
@@ -1699,7 +1699,7 @@ Parameters:
   - Base58 identity ID to transfer from
 
 - `Outputs` (array, required)
-  - Array of {address, amount} objects for recipient addresses
+  - Array of {address, amount (credits)} objects for recipient addresses
 
 - `Signer` (object, required)
   - IdentitySigner instance
@@ -1720,7 +1720,7 @@ Parameters:
   - WIF private key for asset lock
 
 - `Outputs` (array, required)
-  - Array of {address, amount} objects
+  - Array of {address, amount (credits)} objects
 
 - `Signer` (object, optional)
   - Optional PlatformAddressSigner instance
@@ -1738,7 +1738,7 @@ Parameters:
   - Identity object with public keys
 
 - `Inputs` (array, required)
-  - Array of {address, nonce, amount} objects
+  - Array of {address, nonce, amount (credits)} objects
 
 - `Identity Signer` (object, required)
   - IdentitySigner for signing identity keys
