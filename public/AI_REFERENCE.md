@@ -1634,17 +1634,15 @@ const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId
 **Address Transfer** - `addresses.transfer`
 *Transfer credits between Platform addresses*
 
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
+Parameters:
+- `Inputs` (array, required)
+  - Array of {address, nonce, amount (credits)} objects for sender addresses
 
-- `Sender Nonce` (number, required)
-  - Example: `0`
+- `Outputs` (array, required)
+  - Array of {address, amount (credits)} objects for recipient addresses
 
-- `Amount (credits)` (text, required)
-
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
+- `Signer` (object, required)
+  - PlatformAddressSigner instance
 
 Example:
 ```javascript
@@ -1654,17 +1652,15 @@ const result = await sdk.addresses.transfer({ inputs, outputs, signer });
 **Top Up Identity from Address** - `addresses.topUpIdentity`
 *Top up an identity using Platform address credits*
 
-Parameters (payload fields):
-- `Identity ID to Top Up` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Parameters:
+- `Identity ID` (string, required)
+  - Base58 identity ID to top up
 
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
+- `Inputs` (array, required)
+  - Array of {address, nonce, amount (credits)} objects
 
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
+- `Signer` (object, required)
+  - PlatformAddressSigner instance
 
 Example:
 ```javascript
@@ -1674,20 +1670,21 @@ const result = await sdk.addresses.topUpIdentity({ identityId, inputs, signer })
 **Withdraw to Core** - `addresses.withdraw`
 *Withdraw Platform address credits to Dash Core*
 
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
-
-- `Sender Nonce` (number, required)
-  - Example: `0`
-
-- `Amount (credits)` (text, required)
-
-- `Dash Core Address` (text, required)
-  - Example: `yXxx...`
+Parameters:
+- `Inputs` (array, required)
+  - Array of {address, nonce, amount (credits)} objects
 
 - `Core Fee Per Byte` (number, optional)
-  - Example: `1`
+  - Fee per byte for Core transaction
+
+- `Pooling` (string, optional)
+  - Pooling strategy
+
+- `Output Script` (string, required)
+  - Dash Core output script
+
+- `Signer` (object, required)
+  - PlatformAddressSigner instance
 
 Example:
 ```javascript
@@ -1697,11 +1694,15 @@ const result = await sdk.addresses.withdraw({ inputs, coreFeePerByte, pooling, o
 **Transfer from Identity to Address** - `addresses.transferFromIdentity`
 *Transfer credits from an identity to Platform addresses*
 
-Parameters (payload fields):
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
+Parameters:
+- `Identity ID` (string, required)
+  - Base58 identity ID to transfer from
 
-- `Amount (credits)` (text, required)
+- `Outputs` (array, required)
+  - Array of {address, amount (credits)} objects for recipient addresses
+
+- `Signer` (object, required)
+  - IdentitySigner instance
 
 Example:
 ```javascript
@@ -1711,11 +1712,18 @@ const result = await sdk.addresses.transferFromIdentity({ identityId, outputs, s
 **Fund Address from Asset Lock** - `addresses.fundFromAssetLock`
 *Fund Platform addresses from an asset lock*
 
-Parameters (payload fields):
-- `Recipient Platform Address` (text, required)
-  - Example: `tdashevo1...`
+Parameters:
+- `Asset Lock Proof` (string, required)
+  - Hex-encoded asset lock proof
 
-- `Amount (credits)` (text, required)
+- `Asset Lock Private Key` (string, required)
+  - WIF private key for asset lock
+
+- `Outputs` (array, required)
+  - Array of {address, amount (credits)} objects
+
+- `Signer` (object, optional)
+  - Optional PlatformAddressSigner instance
 
 Example:
 ```javascript
@@ -1725,17 +1733,18 @@ const result = await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLock
 **Create Identity from Address** - `addresses.createIdentity`
 *Create a new identity funded from Platform addresses*
 
-Parameters (payload fields):
-- `Sender Platform Address` (text, required)
-  - Example: `tdashevo1...`
+Parameters:
+- `Identity` (object, required)
+  - Identity object with public keys
 
-- `Sender Nonce` (number, required)
-  - Example: `0`
+- `Inputs` (array, required)
+  - Array of {address, nonce, amount (credits)} objects
 
-- `Amount (credits)` (text, required)
+- `Identity Signer` (object, required)
+  - IdentitySigner for signing identity keys
 
-- `Public Keys (JSON)` (json, required)
-  - Example: `[{"id":0,"type":0,"purpose":0,"securityLevel":0,"data":"..."}]`
+- `Address Signer` (object, required)
+  - PlatformAddressSigner instance
 
 Example:
 ```javascript

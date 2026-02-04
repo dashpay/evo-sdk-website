@@ -2517,6 +2517,11 @@
               "placeholder": "tdashevo1..."
             }
           ],
+          "sdk_params": [
+            {"name": "inputs", "type": "array", "label": "Inputs", "required": true, "description": "Array of {address, nonce, amount (credits)} objects for sender addresses"},
+            {"name": "outputs", "type": "array", "label": "Outputs", "required": true, "description": "Array of {address, amount (credits)} objects for recipient addresses"},
+            {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "PlatformAddressSigner instance"}
+          ],
           "sdk_method": "addresses.transfer"
         },
         "addressTopUpIdentity": {
@@ -2550,6 +2555,11 @@
               "label": "Amount (credits)",
               "required": true
             }
+          ],
+          "sdk_params": [
+            {"name": "identityId", "type": "string", "label": "Identity ID", "required": true, "description": "Base58 identity ID to top up"},
+            {"name": "inputs", "type": "array", "label": "Inputs", "required": true, "description": "Array of {address, nonce, amount (credits)} objects"},
+            {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "PlatformAddressSigner instance"}
           ],
           "sdk_method": "addresses.topUpIdentity"
         },
@@ -2592,6 +2602,13 @@
               "placeholder": "1"
             }
           ],
+          "sdk_params": [
+            {"name": "inputs", "type": "array", "label": "Inputs", "required": true, "description": "Array of {address, nonce, amount (credits)} objects"},
+            {"name": "coreFeePerByte", "type": "number", "label": "Core Fee Per Byte", "required": false, "description": "Fee per byte for Core transaction"},
+            {"name": "pooling", "type": "string", "label": "Pooling", "required": false, "description": "Pooling strategy"},
+            {"name": "outputScript", "type": "string", "label": "Output Script", "required": true, "description": "Dash Core output script"},
+            {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "PlatformAddressSigner instance"}
+          ],
           "sdk_method": "addresses.withdraw"
         },
         "addressTransferFromIdentity": {
@@ -2612,6 +2629,11 @@
               "required": true
             }
           ],
+          "sdk_params": [
+            {"name": "identityId", "type": "string", "label": "Identity ID", "required": true, "description": "Base58 identity ID to transfer from"},
+            {"name": "outputs", "type": "array", "label": "Outputs", "required": true, "description": "Array of {address, amount (credits)} objects for recipient addresses"},
+            {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "IdentitySigner instance"}
+          ],
           "sdk_method": "addresses.transferFromIdentity"
         },
         "addressFundFromAssetLock": {
@@ -2631,6 +2653,12 @@
               "label": "Amount (credits)",
               "required": true
             }
+          ],
+          "sdk_params": [
+            {"name": "assetLockProof", "type": "string", "label": "Asset Lock Proof", "required": true, "description": "Hex-encoded asset lock proof"},
+            {"name": "assetLockPrivateKey", "type": "string", "label": "Asset Lock Private Key", "required": true, "description": "WIF private key for asset lock"},
+            {"name": "outputs", "type": "array", "label": "Outputs", "required": true, "description": "Array of {address, amount (credits)} objects"},
+            {"name": "signer", "type": "object", "label": "Signer", "required": false, "description": "Optional PlatformAddressSigner instance"}
           ],
           "sdk_method": "addresses.fundFromAssetLock"
         },
@@ -2665,6 +2693,12 @@
               "required": true,
               "placeholder": "[{\"id\":0,\"type\":0,\"purpose\":0,\"securityLevel\":0,\"data\":\"...\"}]"
             }
+          ],
+          "sdk_params": [
+            {"name": "identity", "type": "object", "label": "Identity", "required": true, "description": "Identity object with public keys"},
+            {"name": "inputs", "type": "array", "label": "Inputs", "required": true, "description": "Array of {address, nonce, amount (credits)} objects"},
+            {"name": "identitySigner", "type": "object", "label": "Identity Signer", "required": true, "description": "IdentitySigner for signing identity keys"},
+            {"name": "addressSigner", "type": "object", "label": "Address Signer", "required": true, "description": "PlatformAddressSigner instance"}
           ],
           "sdk_method": "addresses.createIdentity"
         }
