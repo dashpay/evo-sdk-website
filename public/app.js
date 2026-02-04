@@ -1501,6 +1501,15 @@ function generateEntropyHex() {
 }
 
 function hexToBytes(hex) {
+  if (typeof hex !== 'string') {
+    throw new Error('hexToBytes: input must be a string');
+  }
+  if (hex.length % 2 !== 0) {
+    throw new Error('hexToBytes: hex string must have even length');
+  }
+  if (!/^[0-9a-fA-F]*$/.test(hex)) {
+    throw new Error('hexToBytes: invalid hex characters');
+  }
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i += 1) {
     bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
