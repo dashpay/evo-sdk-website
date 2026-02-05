@@ -600,12 +600,15 @@ class EvoSdkPage extends BaseTest {
 
   /**
    * Get available query types for current category
+   * Note: Strips " (Disabled)" suffix from operation names so tests remain agnostic to disabled state
    */
   async getAvailableQueryTypes() {
     const queryTypeSelect = this.page.locator(this.selectors.queryType);
     await queryTypeSelect.waitFor({ state: 'visible' });
     const options = await queryTypeSelect.locator('option').allTextContents();
-    return options.filter(option => option.trim() !== '' && option !== 'Select Query Type');
+    return options
+      .filter(option => option.trim() !== '' && option !== 'Select Query Type')
+      .map(option => option.replace(/ \(Disabled\)$/, ''));
   }
 
   /**

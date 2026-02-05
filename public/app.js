@@ -687,6 +687,10 @@ function populateOperations(categoryKey) {
     const option = document.createElement('option');
     option.value = key;
     option.textContent = def?.label || key;
+    if (def?.disabled) {
+      option.disabled = true;
+      option.textContent += ' (Disabled)';
+    }
     elements.queryType.appendChild(option);
   }
   elements.queryType.style.display = 'block';
@@ -723,11 +727,22 @@ function onOperationChange(categoryKey, operationKey) {
   }
   const label = def.label || operationKey;
   elements.queryTitle.textContent = label;
-  if (def.description) {
+
+  // Check if operation is disabled
+  const isDisabled = !!def.disabled;
+  if (isDisabled) {
+    const reason = typeof def.disabled === 'string' ? def.disabled
+      : def.disabled?.reason || 'This operation is temporarily disabled';
+    elements.queryDescription.textContent = `DISABLED: ${reason}`;
+    elements.queryDescription.style.display = 'block';
+    elements.queryDescription.classList.add('disabled-warning');
+  } else if (def.description) {
     elements.queryDescription.textContent = def.description;
     elements.queryDescription.style.display = 'block';
+    elements.queryDescription.classList.remove('disabled-warning');
   } else {
     elements.queryDescription.style.display = 'none';
+    elements.queryDescription.classList.remove('disabled-warning');
   }
   renderInputs(def);
   const supportsProof = config.allowProof && PROOF_CAPABLE.has(operationKey);
@@ -744,7 +759,7 @@ function onOperationChange(categoryKey, operationKey) {
   updateAuthInputsVisibility(authRequirements);
   if (elements.executeButton) {
     elements.executeButton.style.display = 'block';
-    elements.executeButton.disabled = false;
+    elements.executeButton.disabled = isDisabled;
   }
   state.selected = { type, categoryKey, operationKey, definition: def, auth: authRequirements };
 }

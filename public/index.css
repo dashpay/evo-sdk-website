@@ -601,6 +601,16 @@ details.sdk-config summary span:last-child {
   line-height: 1.4;
 }
 
+.query-description.disabled-warning {
+  background-color: #f8d7da;
+  color: #721c24;
+  font-style: italic;
+}
+
+select option:disabled {
+  color: #999;
+}
+
 .action-button {
   padding: 8px 16px;
   background-color: #2196f3;
