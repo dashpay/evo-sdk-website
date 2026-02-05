@@ -1445,7 +1445,7 @@
         "getPlatformAddress": {
           "label": "Get Platform Address",
           "description": "Fetch information about a Platform address including its nonce and balance.",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "address",
@@ -1460,7 +1460,7 @@
         "getPlatformAddresses": {
           "label": "Get Multiple Platform Addresses",
           "description": "Fetch information about multiple Platform addresses.",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "addresses",
@@ -2491,7 +2491,7 @@
         "addressTransfer": {
           "label": "Address Transfer",
           "description": "Transfer credits between Platform addresses",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",
@@ -2531,7 +2531,7 @@
         "addressTopUpIdentity": {
           "label": "Top Up Identity from Address",
           "description": "Top up an identity using Platform address credits",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "identityId",
@@ -2571,7 +2571,7 @@
         "addressWithdraw": {
           "label": "Withdraw to Core",
           "description": "Withdraw Platform address credits to Dash Core",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",
@@ -2620,7 +2620,7 @@
         "addressTransferFromIdentity": {
           "label": "Transfer from Identity to Address",
           "description": "Transfer credits from an identity to Platform addresses",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "recipientAddress",
@@ -2646,7 +2646,7 @@
         "addressFundFromAssetLock": {
           "label": "Fund Address from Asset Lock",
           "description": "Fund Platform addresses from an asset lock",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "recipientAddress",
@@ -2673,7 +2673,7 @@
         "addressCreateIdentity": {
           "label": "Create Identity from Address",
           "description": "Create a new identity funded from Platform addresses",
-          "disabled": "Platform addresses not yet available on testnet",
+          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",

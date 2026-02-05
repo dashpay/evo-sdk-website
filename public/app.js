@@ -688,7 +688,7 @@ function populateOperations(categoryKey) {
     option.value = key;
     option.textContent = def?.label || key;
     if (def?.disabled) {
-      option.disabled = true;
+      // option.disabled = true; // Allow clicking to see operation details
       option.textContent += ' (Disabled)';
     }
     elements.queryType.appendChild(option);
