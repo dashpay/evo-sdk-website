@@ -5,19 +5,19 @@ __metadata:
   version: 8
   cacheKey: 10
 
-"@dashevo/evo-sdk@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@dashevo/evo-sdk@npm:3.0.0"
+"@dashevo/evo-sdk@npm:3.0.1":
+  version: 3.0.1
+  resolution: "@dashevo/evo-sdk@npm:3.0.1"
   dependencies:
-    "@dashevo/wasm-sdk": "npm:3.0.0"
-  checksum: 10/1b0219e3f1c538c345bff8ae4f820143211b5b761a172365bd4369c6d0b29529d2f7f8a3af76fed18f0d02a6cb669c1817d4160081aa5aa110d4c624f325d97c
+    "@dashevo/wasm-sdk": "npm:3.0.1"
+  checksum: 10/702b61090b986707468b3dc61173a7a6f69c1d66cf040288bb7594b757d4cf19e91e39b479eea911c4b31b14bfc4f6c271f5823aa6858097894c9f9b7bb04657
   languageName: node
   linkType: hard
 
-"@dashevo/wasm-sdk@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@dashevo/wasm-sdk@npm:3.0.0"
-  checksum: 10/03117f21736d894f5d189c11169bbb0562e3f2f9c103099d0835fb122a44e38c0607308f4109f89fd96c67cfe89b698288c3ee751a108c45d9a04164d1b3ca43
+"@dashevo/wasm-sdk@npm:3.0.1":
+  version: 3.0.1
+  resolution: "@dashevo/wasm-sdk@npm:3.0.1"
+  checksum: 10/0a3d6bee5bcb42d34373d7753a0fecf90ccb84d11698f99d1f20ba3c7d9ea13a5af56e8b10088bd0fa07e2e312169dd5d3fedfe356d179b06e9c60c57956e56c
   languageName: node
   linkType: hard
 
@@ -515,7 +515,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "root-workspace-0b6124@workspace:."
   dependencies:
-    "@dashevo/evo-sdk": "npm:3.0.0"
+    "@dashevo/evo-sdk": "npm:3.0.1"
     "@playwright/test": "npm:1.56.0"
     dotenv: "npm:17.2.3"
   languageName: unknown
