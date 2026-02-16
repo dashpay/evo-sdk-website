@@ -1532,6 +1532,37 @@ function hexToBytes(hex) {
   return bytes;
 }
 
+// === State Transition Helpers ===
+
+const DEFAULT_SECURITY_LEVELS = ['CRITICAL', 'HIGH', 'MEDIUM'];
+const CONTRACT_SECURITY_LEVELS = ['CRITICAL', 'HIGH'];
+
+function getIdentityKey(identity, keyId, securityLevels = DEFAULT_SECURITY_LEVELS) {
+  if (keyId !== undefined) {
+    const key = identity.getPublicKeyById(keyId);
+    if (!key) throw new Error(`Identity key not found: ${keyId}`);
+    return key;
+  }
+  const key = identity.getPublicKeys().find(k => securityLevels.includes(k.securityLevel));
+  if (!key) throw new Error('No suitable identity key found for signing');
+  return key;
+}
+
+function createSigner(privateKeyWif) {
+  if (!privateKeyWif) throw new Error('Private key is required');
+  const signer = new IdentitySigner();
+  signer.addKeyFromWif(privateKeyWif);
+  return signer;
+}
+
+async function prepareTransition(client, identityId, privateKeyWif, keyId, securityLevels = DEFAULT_SECURITY_LEVELS) {
+  const identity = await client.identities.fetch(identityId);
+  if (!identity) throw new Error(`Identity not found: ${identityId}`);
+  const identityKey = getIdentityKey(identity, keyId, securityLevels);
+  const signer = createSigner(privateKeyWif);
+  return { identity, identityKey, signer };
+}
+
 function normalizeContract(contract) {
   if (!contract) return null;
   let value = contract;
@@ -2226,31 +2257,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getDataContracts':
       return useProof ? c.contracts.getManyWithProof(n.ids) : c.contracts.getMany(n.ids);
     case 'dataContractCreate': {
-      // Fetch identity and create signer for SDK 3.0 API
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
-
-      // Get the identity's public key (use keyId if provided, otherwise find suitable key)
-      // Contract creation requires CRITICAL or HIGH security level keys
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        // Find a key with CRITICAL or HIGH security level
-        const validSecurityLevels = ['CRITICAL', 'HIGH'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing (requires CRITICAL or HIGH security level)');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identity, identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId, CONTRACT_SECURITY_LEVELS
+      );
 
       // Get next identity nonce for contract creation
       const identityNonce = await c.identities.nonce(n.ownerId);
@@ -2334,30 +2343,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         throw new Error(`Data contract not found: ${contractId}`);
       }
 
-      // Fetch identity and create signer for SDK 3.0 API
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
-
-      // Get the identity's public key (use keyId if provided, otherwise find suitable key)
-      // Contract update requires CRITICAL or HIGH security level keys
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing (requires CRITICAL or HIGH security level)');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId, CONTRACT_SECURITY_LEVELS
+      );
 
       // Modify the existing contract directly
       // Increment version
@@ -2414,29 +2402,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         throw new Error('Document data is required. Click "Fetch Schema" and fill the document fields.');
       }
 
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
-
-      // Get the identity's public key (use keyId if provided, otherwise find suitable key)
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
 
       // Generate entropy for document ID
       const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
@@ -2479,29 +2447,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         throw new Error('Document revision is missing. Click "Load Document" before replacing.');
       }
 
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
 
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
@@ -2526,29 +2474,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'documentDelete': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
 
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
@@ -2572,32 +2500,12 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'documentTransfer': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
 
       // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
       await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.ownerId));
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
 
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
@@ -2626,32 +2534,12 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'documentPurchase': {
-      // Fetch buyer identity for signing
-      const identity = await c.identities.fetch(n.buyerId);
-      if (!identity) {
-        throw new Error(`Buyer identity not found: ${n.buyerId}`);
-      }
+      const { identityKey, signer } = await prepareTransition(
+        c, n.buyerId, n.privateKeyWif, n.keyId
+      );
 
       // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
       await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.buyerId));
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
 
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
@@ -2682,32 +2570,12 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'documentSetPrice': {
-      // Fetch owner identity for signing
-      const identity = await c.identities.fetch(n.ownerId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.ownerId}`);
-      }
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
 
       // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
       await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.ownerId));
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
 
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
@@ -2832,29 +2700,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.tokens.priceByContract(contractId, tokenPosition);
     }
     case 'tokenMint': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.mint({
         dataContractId: n.contractId,
@@ -2874,29 +2722,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenBurn': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.burn({
         dataContractId: n.contractId,
@@ -2915,30 +2743,10 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenTransfer': {
-      // Fetch sender identity for signing
       const senderId = n.senderId || n.identityId;
-      const identity = await c.identities.fetch(senderId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${senderId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, senderId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.transfer({
         dataContractId: n.contractId,
@@ -2959,30 +2767,10 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenFreeze': {
-      // Fetch authority identity for signing (uses identityId from UI, or fallback to freezerId)
       const authorityIdentityId = n.identityId || n.freezerId;
-      const identity = await c.identities.fetch(authorityIdentityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${authorityIdentityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.freeze({
         dataContractId: n.contractId,
@@ -3000,30 +2788,10 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenUnfreeze': {
-      // Fetch authority identity for signing (uses identityId from UI, or fallback to unfreezerId)
       const authorityIdentityId = n.identityId || n.unfreezerId;
-      const identity = await c.identities.fetch(authorityIdentityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${authorityIdentityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.unfreeze({
         dataContractId: n.contractId,
@@ -3041,30 +2809,10 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenDestroyFrozen': {
-      // Fetch authority identity for signing (uses identityId from UI, or fallback to destroyerId)
       const authorityIdentityId = n.identityId || n.destroyerId;
-      const identity = await c.identities.fetch(authorityIdentityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${authorityIdentityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.destroyFrozen({
         dataContractId: n.contractId,
@@ -3082,29 +2830,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenSetPriceForDirectPurchase': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.setPrice({
         dataContractId: n.contractId,
@@ -3122,29 +2850,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenDirectPurchase': {
-      // Fetch buyer identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.directPurchase({
         dataContractId: n.contractId,
@@ -3164,29 +2872,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenClaim': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.claim({
         dataContractId: n.contractId,
@@ -3205,29 +2893,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       };
     }
     case 'tokenEmergencyAction': {
-      // Fetch identity for signing
-      const identity = await c.identities.fetch(n.identityId);
-      if (!identity) {
-        throw new Error(`Identity not found: ${n.identityId}`);
-      }
-
-      // Get the identity's public key
-      let identityKey;
-      if (n.keyId !== undefined) {
-        identityKey = identity.getPublicKeyById(n.keyId);
-      } else {
-        const validSecurityLevels = ['CRITICAL', 'HIGH', 'MEDIUM'];
-        identityKey = identity.getPublicKeys().find(k =>
-          validSecurityLevels.includes(k.securityLevel)
-        );
-      }
-      if (!identityKey) {
-        throw new Error('No suitable identity key found for signing');
-      }
-
-      // Create signer and add private key
-      const signer = new IdentitySigner();
-      signer.addKeyFromWif(n.privateKeyWif);
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
 
       const result = await c.tokens.emergencyAction({
         dataContractId: n.contractId,
