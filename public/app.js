@@ -1543,7 +1543,7 @@ function getIdentityKey(identity, keyId, securityLevels = DEFAULT_SECURITY_LEVEL
     if (!key) throw new Error(`Identity key not found: ${keyId}`);
     return key;
   }
-  const key = identity.getPublicKeys().find(k => securityLevels.includes(k.securityLevel));
+  const key = identity.publicKeys.find(k => securityLevels.includes(k.securityLevel));
   if (!key) throw new Error('No suitable identity key found for signing');
   return key;
 }
@@ -3099,7 +3099,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return useProof ? c.system.pathElementsWithProof(path, keys) : c.system.pathElements(path, keys);
     }
     case 'waitForStateTransitionResult':
-      return c.system.waitForStateTransitionResult(n.stateTransitionHash);
+      return c.stateTransitions.waitForStateTransitionResult(n.stateTransitionHash);
 
     // Platform Address queries
     case 'getPlatformAddress':
