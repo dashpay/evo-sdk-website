@@ -2405,25 +2405,16 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         c, n.ownerId, n.privateKeyWif, n.keyId
       );
 
-      // Generate entropy for document ID
-      const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
-      const entropyBytes = hexToBytes(entropyHex);
-
-      // Generate document ID from entropy
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
-      const documentIdBytes = Document.generateId(documentTypeName, n.ownerId, contractId, entropyBytes);
 
-      // Create the Document object
-      const document = new Document(
-        data,                    // js_raw_document (document properties/data)
-        documentTypeName,        // js_document_type_name
-        1n,                      // js_revision (1 for new documents)
-        contractId,              // js_data_contract_id
-        n.ownerId,               // js_owner_id
-        documentIdBytes          // js_document_id
-      );
-      document.entropy = entropyBytes;
+      // Create the Document object (constructor auto-generates entropy and ID)
+      const document = new Document({
+        dataContractId: contractId,
+        ownerId: n.ownerId,
+        documentTypeName,
+        properties: data,
+      });
 
       await c.documents.create({ document, identityKey, signer });
 
@@ -2454,14 +2445,14 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const documentTypeName = n.documentTypeName || n.documentType;
 
       // Create the Document object with incremented revision
-      const document = new Document(
-        data,                           // js_raw_document
-        documentTypeName,               // js_document_type_name
-        BigInt(revision) + 1n,          // js_revision (increment for replace)
-        contractId,                     // js_data_contract_id
-        n.ownerId,                      // js_owner_id
-        n.documentId                    // js_document_id
-      );
+      const document = new Document({
+        dataContractId: contractId,
+        ownerId: n.ownerId,
+        documentTypeName,
+        properties: data,
+        revision: Number(BigInt(revision) + 1n),
+        id: n.documentId,
+      });
 
       await c.documents.replace({ document, identityKey, signer });
 
