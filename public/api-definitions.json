@@ -1445,7 +1445,6 @@
         "getPlatformAddress": {
           "label": "Get Platform Address",
           "description": "Fetch information about a Platform address including its nonce and balance.",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "address",
@@ -1460,7 +1459,6 @@
         "getPlatformAddresses": {
           "label": "Get Multiple Platform Addresses",
           "description": "Fetch information about multiple Platform addresses.",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "addresses",

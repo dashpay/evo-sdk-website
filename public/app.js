@@ -196,6 +196,8 @@ const PROOF_CAPABLE = new Set([
   // Groups
   'getGroupInfo', 'getGroupInfos', 'getGroupMembers', 'getGroupActions', 'getGroupActionSigners',
   'getIdentityGroups', 'getGroupsDataContracts',
+  // Platform Addresses
+  'getPlatformAddress', 'getPlatformAddresses',
   // System
   'getPrefundedSpecializedBalance', 'getTotalCreditsInPlatform', 'getPathElements',
 ]);
@@ -3215,7 +3217,14 @@ function formatResult(value) {
         let key;
         if (isWasmObject(k)) {
           const extracted = extractWasmData(k);
-          key = typeof extracted === 'string' ? extracted : String(k);
+          if (typeof extracted === 'string') {
+            key = extracted;
+          } else if (typeof k.toHex === 'function') {
+            // WASM objects like PlatformAddress use toHex() for string representation
+            try { key = k.toHex(); } catch (_) { key = String(k); }
+          } else {
+            key = String(k);
+          }
         } else if (typeof k === 'string') {
           key = k;
         } else {

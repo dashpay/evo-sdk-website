@@ -1311,26 +1311,32 @@ test.describe('Evo SDK Query Execution Tests', () => {
     const addressQueries = [
       {
         name: 'getPlatformAddress',
-        hasProofSupport: false, // Server returns "Operation is not implemented"
+        hasProofSupport: true,
         needsParameters: true,
-        // Server doesn't support non-proof query for single address
-        skipNonProof: true,
         validateFn: (result) => {
-          // Platform address may or may not exist (undefined is valid)
-          // Just verify we got a response
           expect(result).toBeDefined();
+          const parsed = JSON.parse(result);
+          expect(parsed).toHaveProperty('address');
+          expect(parsed).toHaveProperty('nonce');
+          expect(parsed).toHaveProperty('balance');
+          expect(typeof parsed.nonce).toBe('number');
+          expect(typeof parsed.balance).toBe('number');
         }
       },
       {
         name: 'getPlatformAddresses',
         hasProofSupport: true,
         needsParameters: true,
-        // Skip: SDK 3.0.0 uses new address type constants (P2PKH=0xB0, P2SH=0x80)
-        // but testnet nodes may be running older version with different constants
-        skip: true,
         validateFn: (result) => {
-          // Should return a map/object of addresses
           expect(result).toBeDefined();
+          const parsed = JSON.parse(result);
+          expect(typeof parsed).toBe('object');
+          const keys = Object.keys(parsed);
+          expect(keys.length).toBeGreaterThan(0);
+          const first = parsed[keys[0]];
+          expect(first).toHaveProperty('address');
+          expect(first).toHaveProperty('nonce');
+          expect(first).toHaveProperty('balance');
         }
       }
     ];
