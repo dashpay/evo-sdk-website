@@ -2291,16 +2291,15 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         }
       }
 
-      // Create DataContract using constructor
-      const dataContract = new DataContract(
-        n.ownerId,           // js_owner_id
-        nextNonce,           // identity_nonce
-        documentSchemas,     // js_schema
-        undefined,           // js_definitions
-        tokens || undefined, // js_tokens (undefined if empty)
-        false,               // full_validation
-        undefined            // js_platform_version
-      );
+      // Create DataContract using options object
+      const dataContract = new DataContract({
+        ownerId: n.ownerId,
+        identityNonce: nextNonce,
+        schemas: documentSchemas,
+        definitions: undefined,
+        tokens: tokens || undefined,
+        fullValidation: false,
+      });
 
       // Apply config settings if any are specified
       // The DataContract constructor uses default config, so we need to set it explicitly
@@ -2362,9 +2361,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
           throw new Error(`Invalid JSON in New Document Schemas field: ${e.message}`);
         }
         // Get existing schemas and merge
-        const existingSchemas = existingContract.getSchemas() || {};
+        const existingSchemas = existingContract.schemas || {};
         const mergedSchemas = { ...existingSchemas, ...newSchemas };
-        existingContract.setSchemas(mergedSchemas, undefined, false, undefined);
+        existingContract.setSchemas(mergedSchemas, undefined, false);
       }
 
       await c.contracts.update({ dataContract: existingContract, identityKey, signer });
