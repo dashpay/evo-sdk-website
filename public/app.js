@@ -1,4 +1,4 @@
-import { EvoSDK, wallet } from './dist/evo-sdk.module.js';
+import { EvoSDK, wallet, DataContract, Document, IdentitySigner, Identifier } from './dist/evo-sdk.module.js';
 
 const identityIdInputEl = document.getElementById('identityId');
 const assetLockProofInputEl = document.getElementById('assetLockProof');
@@ -74,14 +74,18 @@ const SUPPORTED_QUERIES = new Set([
   // System
   'getStatus', 'getCurrentQuorumsInfo', 'getPrefundedSpecializedBalance', 'getTotalCreditsInPlatform', 'getPathElements',
   'waitForStateTransitionResult',
+  // Platform Addresses
+  'getPlatformAddress', 'getPlatformAddresses',
 ]);
 
 const SUPPORTED_TRANSITIONS = new Set([
   'identityCreate', 'identityTopUp', 'identityCreditTransfer', 'identityCreditWithdrawal', 'identityUpdate',
   'dataContractCreate', 'dataContractUpdate',
   'documentCreate', 'documentReplace', 'documentDelete', 'documentTransfer', 'documentPurchase', 'documentSetPrice',
-  'tokenMint', 'tokenBurn', 'tokenTransfer', 'tokenFreeze', 'tokenUnfreeze', 'tokenDestroyFrozen', 'tokenSetPriceForDirectPurchase', 'tokenDirectPurchase', 'tokenClaim', 'tokenConfigUpdate',
+  'tokenMint', 'tokenBurn', 'tokenTransfer', 'tokenFreeze', 'tokenUnfreeze', 'tokenDestroyFrozen', 'tokenSetPriceForDirectPurchase', 'tokenDirectPurchase', 'tokenClaim', 'tokenEmergencyAction',
   'masternodeVote',
+  // Platform Addresses
+  'addressTransfer', 'addressTopUpIdentity', 'addressWithdraw', 'addressTransferFromIdentity', 'addressFundFromAssetLock', 'addressCreateIdentity',
 ]);
 
 const DPNS_CATEGORY_DEFINITIONS = {
@@ -317,15 +321,15 @@ const TRANSITION_AUTH_REQUIREMENTS = {
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenFreeze: {
-    identity: { required: true, targets: ['freezerId'] },
+    identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenUnfreeze: {
-    identity: { required: true, targets: ['unfreezerId'] },
+    identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenDestroyFrozen: {
-    identity: { required: true, targets: ['destroyerId'] },
+    identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenSetPriceForDirectPurchase: {
@@ -340,13 +344,38 @@ const TRANSITION_AUTH_REQUIREMENTS = {
     identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
-  tokenConfigUpdate: {
+  tokenEmergencyAction: {
     identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   masternodeVote: {
     identity: { required: true, targets: ['masternodeProTxHash'] },
     privateKey: { required: true, targets: ['votingKeyWif'] },
+  },
+  // Platform Address transitions
+  addressTransfer: {
+    identity: { required: false },
+    privateKey: { required: true, targets: ['privateKeyWif'] },
+  },
+  addressTopUpIdentity: {
+    identity: { required: false },
+    privateKey: { required: true, targets: ['privateKeyWif'] },
+  },
+  addressWithdraw: {
+    identity: { required: false },
+    privateKey: { required: true, targets: ['privateKeyWif'] },
+  },
+  addressTransferFromIdentity: {
+    identity: { required: true, targets: ['identityId'] },
+    privateKey: { required: true, targets: ['privateKeyWif'] },
+  },
+  addressFundFromAssetLock: {
+    identity: { required: false },
+    privateKey: { required: true, targets: ['assetLockPrivateKeyWif'] },
+  },
+  addressCreateIdentity: {
+    identity: { required: false },
+    privateKey: { required: true, targets: ['privateKeyWif'] },
   },
 };
 
@@ -658,6 +687,10 @@ function populateOperations(categoryKey) {
     const option = document.createElement('option');
     option.value = key;
     option.textContent = def?.label || key;
+    if (def?.disabled) {
+      // option.disabled = true; // Allow clicking to see operation details
+      option.textContent += ' (Disabled)';
+    }
     elements.queryType.appendChild(option);
   }
   elements.queryType.style.display = 'block';
@@ -694,11 +727,22 @@ function onOperationChange(categoryKey, operationKey) {
   }
   const label = def.label || operationKey;
   elements.queryTitle.textContent = label;
-  if (def.description) {
+
+  // Check if operation is disabled
+  const isDisabled = !!def.disabled;
+  if (isDisabled) {
+    const reason = typeof def.disabled === 'string' ? def.disabled
+      : def.disabled?.reason || 'This operation is temporarily disabled';
+    elements.queryDescription.textContent = `DISABLED: ${reason}`;
+    elements.queryDescription.style.display = 'block';
+    elements.queryDescription.classList.add('disabled-warning');
+  } else if (def.description) {
     elements.queryDescription.textContent = def.description;
     elements.queryDescription.style.display = 'block';
+    elements.queryDescription.classList.remove('disabled-warning');
   } else {
     elements.queryDescription.style.display = 'none';
+    elements.queryDescription.classList.remove('disabled-warning');
   }
   renderInputs(def);
   const supportsProof = config.allowProof && PROOF_CAPABLE.has(operationKey);
@@ -715,7 +759,7 @@ function onOperationChange(categoryKey, operationKey) {
   updateAuthInputsVisibility(authRequirements);
   if (elements.executeButton) {
     elements.executeButton.style.display = 'block';
-    elements.executeButton.disabled = false;
+    elements.executeButton.disabled = isDisabled;
   }
   state.selected = { type, categoryKey, operationKey, definition: def, auth: authRequirements };
 }
@@ -1471,6 +1515,54 @@ function generateEntropyHex() {
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function hexToBytes(hex) {
+  if (typeof hex !== 'string') {
+    throw new Error('hexToBytes: input must be a string');
+  }
+  if (hex.length % 2 !== 0) {
+    throw new Error('hexToBytes: hex string must have even length');
+  }
+  if (!/^[0-9a-fA-F]*$/.test(hex)) {
+    throw new Error('hexToBytes: invalid hex characters');
+  }
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+// === State Transition Helpers ===
+
+const DEFAULT_SECURITY_LEVELS = ['CRITICAL', 'HIGH', 'MEDIUM'];
+const CONTRACT_SECURITY_LEVELS = ['CRITICAL', 'HIGH'];
+
+function getIdentityKey(identity, keyId, securityLevels = DEFAULT_SECURITY_LEVELS) {
+  if (keyId !== undefined) {
+    const key = identity.getPublicKeyById(keyId);
+    if (!key) throw new Error(`Identity key not found: ${keyId}`);
+    return key;
+  }
+  const key = identity.getPublicKeys().find(k => securityLevels.includes(k.securityLevel));
+  if (!key) throw new Error('No suitable identity key found for signing');
+  return key;
+}
+
+function createSigner(privateKeyWif) {
+  if (!privateKeyWif) throw new Error('Private key is required');
+  const signer = new IdentitySigner();
+  signer.addKeyFromWif(privateKeyWif);
+  return signer;
+}
+
+async function prepareTransition(client, identityId, privateKeyWif, keyId, securityLevels = DEFAULT_SECURITY_LEVELS) {
+  const identity = await client.identities.fetch(identityId);
+  if (!identity) throw new Error(`Identity not found: ${identityId}`);
+  const identityKey = getIdentityKey(identity, keyId, securityLevels);
+  const signer = createSigner(privateKeyWif);
+  return { identity, identityKey, signer };
+}
+
 function normalizeContract(contract) {
   if (!contract) return null;
   let value = contract;
@@ -1498,6 +1590,20 @@ function normalizeContract(contract) {
 
 function normalizeDocument(document) {
   if (!document) return null;
+
+  // Extract revision from the original Document object BEFORE calling toJSON/toObject
+  // The WASM SDK Document class has a `revision` getter that returns bigint | undefined
+  // This getter may not be preserved after serialization
+  let originalRevision = null;
+  if (document && typeof document === 'object' && 'revision' in document) {
+    try {
+      const rev = document.revision;
+      if (rev != null) {
+        originalRevision = Number(rev);
+      }
+    } catch (_) { /* ignore */ }
+  }
+
   let value = document;
   if (typeof value.toJSON === 'function') {
     try {
@@ -1535,7 +1641,8 @@ function normalizeDocument(document) {
   if (!value || typeof value !== 'object') return null;
 
   const data = value.data ?? value.value ?? {};
-  const revisionRaw = value.revision ?? null;
+  // Use original revision from Document object getter, fallback to serialized value
+  const revisionRaw = originalRevision ?? value.revision ?? value.$revision ?? null;
   const revision = revisionRaw != null ? Number(revisionRaw) : null;
 
   return { data, revision: Number.isNaN(revision) ? null : revision };
@@ -1957,6 +2064,16 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     return Number.isNaN(num) ? fallback : num;
   };
 
+  const parseJson = (value, label = 'field') => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value !== 'string') return value;
+    try {
+      return JSON.parse(value);
+    } catch (e) {
+      throw new Error(`Invalid JSON in ${label}: ${e.message}`);
+    }
+  };
+
   switch (itemKey) {
     // Identity queries
     case 'getIdentity':
@@ -1964,27 +2081,30 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getIdentityUnproved':
       return c.identities.fetchUnproved(n.id);
     case 'getIdentityKeys': {
+      const requestType = n.requestType || n.keyRequestType || 'all';
       const specificKeyIds = toNumberArray(n.specificKeyIds);
-      if (useProof) {
-        if (n.keyRequestType === 'search') {
-          throw new Error('Identity key search does not support proof responses. Disable proof to search by purpose.');
-        }
-        return c.identities.getKeysWithProof({
-          identityId: n.identityId,
-          keyRequestType: n.keyRequestType,
-          specificKeyIds,
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-        });
+      let purposeMap = n.purposeMap ?? n.searchPurposeMap;
+      if (purposeMap !== undefined) {
+        purposeMap = parseJson(purposeMap, 'Purpose Map');
       }
-      return c.identities.getKeys({
+
+      let request;
+      if (requestType === 'specific') {
+        request = { type: 'specific', specificKeyIds };
+      } else if (requestType === 'search') {
+        request = { type: 'search', purposeMap: purposeMap || {} };
+      } else {
+        request = { type: 'all' };
+      }
+
+      const query = {
         identityId: n.identityId,
-        keyRequestType: n.keyRequestType,
-        specificKeyIds,
-        searchPurposeMap: n.searchPurposeMap,
-        limit: n.limit ?? null,
-        offset: n.offset ?? null,
-      });
+        request,
+        limit: n.limit ?? undefined,
+        offset: n.offset ?? undefined,
+      };
+
+      return useProof ? c.identities.getKeysWithProof(query) : c.identities.getKeys(query);
     }
     case 'getIdentitiesContractKeys': {
       const identityIds = toStringArray(n.identityIds);
@@ -2011,8 +2131,8 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getIdentityByPublicKeyHash':
       return useProof ? c.identities.byPublicKeyHashWithProof(n.publicKeyHash) : c.identities.byPublicKeyHash(n.publicKeyHash);
     case 'getIdentityByNonUniquePublicKeyHash': {
-      const opts = { startAfter: n.startAfter || null };
-      return useProof ? c.identities.byNonUniquePublicKeyHashWithProof(n.publicKeyHash, opts) : c.identities.byNonUniquePublicKeyHash(n.publicKeyHash, opts);
+      const startAfter = n.startAfter || undefined;
+      return useProof ? c.identities.byNonUniquePublicKeyHashWithProof(n.publicKeyHash, startAfter) : c.identities.byNonUniquePublicKeyHash(n.publicKeyHash, startAfter);
     }
     case 'getIdentityTokenBalances': {
       const tokenIds = toStringArray(n.tokenIds);
@@ -2024,13 +2144,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     }
     case 'getIdentityTokenInfos': {
       const tokenIds = toStringArray(n.tokenIds);
-      if (useProof) {
-        return c.tokens.identityTokenInfosWithProof(n.identityId, tokenIds);
-      }
-      return c.tokens.identityTokenInfos(n.identityId, tokenIds, {
-        limit: n.limit ?? null,
-        offset: n.offset ?? null,
-      });
+      return useProof
+        ? c.tokens.identityTokenInfosWithProof(n.identityId, tokenIds)
+        : c.tokens.identityTokenInfos(n.identityId, tokenIds);
     }
     case 'getIdentitiesTokenInfos': {
       const identityIds = toStringArray(n.identityIds);
@@ -2042,73 +2158,283 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return c.identities.create({ assetLockProof: n.assetLockProof, assetLockPrivateKeyWif: n.assetLockPrivateKeyWif, publicKeys: n.publicKeys });
     case 'identityTopUp':
       return c.identities.topUp({ identityId: n.identityId, assetLockProof: n.assetLockProof, assetLockPrivateKeyWif: n.assetLockPrivateKeyWif });
-    case 'identityCreditTransfer':
-      return c.identities.creditTransfer({ senderId: n.senderId, recipientId: n.recipientId, amount: n.amount, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
-    case 'identityCreditWithdrawal':
-      return c.identities.creditWithdrawal({ identityId: n.identityId, toAddress: n.toAddress, amount: n.amount, coreFeePerByte: n.coreFeePerByte, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
-    case 'identityUpdate':
-      return c.identities.update({ identityId: n.identityId, addPublicKeys: n.addPublicKeys, disablePublicKeyIds: n.disablePublicKeyIds, privateKeyWif: n.privateKeyWif });
+    case 'identityCreditTransfer': {
+      // Fetch sender identity
+      const senderId = n.senderId || n.identityId;
+      const identity = await c.identities.fetch(senderId);
+      if (!identity) {
+        throw new Error(`Identity not found: ${senderId}`);
+      }
+
+      // Create signer and add private key
+      const signer = new IdentitySigner();
+      signer.addKeyFromWif(n.privateKeyWif);
+
+      // Parse amount as BigInt
+      const amount = BigInt(n.amount);
+
+      const result = await c.identities.creditTransfer({
+        identity,
+        recipientId: n.recipientId,
+        amount,
+        signer,
+      });
+
+      return {
+        status: 'success',
+        senderBalance: result.senderBalance?.toString(),
+        recipientBalance: result.recipientBalance?.toString(),
+        message: `Transferred ${amount} credits to ${n.recipientId}`
+      };
+    }
+    case 'identityCreditWithdrawal': {
+      // Fetch identity
+      const identity = await c.identities.fetch(n.identityId);
+      if (!identity) {
+        throw new Error(`Identity not found: ${n.identityId}`);
+      }
+
+      // Create signer and add private key
+      const signer = new IdentitySigner();
+      signer.addKeyFromWif(n.privateKeyWif);
+
+      // Parse amount as BigInt
+      const amount = BigInt(n.amount);
+
+      const remainingBalance = await c.identities.creditWithdrawal({
+        identity,
+        amount,
+        toAddress: n.toAddress || undefined,
+        coreFeePerByte: n.coreFeePerByte ? Number(n.coreFeePerByte) : undefined,
+        signer,
+      });
+
+      return {
+        status: 'success',
+        remainingBalance: remainingBalance?.toString(),
+        withdrawnAmount: amount.toString(),
+        toAddress: n.toAddress,
+        message: `Withdrew ${amount} credits. Remaining balance: ${remainingBalance}`
+      };
+    }
+    case 'identityUpdate': {
+      // Fetch identity
+      const identity = await c.identities.fetch(n.identityId);
+      if (!identity) {
+        throw new Error(`Identity not found: ${n.identityId}`);
+      }
+
+      // Create signer and add private key
+      const signer = new IdentitySigner();
+      signer.addKeyFromWif(n.privateKeyWif);
+
+      // Parse disable key IDs as numbers
+      const disablePublicKeys = n.disablePublicKeyIds
+        ? (Array.isArray(n.disablePublicKeyIds) ? n.disablePublicKeyIds : [n.disablePublicKeyIds]).map(Number)
+        : undefined;
+
+      await c.identities.update({
+        identity,
+        addPublicKeys: n.addPublicKeys || undefined,
+        disablePublicKeys,
+        signer,
+      });
+
+      return {
+        status: 'success',
+        identityId: n.identityId,
+        message: 'Identity updated successfully'
+      };
+    }
 
     // Data contracts
     case 'getDataContract':
       return useProof ? c.contracts.fetchWithProof(n.id) : c.contracts.fetch(n.id);
     case 'getDataContractHistory':
       return useProof
-        ? c.contracts.getHistoryWithProof({ contractId: n.dataContractId || n.id, limit: n.limit ?? null, startAtMs: n.startAtMs ?? null })
-        : c.contracts.getHistory({ contractId: n.dataContractId || n.id, limit: n.limit ?? null, startAtMs: n.startAtMs ?? null });
+        ? c.contracts.getHistoryWithProof({ dataContractId: n.dataContractId || n.id, limit: n.limit ?? undefined, startAtMs: n.startAtMs ?? undefined })
+        : c.contracts.getHistory({ dataContractId: n.dataContractId || n.id, limit: n.limit ?? undefined, startAtMs: n.startAtMs ?? undefined });
     case 'getDataContracts':
       return useProof ? c.contracts.getManyWithProof(n.ids) : c.contracts.getMany(n.ids);
     case 'dataContractCreate': {
-      const definition = buildContractDefinition(n);
-      return c.contracts.create({ ownerId: n.ownerId, definition: definition, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+      const { identity, identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId, CONTRACT_SECURITY_LEVELS
+      );
+
+      // Get next identity nonce for contract creation
+      const identityNonce = await c.identities.nonce(n.ownerId);
+      const nextNonce = (identityNonce || 0n) + 1n;
+
+      // Parse document schemas
+      let documentSchemas;
+      if (!n.documentSchemas) {
+        throw new Error('Document Schemas JSON is required');
+      }
+      try {
+        documentSchemas = typeof n.documentSchemas === 'string'
+          ? JSON.parse(n.documentSchemas)
+          : n.documentSchemas;
+      } catch (e) {
+        throw new Error(`Invalid JSON in Document Schemas field: ${e.message}`);
+      }
+
+      // Parse optional tokens
+      let tokens = null;
+      if (n.tokens && n.tokens !== '{}') {
+        try {
+          const parsedTokens = typeof n.tokens === 'string' ? JSON.parse(n.tokens) : n.tokens;
+          if (Object.keys(parsedTokens).length > 0) {
+            tokens = parsedTokens;
+          }
+        } catch (e) {
+          throw new Error(`Invalid JSON in Tokens field: ${e.message}`);
+        }
+      }
+
+      // Create DataContract using constructor
+      const dataContract = new DataContract(
+        n.ownerId,           // js_owner_id
+        nextNonce,           // identity_nonce
+        documentSchemas,     // js_schema
+        undefined,           // js_definitions
+        tokens || undefined, // js_tokens (undefined if empty)
+        false,               // full_validation
+        undefined            // js_platform_version
+      );
+
+      // Apply config settings if any are specified
+      // The DataContract constructor uses default config, so we need to set it explicitly
+      const hasConfigSettings = n.canBeDeleted || n.readonly || n.keepsHistory ||
+        n.documentsKeepHistoryContractDefault || n.documentsMutableContractDefault === false ||
+        n.documentsCanBeDeletedContractDefault === false;
+
+      if (hasConfigSettings) {
+        const config = {
+          canBeDeleted: n.canBeDeleted || false,
+          readonly: n.readonly || false,
+          keepsHistory: n.keepsHistory || false,
+          documentsKeepHistoryContractDefault: n.documentsKeepHistoryContractDefault || false,
+          documentsMutableContractDefault: n.documentsMutableContractDefault !== false, // Default true
+          documentsCanBeDeletedContractDefault: n.documentsCanBeDeletedContractDefault !== false, // Default true
+        };
+        dataContract.setConfig(config); // SDK method to set contract config
+      }
+
+      const publishedContract = await c.contracts.publish({ dataContract, identityKey, signer });
+
+      // Return in expected format for UI/tests
+      return {
+        status: 'success',
+        contractId: publishedContract.id?.toString() || dataContract.id?.toString(),
+        ownerId: publishedContract.ownerId?.toString() || n.ownerId,
+        version: publishedContract.version || 1,
+        documentTypes: Object.keys(documentSchemas),
+        message: `Data contract created successfully with ID: ${publishedContract.id?.toString()}`
+      };
     }
     case 'dataContractUpdate': {
       // First fetch the existing contract to get its current state
       const contractId = n.dataContractId || n.contractId;
+      if (!contractId) {
+        throw new Error('Data Contract ID is required');
+      }
       const existingContract = await c.contracts.fetch(contractId);
-      const contractJson = normalizeContract(existingContract);
+      if (!existingContract) {
+        throw new Error(`Data contract not found: ${contractId}`);
+      }
 
-      // Build updates using the entire existing contract as base
-      const updates = buildContractUpdates({
-        ...n,
-        existingContract: contractJson
-      });
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId, CONTRACT_SECURITY_LEVELS
+      );
 
-      return c.contracts.update({ contractId: contractId, ownerId: n.ownerId, updates: updates, privateKeyWif: n.privateKeyWif, keyId: n.keyId });
+      // Modify the existing contract directly
+      // Increment version
+      existingContract.version = (existingContract.version || 1) + 1;
+
+      // Update document schemas if provided
+      if (n.newDocumentSchemas) {
+        let newSchemas;
+        try {
+          newSchemas = typeof n.newDocumentSchemas === 'string'
+            ? JSON.parse(n.newDocumentSchemas)
+            : n.newDocumentSchemas;
+        } catch (e) {
+          throw new Error(`Invalid JSON in New Document Schemas field: ${e.message}`);
+        }
+        // Get existing schemas and merge
+        const existingSchemas = existingContract.getSchemas() || {};
+        const mergedSchemas = { ...existingSchemas, ...newSchemas };
+        existingContract.setSchemas(mergedSchemas, undefined, false, undefined);
+      }
+
+      await c.contracts.update({ dataContract: existingContract, identityKey, signer });
+
+      // Return in expected format for UI/tests
+      return {
+        status: 'success',
+        contractId: contractId,
+        version: existingContract.version,
+        message: `Data contract updated successfully. New version: ${existingContract.version}`
+      };
     }
 
     // Documents
     case 'getDocuments': {
       const payload = {
-        contractId: n.dataContractId || n.contractId,
-        type: n.documentType,
-        where: n.where,
-        orderBy: n.orderBy,
-        limit: n.limit ?? null,
-        startAfter: n.startAfter ?? null,
-        startAt: n.startAt ?? null,
+        dataContractId: n.dataContractId || n.contractId,
+        documentTypeName: n.documentTypeName || n.documentType,
+        where: parseJson(n.where, 'Where'),
+        orderBy: parseJson(n.orderBy, 'Order By'),
+        limit: n.limit ?? undefined,
+        startAfter: n.startAfter ?? undefined,
+        startAt: n.startAt ?? undefined,
       };
       return useProof ? c.documents.queryWithProof(payload) : c.documents.query(payload);
     }
     case 'getDocument':
       return useProof
-        ? c.documents.getWithProof(n.dataContractId || n.contractId, n.documentType, n.documentId)
-        : c.documents.get(n.dataContractId || n.contractId, n.documentType, n.documentId);
+        ? c.documents.getWithProof(n.dataContractId || n.contractId, n.documentTypeName || n.documentType, n.documentId)
+        : c.documents.get(n.dataContractId || n.contractId, n.documentTypeName || n.documentType, n.documentId);
     case 'documentCreate': {
       const dynamic = (typeof n.documentFields === 'object' && n.documentFields !== null) ? n.documentFields : {};
       const data = n.data ?? dynamic.data;
       if (!data) {
         throw new Error('Document data is required. Click "Fetch Schema" and fill the document fields.');
       }
+
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
+
+      // Generate entropy for document ID
       const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
-      return c.documents.create({
-        contractId: n.contractId,
-        type: n.documentType,
+      const entropyBytes = hexToBytes(entropyHex);
+
+      // Generate document ID from entropy
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+      const documentIdBytes = Document.generateId(documentTypeName, n.ownerId, contractId, entropyBytes);
+
+      // Create the Document object
+      const document = new Document(
+        data,                    // js_raw_document (document properties/data)
+        documentTypeName,        // js_document_type_name
+        1n,                      // js_revision (1 for new documents)
+        contractId,              // js_data_contract_id
+        n.ownerId,               // js_owner_id
+        documentIdBytes          // js_document_id
+      );
+      document.entropy = entropyBytes;
+
+      await c.documents.create({ document, identityKey, signer });
+
+      return {
+        status: 'success',
+        documentId: document.id?.toString(),
         ownerId: n.ownerId,
-        data,
-        entropyHex,
-        privateKeyWif: n.privateKeyWif,
-      });
+        documentType: documentTypeName,
+        message: `Document created successfully with ID: ${document.id?.toString()}`
+      };
     }
     case 'documentReplace': {
       const dynamic = (typeof n.documentFields === 'object' && n.documentFields !== null) ? n.documentFields : {};
@@ -2120,30 +2446,171 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       if (revision == null) {
         throw new Error('Document revision is missing. Click "Load Document" before replacing.');
       }
-      return c.documents.replace({
-        contractId: n.contractId,
-        type: n.documentType,
+
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
+
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+
+      // Create the Document object with incremented revision
+      const document = new Document(
+        data,                           // js_raw_document
+        documentTypeName,               // js_document_type_name
+        BigInt(revision) + 1n,          // js_revision (increment for replace)
+        contractId,                     // js_data_contract_id
+        n.ownerId,                      // js_owner_id
+        n.documentId                    // js_document_id
+      );
+
+      await c.documents.replace({ document, identityKey, signer });
+
+      return {
+        status: 'success',
         documentId: n.documentId,
-        ownerId: n.ownerId,
-        data,
-        revision,
-        privateKeyWif: n.privateKeyWif,
-      });
+        newRevision: (BigInt(revision) + 1n).toString(),
+        message: `Document replaced successfully. New revision: ${BigInt(revision) + 1n}`
+      };
     }
-    case 'documentDelete':
-      return c.documents.delete({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, privateKeyWif: n.privateKeyWif });
-    case 'documentTransfer':
-      return c.documents.transfer({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, recipientId: n.recipientId, privateKeyWif: n.privateKeyWif });
-    case 'documentPurchase':
-      return c.documents.purchase({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, buyerId: n.buyerId, price: n.price, privateKeyWif: n.privateKeyWif });
-    case 'documentSetPrice':
-      return c.documents.setPrice({ contractId: n.contractId, type: n.documentType, documentId: n.documentId, ownerId: n.ownerId, price: n.price, privateKeyWif: n.privateKeyWif });
+    case 'documentDelete': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
+
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+
+      // For delete, we can pass document identifiers directly
+      await c.documents.delete({
+        document: {
+          id: n.documentId,
+          ownerId: n.ownerId,
+          dataContractId: contractId,
+          documentTypeName: documentTypeName
+        },
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        documentId: n.documentId,
+        message: `Document deleted successfully`
+      };
+    }
+    case 'documentTransfer': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
+
+      // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
+      await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.ownerId));
+
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+
+      // Fetch the actual document from platform (SDK requires Document object)
+      const document = await c.documents.get(contractId, documentTypeName, n.documentId);
+      if (!document) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
+
+      await c.documents.transfer({
+        document,
+        recipientId: n.recipientId,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        documentId: n.documentId,
+        recipientId: n.recipientId,
+        message: `Document transferred to ${n.recipientId}`
+      };
+    }
+    case 'documentPurchase': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.buyerId, n.privateKeyWif, n.keyId
+      );
+
+      // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
+      await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.buyerId));
+
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+
+      // Fetch the actual document from platform (SDK requires Document object)
+      const document = await c.documents.get(contractId, documentTypeName, n.documentId);
+      if (!document) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
+
+      await c.documents.purchase({
+        document,
+        buyerId: n.buyerId,
+        price: BigInt(n.price),
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        documentId: n.documentId,
+        buyerId: n.buyerId,
+        price: n.price,
+        message: `Document purchased for ${n.price} credits`
+      };
+    }
+    case 'documentSetPrice': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.ownerId, n.privateKeyWif, n.keyId
+      );
+
+      // Refresh nonce to ensure we have the latest (prevents "tx already exists in cache" errors)
+      await c.wasm.refreshIdentityNonce(Identifier.fromBase58(n.ownerId));
+
+      const contractId = n.dataContractId || n.contractId;
+      const documentTypeName = n.documentTypeName || n.documentType;
+
+      // Fetch the actual document from platform (SDK requires Document object)
+      const document = await c.documents.get(contractId, documentTypeName, n.documentId);
+      if (!document) {
+        throw new Error(`Document not found: ${n.documentId}`);
+      }
+
+      // Increment revision for update operation (platform expects current_revision + 1)
+      document.revision = BigInt(document.revision) + 1n;
+
+      await c.documents.setPrice({
+        document,
+        price: BigInt(n.price),
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        documentId: n.documentId,
+        price: n.price,
+        message: `Document price set to ${n.price} credits`
+      };
+    }
 
     // DPNS
     case 'getDpnsUsername':
       return useProof ? c.dpns.usernameWithProof(n.identityId) : c.dpns.username(n.identityId);
     case 'getDpnsUsernames':
-      return useProof ? c.dpns.usernamesWithProof(n.identityId, { limit: n.limit ?? null }) : c.dpns.usernames(n.identityId, { limit: n.limit ?? null });
+      return useProof
+        ? c.dpns.usernamesWithProof({ identityId: n.identityId, limit: n.limit ?? undefined })
+        : c.dpns.usernames({ identityId: n.identityId, limit: n.limit ?? undefined });
     case 'getDpnsUsernameByName':
       return useProof ? c.dpns.getUsernameByNameWithProof(n.username) : c.dpns.getUsernameByName(n.username);
     case 'dpnsResolve':
@@ -2193,16 +2660,26 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return useProof ? c.epoch.evonodesProposedBlocksByIdsWithProof(n.epoch, toStringArray(n.ids)) : c.epoch.evonodesProposedBlocksByIds(n.epoch, toStringArray(n.ids));
     case 'getEvonodesProposedEpochBlocksByRange':
       return useProof
-        ? c.epoch.evonodesProposedBlocksByRangeWithProof(n.epoch, { limit: n.limit ?? null, startAfter: n.startAfter ?? null, orderAscending: n.orderAscending ?? null })
-        : c.epoch.evonodesProposedBlocksByRange(n.epoch, { limit: n.limit ?? null, startAfter: n.startAfter ?? null, orderAscending: n.orderAscending ?? null });
+        ? c.epoch.evonodesProposedBlocksByRangeWithProof({
+          epoch: n.epoch,
+          limit: n.limit ?? undefined,
+          startAfter: n.startAfter ?? undefined,
+          orderAscending: n.orderAscending ?? undefined,
+        })
+        : c.epoch.evonodesProposedBlocksByRange({
+          epoch: n.epoch,
+          limit: n.limit ?? undefined,
+          startAfter: n.startAfter ?? undefined,
+          orderAscending: n.orderAscending ?? undefined,
+        });
 
     // Protocol
     case 'getProtocolVersionUpgradeState':
       return useProof ? c.protocol.versionUpgradeStateWithProof() : c.protocol.versionUpgradeState();
     case 'getProtocolVersionUpgradeVoteStatus':
       return useProof
-        ? c.protocol.versionUpgradeVoteStatusWithProof({ startProTxHash: n.startProTxHash ?? null, count: n.count ?? null })
-        : c.protocol.versionUpgradeVoteStatus({ startProTxHash: n.startProTxHash ?? null, count: n.count ?? null });
+        ? c.protocol.versionUpgradeVoteStatusWithProof(n.startProTxHash, n.count ?? undefined)
+        : c.protocol.versionUpgradeVoteStatus(n.startProTxHash, n.count ?? undefined);
 
     // Tokens
     case 'getTokenStatuses':
@@ -2222,26 +2699,219 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const tokenPosition = toNumber(n.tokenPosition, 0);
       return c.tokens.priceByContract(contractId, tokenPosition);
     }
-    case 'tokenMint':
-      return c.tokens.mint({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, recipientId: n.recipientId, publicNote: n.publicNote });
-    case 'tokenBurn':
-      return c.tokens.burn({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenTransfer':
-      return c.tokens.transfer({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, senderId: n.senderId, recipientId: n.recipientId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenFreeze':
-      return c.tokens.freeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToFreeze: n.identityToFreeze, freezerId: n.freezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenUnfreeze':
-      return c.tokens.unfreeze({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityToUnfreeze: n.identityToUnfreeze, unfreezerId: n.unfreezerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenDestroyFrozen':
-      return c.tokens.destroyFrozen({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.frozenIdentityId, destroyerId: n.destroyerId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenSetPriceForDirectPurchase':
-      return c.tokens.setPriceForDirectPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, identityId: n.identityId, priceType: n.priceType, priceData: n.priceData, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenDirectPurchase':
-      return c.tokens.directPurchase({ contractId: n.contractId, tokenPosition: n.tokenPosition, amount: n.amount, identityId: n.identityId, totalAgreedPrice: n.totalAgreedPrice, privateKeyWif: n.privateKeyWif });
-    case 'tokenClaim':
-      return c.tokens.claim({ contractId: n.contractId, tokenPosition: n.tokenPosition, distributionType: n.distributionType, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
-    case 'tokenConfigUpdate':
-      return c.tokens.configUpdate({ contractId: n.contractId, tokenPosition: n.tokenPosition, configItemType: n.configItemType, configValue: n.configValue, identityId: n.identityId, privateKeyWif: n.privateKeyWif, publicNote: n.publicNote });
+    case 'tokenMint': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.mint({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        amount: BigInt(n.amount),
+        identityId: n.identityId,
+        recipientId: n.recipientId || undefined,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        balance: result.balance?.toString(),
+        message: `Minted ${n.amount} tokens`
+      };
+    }
+    case 'tokenBurn': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.burn({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        amount: BigInt(n.amount),
+        identityId: n.identityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        balance: result.balance?.toString(),
+        message: `Burned ${n.amount} tokens`
+      };
+    }
+    case 'tokenTransfer': {
+      const senderId = n.senderId || n.identityId;
+      const { identityKey, signer } = await prepareTransition(
+        c, senderId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.transfer({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        amount: BigInt(n.amount),
+        senderId: senderId,
+        recipientId: n.recipientId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        senderBalance: result.senderBalance?.toString(),
+        recipientBalance: result.recipientBalance?.toString(),
+        message: `Transferred ${n.amount} tokens to ${n.recipientId}`
+      };
+    }
+    case 'tokenFreeze': {
+      const authorityIdentityId = n.identityId || n.freezerId;
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.freeze({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        frozenIdentityId: n.identityToFreeze,
+        authorityId: authorityIdentityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        message: `Frozen tokens for identity ${n.identityToFreeze}`
+      };
+    }
+    case 'tokenUnfreeze': {
+      const authorityIdentityId = n.identityId || n.unfreezerId;
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.unfreeze({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        frozenIdentityId: n.identityToUnfreeze,
+        authorityId: authorityIdentityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        message: `Unfrozen tokens for identity ${n.identityToUnfreeze}`
+      };
+    }
+    case 'tokenDestroyFrozen': {
+      const authorityIdentityId = n.identityId || n.destroyerId;
+      const { identityKey, signer } = await prepareTransition(
+        c, authorityIdentityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.destroyFrozen({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        frozenIdentityId: n.frozenIdentityId,
+        authorityId: authorityIdentityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        message: `Destroyed frozen tokens for identity ${n.frozenIdentityId}`
+      };
+    }
+    case 'tokenSetPriceForDirectPurchase': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.setPrice({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        authorityId: n.identityId,
+        price: n.priceData ? BigInt(n.priceData) : undefined,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        message: `Token price set successfully`
+      };
+    }
+    case 'tokenDirectPurchase': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.directPurchase({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        amount: BigInt(n.amount),
+        buyerId: n.identityId,
+        maxTotalCost: BigInt(n.totalAgreedPrice),
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        balance: result.balance?.toString(),
+        creditsPaid: result.creditsPaid?.toString(),
+        message: `Purchased ${n.amount} tokens`
+      };
+    }
+    case 'tokenClaim': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.claim({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        distributionType: n.distributionType,
+        identityId: n.identityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        claimedAmount: result.claimedAmount?.toString(),
+        message: `Claimed tokens from distribution`
+      };
+    }
+    case 'tokenEmergencyAction': {
+      const { identityKey, signer } = await prepareTransition(
+        c, n.identityId, n.privateKeyWif, n.keyId
+      );
+
+      const result = await c.tokens.emergencyAction({
+        dataContractId: n.contractId,
+        tokenPosition: Number(n.tokenPosition),
+        action: n.actionType,
+        authorityId: n.identityId,
+        publicNote: n.publicNote || undefined,
+        identityKey,
+        signer
+      });
+
+      return {
+        status: 'success',
+        message: `Emergency action ${n.actionType} performed`
+      };
+    }
 
     // Group queries
     case 'getGroupInfo': {
@@ -2251,38 +2921,46 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     }
     case 'getGroupInfos': {
       const contractId = n.dataContractId || n.contractId;
-      return useProof ? c.group.infosWithProof(contractId, n.startAtInfo ?? null, n.count ?? null) : c.group.infos(contractId, n.startAtInfo ?? null, n.count ?? null);
+      return useProof
+        ? c.group.infosWithProof({ dataContractId: contractId, startAt: n.startAtInfo ?? undefined, limit: n.count ?? undefined })
+        : c.group.infos({ dataContractId: contractId, startAt: n.startAtInfo ?? undefined, limit: n.count ?? undefined });
     }
     case 'getGroupMembers': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
       const memberIds = toStringArray(n.memberIds);
-      const opts = { memberIds: memberIds.length ? memberIds : null, startAt: n.startAt ?? null, limit: n.limit ?? null };
-      return useProof ? c.group.membersWithProof(contractId, position, opts) : c.group.members(contractId, position, opts);
+      const opts = {
+        dataContractId: contractId,
+        groupContractPosition: position,
+        memberIds: memberIds.length ? memberIds : undefined,
+        startAtMemberId: n.startAt ?? undefined,
+        limit: n.limit ?? undefined,
+      };
+      return useProof ? c.group.membersWithProof(opts) : c.group.members(opts);
     }
     case 'getGroupActions': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
-      const opts = { startAtInfo: n.startAtInfo ?? null, count: n.count ?? null };
-      return useProof ? c.group.actionsWithProof(contractId, position, n.status, opts) : c.group.actions(contractId, position, n.status, opts);
+      const opts = { dataContractId: contractId, groupContractPosition: position, status: n.status, startAt: n.startAtInfo ?? undefined, limit: n.count ?? undefined };
+      return useProof ? c.group.actionsWithProof(opts) : c.group.actions(opts);
     }
     case 'getGroupActionSigners': {
       const contractId = n.dataContractId || n.contractId;
       const position = toNumber(n.groupContractPosition, 0);
-      return useProof
-        ? c.group.actionSignersWithProof(contractId, position, n.status, n.actionId)
-        : c.group.actionSigners(contractId, position, n.status, n.actionId);
+      const payload = { dataContractId: contractId, groupContractPosition: position, status: n.status, actionId: n.actionId };
+      return useProof ? c.group.actionSignersWithProof(payload) : c.group.actionSigners(payload);
     }
     case 'getIdentityGroups': {
       const memberDataContracts = toStringArray(n.memberDataContracts);
       const ownerDataContracts = toStringArray(n.ownerDataContracts);
       const moderatorDataContracts = toStringArray(n.moderatorDataContracts);
       const opts = {
-        memberDataContracts: memberDataContracts.length ? memberDataContracts : null,
-        ownerDataContracts: ownerDataContracts.length ? ownerDataContracts : null,
-        moderatorDataContracts: moderatorDataContracts.length ? moderatorDataContracts : null,
+        identityId: n.identityId,
+        memberDataContracts: memberDataContracts.length ? memberDataContracts : undefined,
+        ownerDataContracts: ownerDataContracts.length ? ownerDataContracts : undefined,
+        moderatorDataContracts: moderatorDataContracts.length ? moderatorDataContracts : undefined,
       };
-      return useProof ? c.group.identityGroupsWithProof(n.identityId, opts) : c.group.identityGroups(n.identityId, opts);
+      return useProof ? c.group.identityGroupsWithProof(opts) : c.group.identityGroups(opts);
     }
     case 'getGroupsDataContracts': {
       const contractIds = toStringArray(n.dataContractIds || n.contractIds);
@@ -2293,83 +2971,77 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'getContestedResources': {
       const contractId = n.dataContractId || n.contractId;
       const payload = {
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
-        contractId,
         indexName: n.indexName,
-        startAtValue: n.startAtValue ?? null,
-        limit: n.limit ?? null,
-        orderAscending: n.orderAscending ?? null,
+        startAtValue: n.startAtValue ?? undefined,
+        limit: n.limit ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
       };
       return useProof ? c.group.contestedResourcesWithProof(payload) : c.group.contestedResources(payload);
     }
     case 'getContestedResourceVotersForIdentity': {
       const contractId = n.dataContractId || n.contractId;
       const payload = {
-        contractId,
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
         indexName: n.indexName,
         indexValues: toStringArray(n.indexValues),
         contestantId: n.contestantId,
-        orderAscending: n.orderAscending ?? null,
+        orderAscending: n.orderAscending ?? undefined,
       };
       if (useProof) {
         return c.group.contestedResourceVotersForIdentityWithProof({
           ...payload,
-          startAtIdentifierInfo: n.startAtIdentifierInfo ?? null,
-          count: n.count ?? null,
+          startAtVoterId: n.startAtVoterId ?? n.startAtIdentifierInfo ?? undefined,
+          startAtIncluded: n.startAtIncluded ?? undefined,
+          limit: n.limit ?? n.count ?? undefined,
         });
       }
       return c.group.contestedResourceVotersForIdentity({
         ...payload,
-        startAtVoterInfo: n.startAtVoterInfo ?? null,
-        limit: n.limit ?? null,
+        startAtVoterId: n.startAtVoterId ?? n.startAtVoterInfo ?? undefined,
+        startAtIncluded: n.startAtIncluded ?? undefined,
+        limit: n.limit ?? undefined,
       });
     }
     case 'getContestedResourceVoteState': {
       const contractId = n.dataContractId || n.contractId;
       const payload = {
-        contractId,
+        dataContractId: contractId,
         documentTypeName: n.documentTypeName,
         indexName: n.indexName,
         indexValues: toStringArray(n.indexValues),
         resultType: n.resultType,
-        allowIncludeLockedAndAbstainingVoteTally: n.allowIncludeLockedAndAbstainingVoteTally ?? null,
-        startAtIdentifierInfo: n.startAtIdentifierInfo ?? null,
-        count: n.count ?? null,
-        orderAscending: n.orderAscending ?? null,
+        includeLockedAndAbstaining: n.includeLockedAndAbstaining ?? n.allowIncludeLockedAndAbstainingVoteTally ?? undefined,
+        startAtContenderId: n.startAtContenderId ?? n.startAtIdentifierInfo ?? undefined,
+        startAtIncluded: n.startAtIncluded ?? undefined,
+        limit: n.count ?? n.limit ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
       };
       return useProof ? c.voting.contestedResourceVoteStateWithProof(payload) : c.voting.contestedResourceVoteState(payload);
     }
     case 'getContestedResourceIdentityVotes': {
-      if (useProof) {
-        return c.voting.contestedResourceIdentityVotesWithProof(n.identityId, {
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-          orderAscending: n.orderAscending ?? null,
-        });
-      }
-      return c.voting.contestedResourceIdentityVotes(n.identityId, {
-        limit: n.limit ?? null,
-        startAtVotePollIdInfo: n.startAtVotePollIdInfo ?? null,
-        orderAscending: n.orderAscending ?? null,
-      });
+      const query = {
+        identityId: n.identityId,
+        limit: n.limit ?? undefined,
+        startAtVoteId: n.startAtVoteId ?? n.startAtVotePollIdInfo ?? undefined,
+        startAtIncluded: n.startAtIncluded ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
+      };
+      return useProof ? c.voting.contestedResourceIdentityVotesWithProof(query) : c.voting.contestedResourceIdentityVotes(query);
     }
     case 'getVotePollsByEndDate': {
-      if (useProof) {
-        return c.voting.votePollsByEndDateWithProof({
-          startTimeMs: n.startTimeMs ?? null,
-          endTimeMs: n.endTimeMs ?? null,
-          limit: n.limit ?? null,
-          offset: n.offset ?? null,
-          orderAscending: n.orderAscending ?? null,
-        });
-      }
-      return c.voting.votePollsByEndDate({
-        startTimeInfo: n.startTimeInfo ?? null,
-        endTimeInfo: n.endTimeInfo ?? null,
-        limit: n.limit ?? null,
-        orderAscending: n.orderAscending ?? null,
-      });
+      const query = {
+        startTimeMs: n.startTimeMs ?? undefined,
+        startTimeIncluded: n.startTimeMs ? (n.startTimeIncluded ?? undefined) : undefined,
+        endTimeMs: n.endTimeMs ?? undefined,
+        endTimeIncluded: n.endTimeMs ? (n.endTimeIncluded ?? undefined) : undefined,
+        limit: n.limit ?? undefined,
+        offset: n.offset ?? undefined,
+        orderAscending: n.orderAscending ?? undefined,
+      };
+      return useProof ? c.voting.votePollsByEndDateWithProof(query) : c.voting.votePollsByEndDate(query);
     }
 
     case 'masternodeVote': {
@@ -2429,19 +3101,170 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
     case 'waitForStateTransitionResult':
       return c.system.waitForStateTransitionResult(n.stateTransitionHash);
 
+    // Platform Address queries
+    case 'getPlatformAddress':
+      return useProof ? c.addresses.getWithProof(n.address) : c.addresses.get(n.address);
+    case 'getPlatformAddresses': {
+      const addresses = toStringArray(n.addresses);
+      return useProof ? c.addresses.getManyWithProof(addresses) : c.addresses.getMany(addresses);
+    }
+
+    // Platform Address transitions
+    case 'addressTransfer':
+      // Note: This is a simplified implementation. Full implementation requires PlatformAddressSigner
+      throw new Error('Address Transfer requires complex signer setup. Please use the SDK directly.');
+    case 'addressTopUpIdentity':
+      // Note: This is a simplified implementation. Full implementation requires PlatformAddressSigner
+      throw new Error('Address Top Up Identity requires complex signer setup. Please use the SDK directly.');
+    case 'addressWithdraw':
+      // Note: This is a simplified implementation. Full implementation requires PlatformAddressSigner
+      throw new Error('Address Withdraw requires complex signer setup. Please use the SDK directly.');
+    case 'addressTransferFromIdentity':
+      // Note: This is a simplified implementation. Full implementation requires IdentitySigner
+      throw new Error('Address Transfer From Identity requires complex signer setup. Please use the SDK directly.');
+    case 'addressFundFromAssetLock':
+      // Note: This is a simplified implementation. Full implementation requires PlatformAddressSigner
+      throw new Error('Address Fund From Asset Lock requires complex signer setup. Please use the SDK directly.');
+    case 'addressCreateIdentity':
+      // Note: This is a simplified implementation. Full implementation requires multiple signers
+      throw new Error('Address Create Identity requires complex signer setup. Please use the SDK directly.');
+
     default:
       throw new Error(`Operation ${itemKey} is not supported in the demo UI.`);
   }
 }
 
 function formatResult(value) {
-  if (value === undefined) return 'Completed (no result returned)';
-  if (value === null) return 'null';
-  if (typeof value === 'string') return value;
+  const seen = new WeakSet();
+
+  // Check if object is a WASM object (has __wbg_ptr)
+  const isWasmObject = (val) => {
+    return val && typeof val === 'object' && '__wbg_ptr' in val;
+  };
+
+  // Check if this is a ProofMetadataResponse (has data, metadata, proof properties)
+  const isProofMetadataResponse = (val) => {
+    return val && typeof val === 'object' &&
+           'data' in val && 'metadata' in val && 'proof' in val;
+  };
+
+  // Try to extract meaningful data from WASM object
+  const extractWasmData = (val) => {
+    // Special handling for ProofMetadataResponse - manually construct the result
+    // to properly handle Maps in the data field
+    if (isProofMetadataResponse(val)) {
+      return {
+        data: val.data,  // Will be processed by toSerializable which handles Maps
+        metadata: val.metadata,
+        proof: val.proof
+      };
+    }
+    // Try toJSON first (works for Identity, DataContract, Document, etc.)
+    if (typeof val.toJSON === 'function') {
+      try { return val.toJSON(); } catch (_) { }
+    }
+    // Try toObject
+    if (typeof val.toObject === 'function') {
+      try { return val.toObject(); } catch (_) { }
+    }
+    // WORKAROUND: Fallback for WASM objects missing toJSON/toObject
+    // See: https://github.com/dashpay/platform/issues/3027
+    // TODO: Remove this workaround once SDK is updated with proper toJSON() methods
+    const knownGetters = [
+      // TokenContractInfo
+      ['contractId', 'tokenContractPosition'],
+      // IdentityTokenInfo
+      ['frozen'],
+    ];
+    for (const getterSet of knownGetters) {
+      if (getterSet.every(prop => prop in val)) {
+        const obj = {};
+        for (const prop of getterSet) {
+          try { obj[prop] = val[prop]; } catch (_) { }
+        }
+        if (Object.keys(obj).length > 0) return obj;
+      }
+    }
+    // Fallback: try toString
+    if (typeof val.toString === 'function' && val.toString !== Object.prototype.toString) {
+      const str = val.toString();
+      if (str && str !== '[object Object]') return str;
+    }
+    return null;
+  };
+
+  const toSerializable = (val) => {
+    if (val === undefined) return undefined;
+    if (val === null) return null;
+    const t = typeof val;
+    if (t === 'string' || t === 'number' || t === 'boolean') return val;
+    if (t === 'bigint') return val.toString();
+
+    if (t === 'function') return undefined;
+    if (t !== 'object') return String(val);
+
+    if (seen.has(val)) return '[Circular]';
+    seen.add(val);
+
+    // Handle WASM objects specially
+    if (isWasmObject(val)) {
+      const extracted = extractWasmData(val);
+      if (extracted !== null) return toSerializable(extracted);
+    }
+
+    if (typeof val.toJSON === 'function') {
+      try { return toSerializable(val.toJSON()); } catch (_) { /* fallthrough */ }
+    }
+    if (typeof val.toObject === 'function') {
+      try { return toSerializable(val.toObject()); } catch (_) { /* fallthrough */ }
+    }
+
+    if (val instanceof Map) {
+      const obj = {};
+      for (const [k, v] of val.entries()) {
+        let key;
+        if (isWasmObject(k)) {
+          const extracted = extractWasmData(k);
+          key = typeof extracted === 'string' ? extracted : String(k);
+        } else if (typeof k === 'string') {
+          key = k;
+        } else {
+          key = String(k);
+        }
+        obj[key] = toSerializable(v);
+      }
+      return obj;
+    }
+
+    if (Array.isArray(val)) {
+      return val.map(item => toSerializable(item));
+    }
+
+    if (ArrayBuffer.isView(val)) {
+      return Array.from(val);
+    }
+
+    const obj = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (k === '__wbg_ptr') continue; // Skip WASM pointer
+      obj[k] = toSerializable(v);
+    }
+    return obj;
+  };
+
+  const normalized = toSerializable(value);
+  if (normalized === undefined) return 'Completed (no result returned)';
+  if (normalized === null) return 'null';
+  if (typeof normalized === 'string') return normalized;
+
   try {
-    return JSON.stringify(value, null, 2);
+    return JSON.stringify(normalized, null, 2);
   } catch (_) {
-    return String(value);
+    try {
+      return String(normalized);
+    } catch {
+      return '[Unserializable result]';
+    }
   }
 }
 

@@ -237,6 +237,7 @@ test.describe('State Transitions UI Tests', () => {
       'Document Transitions',
       'Token Transitions',
       'Voting Transitions',
+      'Platform Address Transitions',
     ];
 
     const missing = expected.filter(cat => !categories.includes(cat));
@@ -316,7 +317,9 @@ test.describe('State Transitions UI Tests', () => {
       'Token Claim',
       'Token Set Price',
       'Token Direct Purchase',
-      'Token Config Update',
+      // TODO: re-enable Token Config Update once it is added back into wasm-sdk
+      // 'Token Config Update',
+      'Token Emergency Action',
       'Token Transfer',
       'Token Freeze',
       'Token Unfreeze',
@@ -367,7 +370,8 @@ test.describe('Query Categories and Types UI Tests', () => {
       'Epoch & Block Queries',
       'Token Queries',
       'Group Queries',
-      'System & Utility'
+      'System & Utility',
+      'Platform Address Queries'
     ];
 
     ensureExactOptions(categories, expected, 'Query categories');
@@ -633,5 +637,51 @@ test.describe('Query Categories and Types UI Tests', () => {
     expect(missing, `Missing: ${missing.join(', ')}`).toEqual([]);
     expect(unexpected, `Unexpected: ${unexpected.join(', ')}`).toEqual([]);
     expect(queryTypes.length, 'Wrong number of query types').toBe(expected.length);
+  });
+
+  test('should populate platform address query types correctly', async () => {
+    await evoSdkPage.setOperationType('queries');
+    await evoSdkPage.setQueryCategory('address');
+
+    const queryTypes = filterPlaceholderOptions(
+      await evoSdkPage.getAvailableQueryTypes()
+    );
+
+    const expected = [
+      'Get Platform Address',
+      'Get Multiple Platform Addresses'
+    ];
+
+    const missing = expected.filter(type => !queryTypes.includes(type));
+    const unexpected = queryTypes.filter(type => !expected.includes(type));
+
+    expect(missing, `Missing: ${missing.join(', ')}`).toEqual([]);
+    expect(unexpected, `Unexpected: ${unexpected.join(', ')}`).toEqual([]);
+    expect(queryTypes.length, 'Wrong number of query types').toBe(expected.length);
+  });
+
+  test('should populate platform address transition types correctly', async () => {
+    await evoSdkPage.setOperationType('transitions');
+    await evoSdkPage.setQueryCategory('address');
+
+    const transitionTypes = filterPlaceholderOptions(
+      await evoSdkPage.getAvailableQueryTypes()
+    );
+
+    const expected = [
+      'Address Transfer',
+      'Top Up Identity from Address',
+      'Withdraw to Core',
+      'Transfer from Identity to Address',
+      'Fund Address from Asset Lock',
+      'Create Identity from Address'
+    ];
+
+    const missing = expected.filter(type => !transitionTypes.includes(type));
+    const unexpected = transitionTypes.filter(type => !expected.includes(type));
+
+    expect(missing, `Missing: ${missing.join(', ')}`).toEqual([]);
+    expect(unexpected, `Unexpected: ${unexpected.join(', ')}`).toEqual([]);
+    expect(transitionTypes.length, 'Wrong number of transition types').toBe(expected.length);
   });
 });

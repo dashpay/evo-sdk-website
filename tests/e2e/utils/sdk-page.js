@@ -2,19 +2,44 @@ const { BaseTest } = require('./base-test');
 const { expect } = require('@playwright/test');
 
 // Configuration for dynamic array parameters that require special handling
+// These are arrays where each element is added as a separate input field
 const DYNAMIC_ARRAY_PARAMETERS = {
   'ids': true,
   'identityIds': true,
   'identitiesIds': true,
-  'tokenIds': true,
-  'indexValues': true
+  'tokenIds': true
+};
+
+// Array parameters that should be serialized as JSON directly (not individual items)
+const JSON_ARRAY_PARAMETERS = {
+  'indexValues': true,
+  'startIndexValues': true,
+  'endIndexValues': true,
+  'path': true,  // getPathElements path segments
+  'keys': true,  // getPathElements keys
+  'addresses': true  // getPlatformAddresses addresses array
 };
 
 const PARAM_SPECIFIC_FALLBACK_SELECTORS = {
-  contractId: ['input[placeholder*="Contract ID"]'],
-  documentType: ['input[placeholder*="Document Type"]'],
+  contractId: ['input[name="contractId"]', 'input[placeholder*="Contract ID"]'],
+  dataContractId: ['input[name="contractId"]', 'input[placeholder*="Contract ID"]'],  // Maps to contractId input
+  documentType: ['input[name="documentType"]', 'input[placeholder*="Document Type"]'],
   json: ['textarea[placeholder*="JSON"]'],
-  schema: ['textarea[placeholder*="Schema"]']
+  schema: ['textarea[placeholder*="Schema"]'],
+  indexValues: ['.index-values-group textarea', 'textarea[placeholder*="value1"]'],
+  startIndexValues: ['textarea[placeholder*="value1"]'],
+  endIndexValues: ['textarea[placeholder*="value1"]'],
+  // Path Elements query parameters - use exact placeholder match
+  path: ['input[placeholder=\'["32"]\']'],
+  keys: ['input[placeholder=\'["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]\']']
+};
+
+// Mapping from test data parameter names to UI input field names
+// Only applied for state transitions - queries use the standard SDK naming
+// Note: Most parameters match directly, only add mappings for mismatches
+// Note: dataContractUpdate uses 'dataContractId', documentCreate uses 'contractId' - no mapping needed
+const PARAM_NAME_MAPPING_FOR_TRANSITIONS = {
+  documentTypeName: 'documentType'
 };
 
 /**
@@ -127,9 +152,22 @@ class EvoSdkPage extends BaseTest {
   /**
    * Fill a specific parameter by name
    */
-  async fillParameterByName(paramName, value) {
-    // Special handling for multiselect checkboxes (like purposes)
-    if (paramName === 'purposes' && Array.isArray(value)) {
+  async fillParameterByName(paramName, value, isStateTransition = false) {
+    // Map parameter names for state transitions only (queries use standard SDK naming)
+    const uiParamName = isStateTransition && PARAM_NAME_MAPPING_FOR_TRANSITIONS[paramName]
+      ? PARAM_NAME_MAPPING_FOR_TRANSITIONS[paramName]
+      : paramName;
+
+    // Special handling for multiselect (like purposes) - uses <select multiple>
+    if (uiParamName === 'purposes' && Array.isArray(value)) {
+      const selectSelector = `select[name="${uiParamName}"][multiple]`;
+      const selectElement = this.page.locator(selectSelector);
+      if (await selectElement.count() > 0) {
+        // Select multiple options by their values
+        await selectElement.selectOption(value.map(v => v.toString()));
+        return;
+      }
+      // Fallback to checkbox approach if select not found
       for (const purposeValue of value) {
         const checkboxSelector = `input[name="purposes_${purposeValue}"][type="checkbox"]`;
         const checkbox = this.page.locator(checkboxSelector);
@@ -139,36 +177,55 @@ class EvoSdkPage extends BaseTest {
       }
       return;
     }
-    
+
+    // Special handling for JSON array parameters (like indexValues) - convert to JSON string
+    if (JSON_ARRAY_PARAMETERS[uiParamName] && Array.isArray(value)) {
+      value = JSON.stringify(value);
+    }
+
     // Special handling for array parameters that use dynamic input fields
-    if (DYNAMIC_ARRAY_PARAMETERS[paramName]) {
+    if (DYNAMIC_ARRAY_PARAMETERS[uiParamName]) {
       const enterValueInput = this.page.locator('input[placeholder="Enter value"]').first();
       const count = await enterValueInput.count();
-      
+
       if (count > 0 && await enterValueInput.isVisible()) {
         await this.fillInputByType(enterValueInput, value);
         return;
       }
     }
-    
-    const inputSelector = `input[name="${paramName}"], select[name="${paramName}"], textarea[name="${paramName}"]`;
+
+    // The website uses data-input-name attribute for dynamic inputs, so check that first
+    const dataInputSelector = `[data-input-name="${uiParamName}"]`;
+    const dataInput = this.page.locator(dataInputSelector).first();
+
+    if (await dataInput.count() > 0) {
+      await this.fillInputByType(dataInput, value);
+      console.log(`${uiParamName} filled via data-input-name`);
+      return;
+    }
+
+    const inputSelector = `input[name="${uiParamName}"], select[name="${uiParamName}"], textarea[name="${uiParamName}"]`;
     const input = this.page.locator(inputSelector).first();
-    
+
     // Check if input exists
     if (await input.count() === 0) {
       // Try alternative selectors based on common patterns
-      const alternativeSelectors = [
-        `#${paramName}`,
-        `[id*="${paramName}"]`,
-        `[placeholder*="${paramName}"]`,
-        `label:has-text("${paramName}") + input`,
-        `label:has-text("${paramName}") + select`,
-        `label:has-text("${paramName}") + textarea`,
-      ];
+      // Start with specific fallback selectors if defined (they are more reliable)
+      const alternativeSelectors = [];
 
-      if (PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]) {
-        alternativeSelectors.push(...PARAM_SPECIFIC_FALLBACK_SELECTORS[paramName]);
+      if (PARAM_SPECIFIC_FALLBACK_SELECTORS[uiParamName]) {
+        alternativeSelectors.push(...PARAM_SPECIFIC_FALLBACK_SELECTORS[uiParamName]);
       }
+
+      // Then add generic selectors
+      alternativeSelectors.push(
+        `#${uiParamName}`,
+        `[id*="${uiParamName}"]`,
+        `[placeholder*="${uiParamName}"]`,
+        `label:has-text("${uiParamName}") + input`,
+        `label:has-text("${uiParamName}") + select`,
+        `label:has-text("${uiParamName}") + textarea`,
+      );
       
       let found = false;
       for (const selector of alternativeSelectors) {
@@ -181,15 +238,15 @@ class EvoSdkPage extends BaseTest {
       }
       
       if (!found) {
-        console.warn(`⚠️  Could not find input for parameter: ${paramName}. Trying by label text...`);
-        
+        console.warn(`⚠️  Could not find input for parameter: ${uiParamName}. Trying by label text...`);
+
         // Try finding by label text as last resort
         const labelSelectors = [
-          `label:text-is("${paramName}") + input`,
-          `label:text-is("${paramName}") + textarea`,
-          `label:text-is("${paramName}") + select`
+          `label:text-is("${uiParamName}") + input`,
+          `label:text-is("${uiParamName}") + textarea`,
+          `label:text-is("${uiParamName}") + select`
         ];
-        
+
         for (const selector of labelSelectors) {
           const labelInput = this.page.locator(selector).first();
           if (await labelInput.count() > 0) {
@@ -198,9 +255,9 @@ class EvoSdkPage extends BaseTest {
             break;
           }
         }
-        
+
         if (!found) {
-          console.warn(`⚠️  Could not find input for parameter: ${paramName} - skipping`);
+          console.warn(`⚠️  Could not find input for parameter: ${uiParamName} (original: ${paramName}) - skipping`);
         }
       }
     } else {
@@ -244,19 +301,23 @@ class EvoSdkPage extends BaseTest {
    */
   async handleArrayInput(baseElement, arrayValues) {
     try {
-      // Look for existing input fields first (prioritize array container inputs)
+      // Check if there's a dynamic array container associated with this element
       const arrayContainerInputs = this.page.locator('.array-input-container input[type="text"]');
-      const allInputs = this.page.locator('input[type="text"], textarea').filter({
-        hasNot: this.page.locator('[readonly]')
-      });
-      
-      // Use array container inputs if available, otherwise use all inputs
-      const existingInputs = await arrayContainerInputs.count() > 0 ? arrayContainerInputs : allInputs;
-      const existingCount = await existingInputs.count();
+      const hasArrayContainer = await arrayContainerInputs.count() > 0;
+
+      // If no dynamic array container exists, use the baseElement directly
+      // This handles simple text inputs that accept JSON array strings
+      if (!hasArrayContainer) {
+        await baseElement.fill(JSON.stringify(arrayValues), { timeout: 2000 });
+        return true;
+      }
+
+      // Dynamic array container exists - use the multi-input approach
+      const existingCount = await arrayContainerInputs.count();
 
       // Fill the first existing field if available
       if (existingCount > 0 && arrayValues.length > 0) {
-        const firstInput = existingInputs.first();
+        const firstInput = arrayContainerInputs.first();
         try {
           await firstInput.fill(arrayValues[0].toString(), { timeout: 2000 });
         } catch (error) {
@@ -267,7 +328,7 @@ class EvoSdkPage extends BaseTest {
 
       // Look for "Add Item" button (specific to WASM SDK array inputs)
       const addButton = this.page.locator('button:has-text("+ Add Item"), button.add-array-item, button:has-text("Add Item"), button:has-text("Add"), button:has-text("add")').first();
-      
+
       if (await addButton.count() === 0) {
         if (arrayValues.length <= 1) {
           return true;
@@ -288,9 +349,7 @@ class EvoSdkPage extends BaseTest {
         await this.page.waitForFunction(
           ({ expectedCount }) => {
             const arrayInputs = document.querySelectorAll('.array-input-container input[type="text"]');
-            const allInputs = document.querySelectorAll('input[type="text"]:not([readonly]), textarea:not([readonly])');
-            const inputs = arrayInputs.length > 0 ? arrayInputs : allInputs;
-            return inputs.length >= expectedCount;
+            return arrayInputs.length >= expectedCount;
           },
           { expectedCount },
           { timeout: 2000 }
@@ -298,17 +357,11 @@ class EvoSdkPage extends BaseTest {
 
         // Find all input fields again (should be one more now)
         const currentArrayInputs = this.page.locator('.array-input-container input[type="text"]');
-        const currentAllInputs = this.page.locator('input[type="text"], textarea').filter({
-          hasNot: this.page.locator('[readonly]')
-        });
-
-        // Use array container inputs if available
-        const currentInputs = await currentArrayInputs.count() > 0 ? currentArrayInputs : currentAllInputs;
-        const currentCount = await currentInputs.count();
+        const currentCount = await currentArrayInputs.count();
 
         if (currentCount >= expectedCount) {
           // Fill the newest input field
-          const newInput = currentInputs.nth(currentCount - 1);
+          const newInput = currentArrayInputs.nth(currentCount - 1);
           try {
             await newInput.fill(value.toString(), { timeout: 2000 });
           } catch (error) {
@@ -547,12 +600,15 @@ class EvoSdkPage extends BaseTest {
 
   /**
    * Get available query types for current category
+   * Note: Strips " (Disabled)" suffix from operation names so tests remain agnostic to disabled state
    */
   async getAvailableQueryTypes() {
     const queryTypeSelect = this.page.locator(this.selectors.queryType);
     await queryTypeSelect.waitFor({ state: 'visible' });
     const options = await queryTypeSelect.locator('option').allTextContents();
-    return options.filter(option => option.trim() !== '' && option !== 'Select Query Type');
+    return options
+      .filter(option => option.trim() !== '' && option !== 'Select Query Type')
+      .map(option => option.replace(/ \(Disabled\)$/, ''));
   }
 
   /**
@@ -601,7 +657,8 @@ class EvoSdkPage extends BaseTest {
         console.log('Skipping description field (documentation only)');
       } else {
         // Use the general parameter filling method for other parameters
-        await this.fillParameterByName(key, value);
+        // Pass true for isStateTransition to apply naming convention mapping
+        await this.fillParameterByName(key, value, true);
       }
     }
   }
@@ -756,16 +813,82 @@ class EvoSdkPage extends BaseTest {
       throw error;
     }
 
-    // Wait for document fields to be populated by checking if any doc-field-input has a non-empty value
+    // Wait for the status message to indicate success or error
+    // The status will show "Document loaded successfully" or an error message
     await this.page.waitForFunction(
       () => {
-        const fields = document.querySelectorAll('.doc-field-input');
-        return Array.from(fields).some(field => field.value && field.value.trim() !== '');
+        const statusEl = document.getElementById('statusBanner');
+        if (!statusEl) return false;
+        const text = statusEl.textContent || '';
+        // Check for success or error status (not "Loading document...")
+        return text.includes('Document loaded successfully') ||
+               text.includes('Error') ||
+               text.includes('not found');
       },
-      { timeout: 10000 }
+      { timeout: 30000 }
     );
 
-    console.log('Document loaded and fields populated');
+    // Check if it was actually successful
+    const statusText = await this.page.locator('#statusBanner').textContent();
+    if (!statusText.includes('Document loaded successfully')) {
+      throw new Error(`Failed to load document: ${statusText}`);
+    }
+
+    console.log('Document loaded successfully');
+  }
+
+  /**
+   * Load existing document with retry for newly created documents
+   * Retries loading until revision is available (not N/A)
+   */
+  async loadExistingDocumentWithRetry(maxRetries = 5, retryDelay = 3000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`Loading document attempt ${attempt}/${maxRetries}...`);
+
+      // Click the "Load Document" button
+      try {
+        const loadDocumentButton = this.page.locator('button:has-text("Load Document")');
+        await loadDocumentButton.waitFor({ state: 'visible', timeout: 5000 });
+        await loadDocumentButton.click();
+        console.log('Clicked Load Document button');
+      } catch (error) {
+        console.error('Error clicking Load Document button:', error);
+        throw error;
+      }
+
+      // Wait for the status message
+      await this.page.waitForFunction(
+        () => {
+          const statusEl = document.getElementById('statusBanner');
+          if (!statusEl) return false;
+          const text = statusEl.textContent || '';
+          return text.includes('Document loaded successfully') ||
+                 text.includes('Error') ||
+                 text.includes('not found');
+        },
+        { timeout: 30000 }
+      );
+
+      // Check if it was successful AND has a valid revision
+      const statusText = await this.page.locator('#statusBanner').textContent();
+      if (statusText.includes('Document loaded successfully')) {
+        // Check if revision is valid (not N/A)
+        if (!statusText.includes('N/A')) {
+          console.log('Document loaded successfully with valid revision');
+          return;
+        }
+
+        // Revision is N/A, retry after delay
+        if (attempt < maxRetries) {
+          console.log(`Document revision not yet available (attempt ${attempt}), waiting ${retryDelay}ms before retry...`);
+          await this.page.waitForTimeout(retryDelay);
+        } else {
+          throw new Error(`Failed to load document with valid revision after ${maxRetries} attempts. The revision shows N/A.`);
+        }
+      } else {
+        throw new Error(`Failed to load document: ${statusText}`);
+      }
+    }
   }
 
   /**

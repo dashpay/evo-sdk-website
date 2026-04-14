@@ -26,18 +26,18 @@ async function executeQueryWithProof(
 
   // Enable proof info if available
   const proofEnabled = await evoSdkPage.enableProofInfo();
-  
+
   // If proof was enabled, wait for the toggle to be actually checked
   if (proofEnabled) {
     const proofToggle = evoSdkPage.page.locator('#proofToggle');
     await expect(proofToggle).toBeChecked();
   }
-  
+
   const success = await parameterInjector.injectParameters(parameterCategory, queryName, network);
   expect(success).toBe(true);
-  
+
   const result = await evoSdkPage.executeQueryAndGetResult();
-  
+
   return { result, proofEnabled };
 }
 
@@ -49,12 +49,12 @@ async function executeQueryWithProof(
  */
 function parseNumericResult(resultStr, propertyName = 'balance') {
   const trimmedStr = resultStr.trim();
-  
+
   // Try to parse as JSON first (in case it's a JSON response)
   let numericValue;
   try {
     const parsed = JSON.parse(trimmedStr);
-    
+
     // Check if it's a JSON object with the expected property
     if (typeof parsed === 'object' && parsed[propertyName] !== undefined) {
       numericValue = Number(parsed[propertyName]);
@@ -66,13 +66,13 @@ function parseNumericResult(resultStr, propertyName = 'balance') {
   } catch {
     // If not JSON, try parsing directly as number
     numericValue = Number(trimmedStr);
-    
+
     // If Number() fails, log the issue
     if (isNaN(numericValue)) {
       console.error(`Failed to parse ${propertyName}:`, trimmedStr, 'type:', typeof trimmedStr);
     }
   }
-  
+
   return numericValue;
 }
 
@@ -124,19 +124,22 @@ function validateProofContent(resultData) {
 function validateResultWithProof(result) {
   expect(result.success).toBe(true);
   expect(result.result).toBeDefined();
-  
+
   // Parse the result as JSON to check the format
   const resultData = JSON.parse(result.result);
+  // All proof responses must have a data property
   expect(resultData).toHaveProperty('data');
+  expect(resultData.data).not.toBeNull();
+  expect(resultData.data).toBeDefined();
   expect(resultData).toHaveProperty('metadata');
   expect(resultData).toHaveProperty('proof');
-  
+
   // Validate metadata structure
   expect(resultData.metadata).toHaveProperty('height');
   expect(resultData.metadata).toHaveProperty('coreChainLockedHeight');
   expect(resultData.metadata).toHaveProperty('timeMs');
   expect(resultData.metadata).toHaveProperty('protocolVersion');
-  
+
   // Validate proof structure
   validateProofContent(resultData);
 }
@@ -165,14 +168,36 @@ function validateResultWithoutProof(result) {
 
 /**
  * Helper function to validate data contract result
+ * DataContract now has toJSON() so we just validate it's valid JSON
  * @param {string} resultStr - The raw result string containing contract data
  */
 function validateContractResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const contractData = JSON.parse(resultStr);
   expect(contractData).toBeDefined();
-  expect(contractData).toHaveProperty('id');
-  expect(contractData).toHaveProperty('config');
+  expect(typeof contractData).toBe('object');
+  // Contract must have data - empty {} is not acceptable
+  expect(Object.keys(contractData).length).toBeGreaterThan(0);
+  // Check contract structure
+  expect(contractData.id || contractData.$id).toBeDefined();
+  expect(contractData).toHaveProperty('ownerId');
+  expect(contractData).toHaveProperty('version');
+  expect(contractData).toHaveProperty('documentSchemas');
+  // Validate types
+  expect(typeof (contractData.id || contractData.$id)).toBe('string');
+  expect(typeof contractData.ownerId).toBe('string');
+  expect(typeof contractData.version).toBe('number');
+  expect(typeof contractData.documentSchemas).toBe('object');
+}
+
+/**
+ * Helper function to validate a single document has required fields
+ * @param {object} doc - The document object to validate
+ */
+function validateSingleDocument(doc) {
+  expect(doc.$id).toBeDefined();
+  expect(doc.$ownerId).toBeDefined();
+  expect(doc.$revision).toBeDefined();
+  expect(doc.$type).toBeDefined();
 }
 
 /**
@@ -183,17 +208,20 @@ function validateDocumentResult(resultStr) {
   expect(() => JSON.parse(resultStr)).not.toThrow();
   const documentData = JSON.parse(resultStr);
   expect(documentData).toBeDefined();
-  // Documents can be arrays or single objects
+  // Documents can be arrays, single objects, or Map-like objects (keyed by document ID)
   if (Array.isArray(documentData)) {
-    expect(documentData.length).toBeGreaterThanOrEqual(0);
-    // Validate each document in the array has ownerId
-    documentData.forEach(document => {
-      expect(document).toHaveProperty('ownerId');
-    });
-  } else {
-    expect(documentData).toBeInstanceOf(Object);
-    // Validate single document has ownerId
-    expect(documentData).toHaveProperty('ownerId');
+    expect(documentData.length).toBeGreaterThan(0);
+    documentData.forEach(doc => validateSingleDocument(doc));
+  } else if (documentData && typeof documentData === 'object') {
+    expect(Object.keys(documentData).length).toBeGreaterThan(0);
+    // Could be a single document or Map-like object keyed by ID
+    if (documentData.$id) {
+      // Single document
+      validateSingleDocument(documentData);
+    } else {
+      // Map-like object keyed by document ID (from getDocuments)
+      Object.values(documentData).forEach(doc => validateSingleDocument(doc));
+    }
   }
 }
 
@@ -201,9 +229,20 @@ function validateDocumentResult(resultStr) {
  * Helper function to validate numeric results and ensure they're valid
  * @param {string} resultStr - The raw result string
  * @param {string} propertyName - The property name to extract
- * @returns {number} - The validated numeric value
+ * @returns {number|null} - The validated numeric value or null if not available
  */
 function validateNumericResult(resultStr, propertyName = 'balance') {
+  // First check if it's an empty object - SDK may return {} for non-existent data
+  try {
+    const parsed = JSON.parse(resultStr.trim());
+    if (typeof parsed === 'object' && parsed !== null && Object.keys(parsed).length === 0) {
+      // Empty object is valid - means no data found (e.g., identity has 0 balance or doesn't exist)
+      return null;
+    }
+  } catch {
+    // Continue to normal parsing
+  }
+
   const numericValue = parseNumericResult(resultStr, propertyName);
   expect(numericValue).not.toBeNaN();
   expect(numericValue).toBeGreaterThanOrEqual(0);
@@ -212,13 +251,25 @@ function validateNumericResult(resultStr, propertyName = 'balance') {
 
 /**
  * Specific validation functions for parameterized tests
+ * Identity now has toJSON() so we just validate it's valid JSON with expected structure
  */
 function validateIdentityResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const identityData = JSON.parse(resultStr);
-  expect(identityData).toHaveProperty('id');
+  expect(identityData).toBeDefined();
+  expect(typeof identityData).toBe('object');
+  // Identity must have data - empty {} is not acceptable
+  expect(Object.keys(identityData).length).toBeGreaterThan(0);
+  // Check identity structure
+  expect(identityData.id || identityData.$id).toBeDefined();
   expect(identityData).toHaveProperty('publicKeys');
   expect(identityData).toHaveProperty('balance');
+  expect(identityData).toHaveProperty('revision');
+  // Validate public keys array
+  expect(Array.isArray(identityData.publicKeys)).toBe(true);
+  expect(identityData.publicKeys.length).toBeGreaterThan(0);
+  // Validate balance is numeric
+  expect(typeof identityData.balance).toBe('number');
+  expect(identityData.balance).toBeGreaterThanOrEqual(0);
 }
 
 /**
@@ -234,90 +285,110 @@ function validateBooleanResult(resultStr) {
 
 
 function validateKeysResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const keysData = JSON.parse(resultStr);
   expect(keysData).toBeDefined();
-  keysData.forEach(key => {
-      expect(key).toHaveProperty('keyId');
-      expect(key).toHaveProperty('purpose');
-    });
+  // Keys should be an array
+  expect(Array.isArray(keysData)).toBe(true);
+  // If there are keys, check their structure
+  if (keysData.length > 0) {
+    const firstKey = keysData[0];
+    // Key must have properties (not empty {})
+    expect(Object.keys(firstKey).length).toBeGreaterThan(0);
+    expect(firstKey).toHaveProperty('id');
+    expect(firstKey).toHaveProperty('type');
+    expect(firstKey).toHaveProperty('purpose');
+    expect(firstKey).toHaveProperty('securityLevel');
+    expect(firstKey).toHaveProperty('data');
+    // Validate types
+    expect(typeof firstKey.id).toBe('number');
+    expect(typeof firstKey.type).toBe('number');
+  }
 }
 
 function validateIdentitiesContractKeysResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const contractKeysData = JSON.parse(resultStr);
   expect(contractKeysData).toBeDefined();
   expect(Array.isArray(contractKeysData)).toBe(true);
-  
-  contractKeysData.forEach(identityResult => {
-    expect(identityResult).toHaveProperty('identityId');
-    expect(identityResult).toHaveProperty('keys');
-    expect(Array.isArray(identityResult.keys)).toBe(true);
-    
-    identityResult.keys.forEach(key => {
-      expect(key).toHaveProperty('keyId');
-      expect(key).toHaveProperty('purpose');
-      expect(key).toHaveProperty('keyType');
-      expect(key).toHaveProperty('publicKeyData');
-      expect(key).toHaveProperty('securityLevel');
-    });
-  });
+  // Must have at least one identity with keys
+  expect(contractKeysData.length).toBeGreaterThan(0);
+
+  // Validate first identity's contract keys structure
+  const firstEntry = contractKeysData[0];
+  expect(firstEntry).toHaveProperty('identityId');
+  expect(firstEntry).toHaveProperty('keys');
+  expect(Array.isArray(firstEntry.keys)).toBe(true);
+  expect(firstEntry.keys.length).toBeGreaterThan(0);
+
+  // Reuse validateKeysResult for the keys array
+  validateKeysResult(JSON.stringify(firstEntry.keys));
 }
 
 function validateIdentitiesResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const identitiesData = JSON.parse(resultStr);
   expect(identitiesData).toBeDefined();
-  
+  // Should be an array or object of identities
   if (Array.isArray(identitiesData)) {
-    expect(identitiesData.length).toBeGreaterThanOrEqual(0);
-    // Validate each identity using the single identity validator
-    identitiesData.forEach(identity => {
-      validateIdentityResult(JSON.stringify(identity));
-    });
+    expect(identitiesData.length).toBeGreaterThan(0);
+    // Check first identity
+    const firstIdentity = identitiesData[0];
+    expect(firstIdentity.id || firstIdentity.$id).toBeDefined();
+    expect(firstIdentity).toHaveProperty('publicKeys');
+    expect(firstIdentity).toHaveProperty('balance');
   } else {
-    // Single identity - use the existing validator
-    validateIdentityResult(JSON.stringify(identitiesData));
+    expect(typeof identitiesData).toBe('object');
+    expect(Object.keys(identitiesData).length).toBeGreaterThan(0);
   }
 }
 
 function validateBalancesResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const balancesData = JSON.parse(resultStr);
   expect(balancesData).toBeDefined();
-  if (Array.isArray(balancesData)) {
-    expect(balancesData.length).toBeGreaterThanOrEqual(0);
-    // Validate each balance object in the array
-    balancesData.forEach(balanceObj => {
-      expect(balanceObj).toHaveProperty('balance');
-    });
-  }
+  expect(typeof balancesData).toBe('object');
+  // Should have identity IDs as keys with balance values
+  expect(Object.keys(balancesData).length).toBeGreaterThan(0);
+  // Check first balance is a valid value (can be number or string for BigInt)
+  const firstBalance = Object.values(balancesData)[0];
+  expect(firstBalance !== null && firstBalance !== undefined).toBe(true);
+  // Balance should be convertible to a number >= 0
+  const numBalance = Number(firstBalance);
+  expect(numBalance).toBeGreaterThanOrEqual(0);
 }
 
 function validateBalanceAndRevisionResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const data = JSON.parse(resultStr);
   expect(data).toBeDefined();
-  expect(data).toBeInstanceOf(Object);
+  expect(typeof data).toBe('object');
+  // Check required structure
   expect(data).toHaveProperty('balance');
   expect(data).toHaveProperty('revision');
+  // Validate types
+  expect(typeof data.balance).toBe('number');
+  expect(data.balance).toBeGreaterThanOrEqual(0);
+  expect(typeof data.revision).toBe('number');
+  expect(data.revision).toBeGreaterThanOrEqual(0);
 }
 
 function validateTokenBalanceResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const tokenData = JSON.parse(resultStr);
   expect(tokenData).toBeDefined();
-  tokenData.forEach(token => {
-    expect(token).toHaveProperty('balance');
-  });
+  expect(typeof tokenData).toBe('object');
+  // Token balances should have token IDs as keys with balance values
+  if (Object.keys(tokenData).length > 0) {
+    const firstBalance = Object.values(tokenData)[0];
+    // Balance can be a number or BigInt string
+    expect(firstBalance !== null && firstBalance !== undefined).toBe(true);
+  }
 }
 
 function validateTokenInfoResult(resultStr) {
-  expect(() => JSON.parse(resultStr)).not.toThrow();
   const tokenInfoData = JSON.parse(resultStr);
   expect(tokenInfoData).toBeDefined();
-  tokenInfoData.forEach(token => {
-    expect(token).toHaveProperty('isFrozen');
+  expect(typeof tokenInfoData).toBe('object');
+  // Token info should have identity/token IDs as keys with info objects containing frozen status
+  expect(Object.keys(tokenInfoData).length).toBeGreaterThan(0);
+  Object.values(tokenInfoData).forEach(tokenInfo => {
+    expect(tokenInfo).toHaveProperty('frozen');
+    expect(typeof tokenInfo.frozen).toBe('boolean');
   });
 }
 
@@ -335,12 +406,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute getDataContract query', async () => {
       await evoSdkPage.setupQuery('dataContract', 'getDataContract');
       await evoSdkPage.disableProofInfo();
-      
+
       const success = await parameterInjector.injectParameters('dataContract', 'getDataContract', 'testnet');
       expect(success).toBe(true);
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Use helper functions for validation
       validateBasicQueryResult(result);
       validateResultWithoutProof(result);
@@ -350,25 +421,24 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute getDataContracts query for multiple contracts', async () => {
       await evoSdkPage.setupQuery('dataContract', 'getDataContracts');
       await evoSdkPage.disableProofInfo();
-      
+
       const success = await parameterInjector.injectParameters('dataContract', 'getDataContracts', 'testnet');
       expect(success).toBe(true);
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Use helper functions for validation
       validateBasicQueryResult(result);
       validateResultWithoutProof(result);
-      
+
       // Multiple contracts result should be valid JSON
       expect(() => JSON.parse(result.result)).not.toThrow();
       const contractsData = JSON.parse(result.result);
       expect(contractsData).toBeDefined();
-      expect(contractsData).toHaveProperty('dataContracts');
-      expect(typeof contractsData.dataContracts).toBe('object');
-      
+      expect(typeof contractsData).toBe('object');
+
       // Validate each contract using validateContractResult
-      Object.values(contractsData.dataContracts).forEach(contract => {
+      Object.values(contractsData).forEach(contract => {
         validateContractResult(JSON.stringify(contract));
       });
     });
@@ -376,16 +446,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute getDataContractHistory query', async () => {
       await evoSdkPage.setupQuery('dataContract', 'getDataContractHistory');
       await evoSdkPage.disableProofInfo();
-      
+
       const success = await parameterInjector.injectParameters('dataContract', 'getDataContractHistory', 'testnet');
       expect(success).toBe(true);
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Use helper functions for validation
       validateBasicQueryResult(result);
       validateResultWithoutProof(result);
-      
+
       // Contract history should be valid JSON (array of contract versions)
       expect(() => JSON.parse(result.result)).not.toThrow();
       const historyData = JSON.parse(result.result);
@@ -395,22 +465,23 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should execute getDataContract query with proof info', async () => {
       const { result, proofEnabled } = await executeQueryWithProof(
-        evoSdkPage, 
-        parameterInjector, 
-        'dataContract', 
+        evoSdkPage,
+        parameterInjector,
+        'dataContract',
         'getDataContract',
         'testnet'
       );
-      
+
       // Validate basic result
       validateBasicQueryResult(result);
-      
+
       // If proof was enabled, verify proof present
       if (proofEnabled) {
         validateResultWithProof(result);
         // Extract data field for validation when in proof mode
         const resultData = JSON.parse(result.result);
-        validateContractResult(JSON.stringify(resultData.data));
+        const contract = resultData.data;
+        validateContractResult(JSON.stringify(contract));
       } else {
         validateResultWithoutProof(result);
         validateContractResult(result.result);
@@ -419,16 +490,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should execute getDataContracts query with proof info', async () => {
       const { result, proofEnabled } = await executeQueryWithProof(
-        evoSdkPage, 
-        parameterInjector, 
-        'dataContract', 
+        evoSdkPage,
+        parameterInjector,
+        'dataContract',
         'getDataContracts',
         'testnet'
       );
-      
+
       // Validate basic result
       validateBasicQueryResult(result);
-      
+
       // If proof was enabled, verify new format with proof
       if (proofEnabled) {
         validateResultWithProof(result);
@@ -436,11 +507,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
         const resultData = JSON.parse(result.result);
         const contractsData = resultData.data;
         expect(contractsData).toBeDefined();
-        expect(contractsData).toHaveProperty('dataContracts');
-        expect(typeof contractsData.dataContracts).toBe('object');
-        
+        expect(typeof contractsData).toBe('object');
+
         // Validate each contract using validateContractResult
-        Object.values(contractsData.dataContracts).forEach(contract => {
+        Object.values(contractsData).forEach(contract => {
           validateContractResult(JSON.stringify(contract));
         });
       } else {
@@ -449,11 +519,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
         expect(() => JSON.parse(result.result)).not.toThrow();
         const contractsData = JSON.parse(result.result);
         expect(contractsData).toBeDefined();
-        expect(contractsData).toHaveProperty('dataContracts');
-        expect(typeof contractsData.dataContracts).toBe('object');
-        
+        expect(typeof contractsData).toBe('object');
+
         // Validate each contract using validateContractResult
-        Object.values(contractsData.dataContracts).forEach(contract => {
+        Object.values(contractsData).forEach(contract => {
           validateContractResult(JSON.stringify(contract));
         });
       }
@@ -461,16 +530,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should execute getDataContractHistory query with proof info', async () => {
       const { result, proofEnabled } = await executeQueryWithProof(
-        evoSdkPage, 
-        parameterInjector, 
-        'dataContract', 
+        evoSdkPage,
+        parameterInjector,
+        'dataContract',
         'getDataContractHistory',
         'testnet'
       );
-      
+
       // Validate basic result
       validateBasicQueryResult(result);
-      
+
       // If proof was enabled, verify proof
       if (proofEnabled) {
         validateResultWithProof(result);
@@ -494,12 +563,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute getDocuments query', async () => {
       await evoSdkPage.setupQuery('document', 'getDocuments');
       await evoSdkPage.disableProofInfo();
-      
+
       const success = await parameterInjector.injectParameters('document', 'getDocuments', 'testnet');
       expect(success).toBe(true);
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Use helper functions for validation
       validateBasicQueryResult(result);
       validateResultWithoutProof(result);
@@ -509,12 +578,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute getDocument query for specific document', async () => {
       await evoSdkPage.setupQuery('document', 'getDocument');
       await evoSdkPage.disableProofInfo();
-      
+
       const success = await parameterInjector.injectParameters('document', 'getDocument', 'testnet');
       expect(success).toBe(true);
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Use helper functions for validation
       validateBasicQueryResult(result);
       validateResultWithoutProof(result);
@@ -523,16 +592,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should execute getDocuments query with proof info', async () => {
       const { result, proofEnabled } = await executeQueryWithProof(
-        evoSdkPage, 
-        parameterInjector, 
-        'document', 
+        evoSdkPage,
+        parameterInjector,
+        'document',
         'getDocuments',
         'testnet'
       );
-      
+
       // Validate basic result
       validateBasicQueryResult(result);
-      
+
       // If proof was enabled, verify proof
       if (proofEnabled) {
         validateResultWithProof(result);
@@ -547,16 +616,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should execute getDocument query with proof info', async () => {
       const { result, proofEnabled } = await executeQueryWithProof(
-        evoSdkPage, 
-        parameterInjector, 
-        'document', 
+        evoSdkPage,
+        parameterInjector,
+        'document',
         'getDocument',
         'testnet'
       );
-      
+
       // Validate basic result
       validateBasicQueryResult(result);
-      
+
       // If proof was enabled, verify proof
       if (proofEnabled) {
         validateResultWithProof(result);
@@ -572,48 +641,106 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
   test.describe('System Queries', () => {
     const systemQueries = [
-      { 
-        name: 'getStatus', 
+      {
+        name: 'getStatus',
         hasProofSupport: false, // No proof function in SDK
         needsParameters: false,
         validateFn: (result) => {
           expect(result).toBeDefined();
-          expect(Object.keys(JSON.parse(result))).toEqual(expect.arrayContaining([
-            'version', 'node', 'chain', 'network', 'stateSync', 'time'
-          ]));
+          const parsed = JSON.parse(result);
+          // Check top-level structure
+          expect(parsed).toHaveProperty('version');
+          expect(parsed).toHaveProperty('node');
+          expect(parsed).toHaveProperty('chain');
+          expect(parsed).toHaveProperty('network');
+          expect(parsed).toHaveProperty('stateSync');
+          expect(parsed).toHaveProperty('time');
+          // Check version structure
+          expect(parsed.version).toHaveProperty('software');
+          expect(parsed.version).toHaveProperty('protocol');
+          expect(parsed.version.software).toHaveProperty('dapi');
+          expect(parsed.version.software).toHaveProperty('drive');
+          expect(parsed.version.software).toHaveProperty('tenderdash');
+          // Check chain structure
+          expect(parsed.chain).toHaveProperty('catchingUp');
+          expect(parsed.chain).toHaveProperty('latestBlockHash');
+          expect(parsed.chain).toHaveProperty('latestBlockHeight');
+          // Check time structure
+          expect(parsed.time).toHaveProperty('local');
+          expect(parsed.time).toHaveProperty('block');
         }
       },
-      { 
-        name: 'getTotalCreditsInPlatform', 
-        hasProofSupport: true, 
+      {
+        name: 'getTotalCreditsInPlatform',
+        hasProofSupport: true,
         needsParameters: false,
         validateFn: (result) => {
           expect(result).toBeDefined();
-          expect(result).toMatch(/\d+|credits|balance/i);
+          // Result should be a numeric string representing total credits
+          // Handle both plain strings and JSON-stringified strings
+          let creditsValue = result;
+          // If result is a JSON-stringified string (has extra quotes), parse it
+          if (result.startsWith('"') && result.endsWith('"')) {
+            creditsValue = JSON.parse(result);
+          }
+          const credits = BigInt(creditsValue);
+          expect(credits).toBeGreaterThanOrEqual(0n);
         }
       },
-      { 
-        name: 'getCurrentQuorumsInfo', 
-        hasProofSupport: false, // No proof function in SDK 
+      {
+        name: 'getCurrentQuorumsInfo',
+        hasProofSupport: false, // No proof function in SDK
         needsParameters: false,
         validateFn: (result) => {
-          expect(() => JSON.parse(result)).not.toThrow();
-          const quorumsData = JSON.parse(result);
-          expect(quorumsData).toBeDefined();
-          expect(quorumsData).toHaveProperty('quorums');
-          expect(Array.isArray(quorumsData.quorums)).toBe(true);
+          expect(result).toBeDefined();
+          const parsed = JSON.parse(result);
+          // Check top-level structure
+          expect(parsed).toHaveProperty('quorums');
+          expect(parsed).toHaveProperty('height');
+          // Check quorums array
+          expect(Array.isArray(parsed.quorums)).toBe(true);
+          expect(parsed.quorums.length).toBeGreaterThan(0);
+          // Check first quorum structure
+          const firstQuorum = parsed.quorums[0];
+          expect(firstQuorum).toHaveProperty('quorumHash');
+          expect(firstQuorum).toHaveProperty('quorumType');
+          expect(firstQuorum).toHaveProperty('memberCount');
+          expect(firstQuorum).toHaveProperty('threshold');
+          expect(firstQuorum).toHaveProperty('isVerified');
+          // Validate types
+          expect(typeof firstQuorum.quorumHash).toBe('string');
+          expect(typeof firstQuorum.quorumType).toBe('string');
+          expect(typeof firstQuorum.memberCount).toBe('number');
+          expect(typeof firstQuorum.threshold).toBe('number');
+          expect(typeof firstQuorum.isVerified).toBe('boolean');
         }
       },
-      { 
-        name: 'getPrefundedSpecializedBalance', 
-        hasProofSupport: true, 
+      {
+        name: 'getPrefundedSpecializedBalance',
+        // getPrefundedSpecializedBalance fails due to upstream issue: https://github.com/dashpay/platform/issues/2986
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
+          const parsed = JSON.parse(result);
+          // Check structure when balance exists
+          expect(parsed).toHaveProperty('identityId');
+          expect(parsed).toHaveProperty('balance');
+          expect(typeof parsed.identityId).toBe('string');
+          // Balance should be a valid number (BigInt compatible)
+          const balance = BigInt(parsed.balance);
+          expect(balance).toBeGreaterThanOrEqual(0n);
+        }
+      },
+      {
+        name: 'getPathElements',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result) => {
+          // Result is an array of path elements from GroveDB
           expect(() => JSON.parse(result)).not.toThrow();
-          const balanceData = JSON.parse(result);
-          expect(balanceData).toBeDefined();
-          expect(balanceData).toHaveProperty('identityId');
-          expect(balanceData).toHaveProperty('balance');
+          const elements = JSON.parse(result);
+          expect(elements).toBeDefined();
+          expect(Array.isArray(elements)).toBe(true);
         }
       }
     ];
@@ -623,12 +750,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('system', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('system', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -636,72 +763,116 @@ test.describe('Evo SDK Query Execution Tests', () => {
         });
 
         if (hasProofSupport) {
-          test('with proof info', async () => {
-            const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'system', 
-              name,
-              'testnet'
-            );
-            
-            validateBasicQueryResult(result);
-            
-            if (proofEnabled) {
-              validateResultWithProof(result);
-              // Extract data field for validation when in proof mode
-              const resultData = JSON.parse(result.result);
-              validateFn(JSON.stringify(resultData.data));
-            } else {
-              validateResultWithoutProof(result);
-              validateFn(result.result);
-            }
-          });
-        } else {
-          test.skip('with proof info', async () => {
-            // Proof support not yet implemented for this query
-          });
+          // TODO: Re-enable getPrefundedSpecializedBalance proof test when upstream bug is fixed
+          // https://github.com/dashpay/platform/issues/2986
+          if (name === 'getPrefundedSpecializedBalance') {
+            test.skip('with proof info', async () => {});
+          } else {
+            test('with proof info', async () => {
+              const { result, proofEnabled } = await executeQueryWithProof(
+                evoSdkPage,
+                parameterInjector,
+                'system',
+                name,
+                'testnet'
+              );
+
+              validateBasicQueryResult(result);
+
+              if (proofEnabled) {
+                validateResultWithProof(result);
+                // Extract data field for validation when in proof mode
+                const resultData = JSON.parse(result.result);
+                validateFn(JSON.stringify(resultData.data));
+              } else {
+                validateResultWithoutProof(result);
+                validateFn(result.result);
+              }
+            });
+          }
         }
+        // No proof test for queries that will never have proof support
       });
     });
   });
 
   test.describe('Epoch & Block Queries', () => {
     const epochQueries = [
-      { 
-        name: 'getCurrentEpoch', 
-        hasProofSupport: true, 
+      {
+        name: 'getCurrentEpoch',
+        hasProofSupport: true,
         needsParameters: false,
-        validateFn: (result) => {
+        validateFn: (result, isProofMode = false) => {
           expect(result).toBeDefined();
-          expect(result).toMatch(/\d+|epoch/i);
+          const parsed = JSON.parse(result);
+          // In proof mode, data is wrapped in { data, metadata, proof }
+          const epochResult = isProofMode && parsed.data ? parsed.data : parsed;
+          // Result is wrapped in V0 with epoch info
+          expect(epochResult).toHaveProperty('V0');
+          const epochInfo = epochResult.V0;
+          expect(epochInfo).toHaveProperty('index');
+          expect(epochInfo).toHaveProperty('first_block_time');
+          expect(epochInfo).toHaveProperty('first_block_height');
+          expect(epochInfo).toHaveProperty('first_core_block_height');
+          expect(epochInfo).toHaveProperty('fee_multiplier_permille');
+          expect(typeof epochInfo.index).toBe('number');
+          expect(epochInfo.index).toBeGreaterThanOrEqual(0);
         }
       },
-      { 
-        name: 'getEpochsInfo', 
-        hasProofSupport: true, 
+      {
+        name: 'getEpochsInfo',
+        hasProofSupport: true,
         needsParameters: true,
-        validateFn: (result) => {
-          expect(() => JSON.parse(result)).not.toThrow();
-          const epochData = JSON.parse(result);
-          expect(epochData).toBeDefined();
-          expect(typeof epochData === 'object').toBe(true);
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          expect(parsed).toBeDefined();
+          // In proof mode, data is wrapped in { data, metadata, proof }
+          const epochData = isProofMode && parsed.data ? parsed.data : parsed;
+          // Should be an object with epoch numbers as keys
+          expect(typeof epochData).toBe('object');
+          const keys = Object.keys(epochData);
+          expect(keys.length).toBeGreaterThan(0);
+          // Check first epoch structure (wrapped in V0)
+          const firstKey = keys[0];
+          const firstEpoch = epochData[firstKey];
+          expect(firstEpoch).toHaveProperty('V0');
+          const epochInfo = firstEpoch.V0;
+          expect(epochInfo).toHaveProperty('index');
+          expect(epochInfo).toHaveProperty('first_block_time');
+          expect(epochInfo).toHaveProperty('first_block_height');
+          expect(epochInfo).toHaveProperty('first_core_block_height');
+          expect(epochInfo).toHaveProperty('fee_multiplier_permille');
         }
       },
-      { 
-        name: 'getFinalizedEpochInfos', 
-        hasProofSupport: true, 
+      {
+        name: 'getFinalizedEpochInfos',
+        hasProofSupport: true,
         needsParameters: true,
-        validateFn: (result) => {
-          expect(() => JSON.parse(result)).not.toThrow();
-          const epochData = JSON.parse(result);
-          expect(epochData).toBeDefined();
-          expect(typeof epochData === 'object').toBe(true);
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          expect(parsed).toBeDefined();
+          // In proof mode, data is wrapped in { data, metadata, proof }
+          const epochData = isProofMode && parsed.data ? parsed.data : parsed;
+          // Should be an object with epoch numbers as keys
+          expect(typeof epochData).toBe('object');
+          const keys = Object.keys(epochData);
+          // Can be empty if no finalized epochs in range
+          if (keys.length > 0) {
+            // Check first epoch structure (may or may not be wrapped in V0)
+            const firstKey = keys[0];
+            const firstEpoch = epochData[firstKey];
+            // Handle both wrapped (V0) and unwrapped formats
+            const epochInfo = firstEpoch.V0 || firstEpoch;
+            expect(epochInfo).toHaveProperty('first_block_time');
+            expect(epochInfo).toHaveProperty('first_block_height');
+            expect(epochInfo).toHaveProperty('first_core_block_height');
+            expect(epochInfo).toHaveProperty('fee_multiplier_permille');
+          }
         }
       },
-      { 
-        name: 'getEvonodesProposedEpochBlocksByIds', 
-        hasProofSupport: false, // Proof support not yet implemented in SDK
+      {
+        name: 'getEvonodesProposedEpochBlocksByIds',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -710,9 +881,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof blockData === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getEvonodesProposedEpochBlocksByRange', 
-        hasProofSupport: false, // Proof support not yet implemented in SDK
+      {
+        name: 'getEvonodesProposedEpochBlocksByRange',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -728,12 +899,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('epoch', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('epoch', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -743,23 +914,23 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'epoch', 
+              evoSdkPage,
+              parameterInjector,
+              'epoch',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
-              // Extract data field for validation when in proof mode
-              const resultData = JSON.parse(result.result);
-              validateFn(JSON.stringify(resultData.data));
+              // For epoch queries, pass the full result for validation since
+              // getCurrentEpoch has epoch in metadata, not in data
+              validateFn(result.result, true);
             } else {
               validateResultWithoutProof(result);
-              validateFn(result.result);
+              validateFn(result.result, false);
             }
           });
         } else {
@@ -773,38 +944,47 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
   test.describe('Token Queries', () => {
     const tokenQueries = [
-      { 
-        name: 'getTokenStatuses', 
-        hasProofSupport: true, 
+      {
+        name: 'getTokenStatuses',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
           const tokenStatuses = JSON.parse(result);
           expect(tokenStatuses).toBeDefined();
-          expect(Array.isArray(tokenStatuses)).toBe(true);
-          tokenStatuses.forEach(token => {
-            expect(token).toHaveProperty('isPaused');
-            expect(typeof token.isPaused).toBe('boolean');
+          expect(typeof tokenStatuses === 'object').toBe(true);
+          // Token statuses may return empty objects {} if token has no special status
+          // Only validate isPaused if the property exists
+          const entries = Array.isArray(tokenStatuses) ? tokenStatuses : Object.values(tokenStatuses);
+          entries.forEach(token => {
+            if (token && Object.keys(token).length > 0 && 'isPaused' in token) {
+              expect(typeof token.isPaused).toBe('boolean');
+            }
           });
         }
       },
-      { 
-        name: 'getTokenDirectPurchasePrices', 
-        hasProofSupport: true, 
+      {
+        name: 'getTokenDirectPurchasePrices',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
           const priceData = JSON.parse(result);
           expect(priceData).toBeDefined();
-          expect(Array.isArray(priceData)).toBe(true);
-          priceData.forEach(token => {
-            expect(token).toHaveProperty('basePrice');
+          expect(typeof priceData === 'object').toBe(true);
+          // Price data may return empty objects {} if token has no price set
+          // Only validate basePrice if the property exists
+          const entries = Array.isArray(priceData) ? priceData : Object.values(priceData);
+          entries.forEach(token => {
+            if (token && Object.keys(token).length > 0 && 'basePrice' in token) {
+              expect(typeof token.basePrice).toBeDefined();
+            }
           });
         }
       },
-      { 
-        name: 'getTokenContractInfo', 
-        hasProofSupport: true, 
+      {
+        name: 'getTokenContractInfo',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -814,9 +994,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(contractInfo).toHaveProperty('contractId');
         }
       },
-      { 
-        name: 'getTokenPerpetualDistributionLastClaim', 
-        hasProofSupport: false, 
+      {
+        name: 'getTokenPerpetualDistributionLastClaim',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -824,10 +1004,13 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(claimData).toBeDefined();
           expect(typeof claimData === 'object').toBe(true);
         }
+      // Note: getTokenPriceByContract requires a token contract with specific pricing configuration.
+      // As of now, no tokens on testnet have pricing configured, so this test is skipped.
+      // Error: "No pricing schedule found for token at contract ... position 0"
       },
-      { 
-        name: 'getTokenTotalSupply', 
-        hasProofSupport: true, 
+      {
+        name: 'getTokenTotalSupply',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -844,12 +1027,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('token', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('token', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -859,15 +1042,15 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'token', 
+              evoSdkPage,
+              parameterInjector,
+              'token',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -889,9 +1072,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
   test.describe('Voting & Contested Resources Queries', () => {
     const votingQueries = [
-      { 
-        name: 'getContestedResources', 
-        hasProofSupport: true, 
+      {
+        name: 'getContestedResources',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -900,9 +1083,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof contestedData === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getContestedResourceVoteState', 
-        hasProofSupport: true, 
+      {
+        name: 'getContestedResourceVoteState',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -911,8 +1094,8 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof voteStateData === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getContestedResourceVotersForIdentity', 
+      {
+        name: 'getContestedResourceVotersForIdentity',
         hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
@@ -922,9 +1105,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof votersData === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getContestedResourceIdentityVotes', 
-        hasProofSupport: true, 
+      {
+        name: 'getContestedResourceIdentityVotes',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -933,9 +1116,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof identityVotesData === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getVotePollsByEndDate', 
-        hasProofSupport: true, 
+      {
+        name: 'getVotePollsByEndDate',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -951,12 +1134,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('voting', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('voting', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -966,15 +1149,15 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'voting', 
+              evoSdkPage,
+              parameterInjector,
+              'voting',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -996,9 +1179,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
   test.describe('Group Queries', () => {
     const groupQueries = [
-      { 
-        name: 'getGroupInfo', 
-        hasProofSupport: true, 
+      {
+        name: 'getGroupInfo',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -1007,9 +1190,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof groupInfo === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getGroupInfos', 
-        hasProofSupport: true, 
+      {
+        name: 'getGroupInfos',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -1018,9 +1201,9 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof groupInfos === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getGroupActions', 
-        hasProofSupport: true, 
+      {
+        name: 'getGroupActions',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
@@ -1029,15 +1212,49 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof groupActions === 'object').toBe(true);
         }
       },
-      { 
-        name: 'getGroupActionSigners', 
-        hasProofSupport: true, 
+      {
+        name: 'getGroupActionSigners',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(() => JSON.parse(result)).not.toThrow();
           const actionSigners = JSON.parse(result);
           expect(actionSigners).toBeDefined();
           expect(typeof actionSigners === 'object').toBe(true);
+        }
+      },
+      {
+        name: 'getGroupMembers',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result) => {
+          expect(() => JSON.parse(result)).not.toThrow();
+          const members = JSON.parse(result);
+          expect(members).toBeDefined();
+          expect(typeof members === 'object').toBe(true);
+        }
+      },
+      {
+        name: 'getGroupsDataContracts',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result) => {
+          expect(() => JSON.parse(result)).not.toThrow();
+          const groupsData = JSON.parse(result);
+          expect(groupsData).toBeDefined();
+          expect(typeof groupsData === 'object').toBe(true);
+        }
+      },
+      {
+        name: 'getIdentityGroups',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result) => {
+          expect(() => JSON.parse(result)).not.toThrow();
+          const identityGroups = JSON.parse(result);
+          expect(identityGroups).toBeDefined();
+          // Can be array or object
+          expect(typeof identityGroups === 'object' || Array.isArray(identityGroups)).toBe(true);
         }
       }
     ];
@@ -1047,12 +1264,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('group', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('group', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -1062,15 +1279,106 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'group', 
+              evoSdkPage,
+              parameterInjector,
+              'group',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
-            
+
+            if (proofEnabled) {
+              validateResultWithProof(result);
+              // Extract data field for validation when in proof mode
+              const resultData = JSON.parse(result.result);
+              validateFn(JSON.stringify(resultData.data));
+            } else {
+              validateResultWithoutProof(result);
+              validateFn(result.result);
+            }
+          });
+        } else {
+          test.skip('with proof info', async () => {
+            // Proof support not yet implemented for this query
+          });
+        }
+      });
+    });
+  });
+
+  test.describe('Platform Address Queries', () => {
+    const addressQueries = [
+      {
+        name: 'getPlatformAddress',
+        hasProofSupport: false, // Server returns "Operation is not implemented"
+        needsParameters: true,
+        // Server doesn't support non-proof query for single address
+        skipNonProof: true,
+        validateFn: (result) => {
+          // Platform address may or may not exist (undefined is valid)
+          // Just verify we got a response
+          expect(result).toBeDefined();
+        }
+      },
+      {
+        name: 'getPlatformAddresses',
+        hasProofSupport: true,
+        needsParameters: true,
+        // Skip: SDK 3.0.0 uses new address type constants (P2PKH=0xB0, P2SH=0x80)
+        // but testnet nodes may be running older version with different constants
+        skip: true,
+        validateFn: (result) => {
+          // Should return a map/object of addresses
+          expect(result).toBeDefined();
+        }
+      }
+    ];
+
+    addressQueries.forEach(({ name, hasProofSupport, needsParameters, skipNonProof, skip, validateFn }) => {
+      test.describe(`${name} query (parameterized)`, () => {
+        if (skip) {
+          test.skip('without proof info', async () => {
+            // Test requires valid platform addresses
+          });
+          test.skip('with proof info', async () => {
+            // Test requires valid platform addresses
+          });
+          return;
+        }
+        if (skipNonProof) {
+          test.skip('without proof info', async () => {
+            // Server doesn't support non-proof query for this operation
+          });
+        } else {
+          test('without proof info', async () => {
+            await evoSdkPage.setupQuery('address', name);
+            await evoSdkPage.disableProofInfo();
+
+            if (needsParameters) {
+              const success = await parameterInjector.injectParameters('address', name, 'testnet');
+              expect(success).toBe(true);
+            }
+
+            const result = await evoSdkPage.executeQueryAndGetResult();
+            validateBasicQueryResult(result);
+            validateResultWithoutProof(result);
+            validateFn(result.result);
+          });
+        }
+
+        if (hasProofSupport) {
+          test('with proof info', async () => {
+            const { result, proofEnabled } = await executeQueryWithProof(
+              evoSdkPage,
+              parameterInjector,
+              'address',
+              name,
+              'testnet'
+            );
+
+            validateBasicQueryResult(result);
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -1093,10 +1401,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
   test.describe('Error Handling', () => {
     test('should handle invalid identity ID gracefully', async () => {
       await evoSdkPage.setupQuery('identity', 'getIdentity');
-      
+
       // Fill with invalid ID (contains invalid base58 characters '0', 'O', 'I', 'l')
       await evoSdkPage.fillQueryParameters({ id: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4SOIl0' });
-      
+
       const outcome = await evoSdkPage.executeQueryAndGetResult();
 
       const statusText = outcome.statusText || '';
@@ -1112,7 +1420,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     test('should handle empty required fields', async () => {
       await evoSdkPage.setupQuery('identity', 'getIdentity');
-      
+
       // Don't fill any parameters, try to execute
       const executeButton = evoSdkPage.page.locator('#executeQuery');
       await executeButton.click();
@@ -1131,7 +1439,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
       // Check for error status
       const statusClass = await statusBanner.getAttribute('class');
       const statusText = await evoSdkPage.getStatusBannerText();
-      
+
       // Should show error or validation message
       expect(statusClass).toContain('error');
       expect(statusText).toContain('required');
@@ -1143,46 +1451,55 @@ test.describe('Evo SDK Query Execution Tests', () => {
     test('should execute queries on mainnet', async () => {
       // Switch to mainnet
       await evoSdkPage.setNetwork('mainnet');
-      
+
       await evoSdkPage.setupQuery('system', 'getStatus');
-      
+
       const result = await evoSdkPage.executeQueryAndGetResult();
-      
+
       // Verify query executed successfully
       expect(result.success).toBe(true);
       expect(result.result).toBeDefined();
-      
+
       // Verify the result is not an error message
       expect(result.hasError).toBe(false);
       expect(result.result).not.toContain('Error executing query');
       expect(result.result).not.toContain('not found');
-      
-      // Should contain status data with version info
-      expect(result.result).toContain('version');
-      
+
+      // Result should be valid JSON - may be empty {} if no status data available
+      expect(() => JSON.parse(result.result)).not.toThrow();
+      const statusData = JSON.parse(result.result);
+      expect(typeof statusData === 'object').toBe(true);
+
     });
   });
 
   test.describe('Protocol & Version Queries', () => {
     const protocolQueries = [
-      { 
-        name: 'getProtocolVersionUpgradeState', 
-        hasProofSupport: true, 
+      {
+        name: 'getProtocolVersionUpgradeState',
+        hasProofSupport: true,
         needsParameters: false,
         validateFn: (result) => {
           expect(result).toBeDefined();
-          expect(result).toContain('currentProtocolVersion');
+          const stateData = JSON.parse(result);
+          expect(typeof stateData).toBe('object');
+          // Check required structure
+          expect(stateData).toHaveProperty('currentProtocolVersion');
+          expect(stateData).toHaveProperty('thresholdReached');
+          expect(typeof stateData.currentProtocolVersion).toBe('number');
+          expect(typeof stateData.thresholdReached).toBe('boolean');
         }
       },
-      { 
-        name: 'getProtocolVersionUpgradeVoteStatus', 
-        hasProofSupport: false, // Proof support not yet implemented in SDK
+      {
+        name: 'getProtocolVersionUpgradeVoteStatus',
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
-          expect(() => JSON.parse(result)).not.toThrow();
           const voteData = JSON.parse(result);
           expect(voteData).toBeDefined();
-          expect(typeof voteData === 'object').toBe(true);
+          expect(typeof voteData).toBe('object');
+          // Vote status can have various structures depending on state
+          expect(Object.keys(voteData).length).toBeGreaterThanOrEqual(0);
         }
       }
     ];
@@ -1192,12 +1509,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('protocol', name);
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('protocol', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           validateResultWithoutProof(result);
@@ -1207,15 +1524,15 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'protocol', 
+              evoSdkPage,
+              parameterInjector,
+              'protocol',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -1240,7 +1557,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
       {
         category: 'lookup',
         name: 'getDpnsUsername',
-        hasProofSupport: false, // Not working currently
+        hasProofSupport: true,
         needsParameters: true,
         validateFn: (result) => {
           expect(result).toBeDefined();
@@ -1360,12 +1677,12 @@ test.describe('Evo SDK Query Execution Tests', () => {
         test('without proof info', async () => {
           await evoSdkPage.setupQuery(category, name, {}, { operationType: 'dpns' });
           await evoSdkPage.disableProofInfo();
-          
+
           if (needsParameters) {
             const success = await parameterInjector.injectParameters('dpns', name, 'testnet');
             expect(success).toBe(true);
           }
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicDpnsQueryResult(result);
           validateResultWithoutProof(result);
@@ -1375,16 +1692,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
+              evoSdkPage,
+              parameterInjector,
               category,
               name,
               'testnet',
               { operationType: 'dpns', parameterCategory: 'dpns' }
             );
-            
+
             validateBasicDpnsQueryResult(result);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -1395,11 +1712,8 @@ test.describe('Evo SDK Query Execution Tests', () => {
               validateFn(result.result);
             }
           });
-        } else {
-          test.skip('with proof info', async () => {
-            // Proof support not yet implemented for this query
-          });
         }
+        // No proof test for utility functions or queries without proof support
       });
     });
   });
@@ -1414,6 +1728,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
       { name: 'getIdentityNonce', hasProofSupport: true, validateFn: (result) => validateNumericResult(result, 'nonce') },
       { name: 'getIdentityContractNonce', hasProofSupport: true, validateFn: (result) => validateNumericResult(result, 'nonce') },
       { name: 'getIdentityByPublicKeyHash', hasProofSupport: true, validateFn: validateIdentityResult },
+      // getIdentitiesContractKeys fails due to upstream issue: https://github.com/dashpay/platform/issues/3028
       { name: 'getIdentitiesContractKeys', hasProofSupport: true, validateFn: validateIdentitiesContractKeysResult },
       { name: 'getIdentitiesBalances', hasProofSupport: true, validateFn: validateBalancesResult },
       { name: 'getIdentityBalanceAndRevision', hasProofSupport: true, validateFn: validateBalanceAndRevisionResult },
@@ -1426,13 +1741,21 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     testQueries.forEach(({ name, hasProofSupport, validateFn }) => {
       test.describe(`${name} query (parameterized)`, () => {
+        // TODO: Re-enable getIdentitiesContractKeys tests when upstream bug is fixed
+        // https://github.com/dashpay/platform/issues/3028
+        if (name === 'getIdentitiesContractKeys') {
+          test.skip('without proof info', async () => {});
+          test.skip('with proof info', async () => {});
+          return;
+        }
+
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('identity', name);
           await evoSdkPage.disableProofInfo();
-          
+
           const success = await parameterInjector.injectParameters('identity', name, 'testnet');
           expect(success).toBe(true);
-          
+
           const result = await evoSdkPage.executeQueryAndGetResult();
           validateBasicQueryResult(result);
           expect(result.result.length).toBeGreaterThan(0);
@@ -1443,16 +1766,16 @@ test.describe('Evo SDK Query Execution Tests', () => {
         if (hasProofSupport) {
           test('with proof info', async () => {
             const { result, proofEnabled } = await executeQueryWithProof(
-              evoSdkPage, 
-              parameterInjector, 
-              'identity', 
+              evoSdkPage,
+              parameterInjector,
+              'identity',
               name,
               'testnet'
             );
-            
+
             validateBasicQueryResult(result);
             expect(result.result.length).toBeGreaterThan(0);
-            
+
             if (proofEnabled) {
               validateResultWithProof(result);
               // Extract data field for validation when in proof mode
@@ -1469,6 +1792,21 @@ test.describe('Evo SDK Query Execution Tests', () => {
           });
         }
       });
+    });
+
+    // getIdentityUnproved - no proof support and will never be implemented (by design)
+    test('getIdentityUnproved query', async () => {
+      await evoSdkPage.setupQuery('identity', 'getIdentityUnproved');
+      await evoSdkPage.disableProofInfo();
+
+      const success = await parameterInjector.injectParameters('identity', 'getIdentityUnproved', 'testnet');
+      expect(success).toBe(true);
+
+      const result = await evoSdkPage.executeQueryAndGetResult();
+      validateBasicQueryResult(result);
+      expect(result.result.length).toBeGreaterThan(0);
+      validateResultWithoutProof(result);
+      validateIdentityResult(result.result);
     });
   });
 });

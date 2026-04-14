@@ -609,6 +609,16 @@ details.sdk-config summary span:last-child {
   line-height: 1.4;
 }
 
+.query-description.disabled-warning {
+  background-color: #f8d7da;
+  color: #721c24;
+  font-style: italic;
+}
+
+select option:disabled {
+  color: #999;
+}
+
 .action-button {
   padding: 8px 16px;
   background-color: var(--accent-secondary);
@@ -898,4 +908,105 @@ details.sdk-config summary span:last-child {
   color: var(--text-tertiary);
   margin-left: 5px;
   font-style: italic;
+}
+
+/* Mobile responsive layout */
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 15px;
+  }
+
+  .header-title {
+    min-width: 0;
+  }
+
+  .header h1 {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .version-info {
+    margin-left: 0;
+    font-size: 12px;
+  }
+
+  .header-nav {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .header-nav a {
+    font-size: 14px;
+  }
+
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebar {
+    width: 100%;
+    overflow-y: visible;
+  }
+
+  .result-container {
+    min-height: 50vh;
+  }
+
+  .result-header {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .result-actions button {
+    margin-left: 0;
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+
+  .status-banner {
+    height: auto;
+    min-height: 40px;
+    padding: 8px 15px;
+    position: relative;
+  }
+
+  .where-field-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .where-value-input {
+    min-width: 0;
+  }
+
+  .operator-select {
+    width: 100%;
+  }
+
+  .nonce-value::after {
+    max-width: 90vw;
+  }
+
+  .field-group label {
+    width: 100%;
+    display: block;
+  }
+
+  .execute-button {
+    padding: 14px;
+    font-size: 17px;
+  }
 }
