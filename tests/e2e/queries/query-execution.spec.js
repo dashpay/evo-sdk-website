@@ -1313,30 +1313,43 @@ test.describe('Evo SDK Query Execution Tests', () => {
         name: 'getPlatformAddress',
         hasProofSupport: true,
         needsParameters: true,
-        validateFn: (result) => {
+        validateFn: (result, isProofMode = false) => {
           expect(result).toBeDefined();
           const parsed = JSON.parse(result);
-          expect(parsed).toHaveProperty('address');
-          expect(parsed).toHaveProperty('nonce');
-          expect(parsed).toHaveProperty('balance');
-          expect(typeof parsed.nonce).toBe('number');
-          expect(typeof parsed.balance).toBe('number');
+          const addrData = isProofMode && parsed.data ? parsed.data : parsed;
+          expect(addrData).toHaveProperty('address');
+          expect(addrData).toHaveProperty('nonce');
+          expect(addrData).toHaveProperty('balance');
+          expect(typeof addrData.address).toBe('string');
+          expect(typeof addrData.nonce).toBe('number');
+          expect(typeof addrData.balance).toBe('number');
         }
       },
       {
         name: 'getPlatformAddresses',
         hasProofSupport: true,
         needsParameters: true,
-        validateFn: (result) => {
+        validateFn: (result, isProofMode = false) => {
           expect(result).toBeDefined();
           const parsed = JSON.parse(result);
-          expect(typeof parsed).toBe('object');
-          const keys = Object.keys(parsed);
+          const addrMap = isProofMode && parsed.data ? parsed.data : parsed;
+          expect(typeof addrMap).toBe('object');
+          const keys = Object.keys(addrMap);
           expect(keys.length).toBeGreaterThan(0);
-          const first = parsed[keys[0]];
+          const first = addrMap[keys[0]];
           expect(first).toHaveProperty('address');
           expect(first).toHaveProperty('nonce');
           expect(first).toHaveProperty('balance');
+          if (isProofMode) {
+            // Proof response returns address as byte array and balance as string
+            expect(Array.isArray(first.address)).toBe(true);
+            expect(typeof first.nonce).toBe('number');
+            expect(typeof first.balance).toBe('string');
+          } else {
+            expect(typeof first.address).toBe('string');
+            expect(typeof first.nonce).toBe('number');
+            expect(typeof first.balance).toBe('number');
+          }
         }
       }
     ];
@@ -1387,12 +1400,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
             if (proofEnabled) {
               validateResultWithProof(result);
-              // Extract data field for validation when in proof mode
-              const resultData = JSON.parse(result.result);
-              validateFn(JSON.stringify(resultData.data));
+              validateFn(result.result, true);
             } else {
               validateResultWithoutProof(result);
-              validateFn(result.result);
+              validateFn(result.result, false);
             }
           });
         } else {
