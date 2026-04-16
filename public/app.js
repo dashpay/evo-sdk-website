@@ -196,6 +196,8 @@ const PROOF_CAPABLE = new Set([
   // Groups
   'getGroupInfo', 'getGroupInfos', 'getGroupMembers', 'getGroupActions', 'getGroupActionSigners',
   'getIdentityGroups', 'getGroupsDataContracts',
+  // Platform Addresses
+  'getPlatformAddress', 'getPlatformAddresses',
   // System
   'getPrefundedSpecializedBalance', 'getTotalCreditsInPlatform', 'getPathElements',
 ]);
@@ -1543,7 +1545,7 @@ function getIdentityKey(identity, keyId, securityLevels = DEFAULT_SECURITY_LEVEL
     if (!key) throw new Error(`Identity key not found: ${keyId}`);
     return key;
   }
-  const key = identity.getPublicKeys().find(k => securityLevels.includes(k.securityLevel));
+  const key = identity.publicKeys.find(k => securityLevels.includes(k.securityLevel));
   if (!key) throw new Error('No suitable identity key found for signing');
   return key;
 }
@@ -2291,16 +2293,15 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         }
       }
 
-      // Create DataContract using constructor
-      const dataContract = new DataContract(
-        n.ownerId,           // js_owner_id
-        nextNonce,           // identity_nonce
-        documentSchemas,     // js_schema
-        undefined,           // js_definitions
-        tokens || undefined, // js_tokens (undefined if empty)
-        false,               // full_validation
-        undefined            // js_platform_version
-      );
+      // Create DataContract using options object
+      const dataContract = new DataContract({
+        ownerId: n.ownerId,
+        identityNonce: nextNonce,
+        schemas: documentSchemas,
+        definitions: undefined,
+        tokens: tokens || undefined,
+        fullValidation: false,
+      });
 
       // Apply config settings if any are specified
       // The DataContract constructor uses default config, so we need to set it explicitly
@@ -2362,9 +2363,9 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
           throw new Error(`Invalid JSON in New Document Schemas field: ${e.message}`);
         }
         // Get existing schemas and merge
-        const existingSchemas = existingContract.getSchemas() || {};
+        const existingSchemas = existingContract.schemas || {};
         const mergedSchemas = { ...existingSchemas, ...newSchemas };
-        existingContract.setSchemas(mergedSchemas, undefined, false, undefined);
+        existingContract.setSchemas(mergedSchemas, undefined, false);
       }
 
       await c.contracts.update({ dataContract: existingContract, identityKey, signer });
@@ -2406,25 +2407,16 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
         c, n.ownerId, n.privateKeyWif, n.keyId
       );
 
-      // Generate entropy for document ID
-      const entropyHex = n.entropyHex ?? dynamic.entropyHex ?? generateEntropyHex();
-      const entropyBytes = hexToBytes(entropyHex);
-
-      // Generate document ID from entropy
       const contractId = n.dataContractId || n.contractId;
       const documentTypeName = n.documentTypeName || n.documentType;
-      const documentIdBytes = Document.generateId(documentTypeName, n.ownerId, contractId, entropyBytes);
 
-      // Create the Document object
-      const document = new Document(
-        data,                    // js_raw_document (document properties/data)
-        documentTypeName,        // js_document_type_name
-        1n,                      // js_revision (1 for new documents)
-        contractId,              // js_data_contract_id
-        n.ownerId,               // js_owner_id
-        documentIdBytes          // js_document_id
-      );
-      document.entropy = entropyBytes;
+      // Create the Document object (constructor auto-generates entropy and ID)
+      const document = new Document({
+        dataContractId: contractId,
+        ownerId: n.ownerId,
+        documentTypeName,
+        properties: data,
+      });
 
       await c.documents.create({ document, identityKey, signer });
 
@@ -2455,14 +2447,14 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       const documentTypeName = n.documentTypeName || n.documentType;
 
       // Create the Document object with incremented revision
-      const document = new Document(
-        data,                           // js_raw_document
-        documentTypeName,               // js_document_type_name
-        BigInt(revision) + 1n,          // js_revision (increment for replace)
-        contractId,                     // js_data_contract_id
-        n.ownerId,                      // js_owner_id
-        n.documentId                    // js_document_id
-      );
+      const document = new Document({
+        dataContractId: contractId,
+        ownerId: n.ownerId,
+        documentTypeName,
+        properties: data,
+        revision: Number(BigInt(revision) + 1n),
+        id: n.documentId,
+      });
 
       await c.documents.replace({ document, identityKey, signer });
 
@@ -3099,7 +3091,7 @@ async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArg
       return useProof ? c.system.pathElementsWithProof(path, keys) : c.system.pathElements(path, keys);
     }
     case 'waitForStateTransitionResult':
-      return c.system.waitForStateTransitionResult(n.stateTransitionHash);
+      return c.stateTransitions.waitForStateTransitionResult(n.stateTransitionHash);
 
     // Platform Address queries
     case 'getPlatformAddress':
@@ -3174,7 +3166,7 @@ function formatResult(value) {
       // TokenContractInfo
       ['contractId', 'tokenContractPosition'],
       // IdentityTokenInfo
-      ['frozen'],
+      ['isFrozen'],
     ];
     for (const getterSet of knownGetters) {
       if (getterSet.every(prop => prop in val)) {
@@ -3225,7 +3217,14 @@ function formatResult(value) {
         let key;
         if (isWasmObject(k)) {
           const extracted = extractWasmData(k);
-          key = typeof extracted === 'string' ? extracted : String(k);
+          if (typeof extracted === 'string') {
+            key = extracted;
+          } else if (typeof k.toHex === 'function') {
+            // WASM objects like PlatformAddress use toHex() for string representation
+            try { key = k.toHex(); } catch (_) { key = String(k); }
+          } else {
+            key = String(k);
+          }
         } else if (typeof k === 'string') {
           key = k;
         } else {

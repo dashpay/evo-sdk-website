@@ -1435,7 +1435,7 @@
               "placeholder": "0000000000000000000000000000000000000000000000000000000000000000"
             }
           ],
-          "sdk_method": "system.waitForStateTransitionResult"
+          "sdk_method": "stateTransitions.waitForStateTransitionResult"
         }
       }
     },
@@ -1445,14 +1445,13 @@
         "getPlatformAddress": {
           "label": "Get Platform Address",
           "description": "Fetch information about a Platform address including its nonce and balance.",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "address",
               "type": "text",
               "label": "Platform Address",
               "required": true,
-              "placeholder": "tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm"
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             }
           ],
           "sdk_method": "addresses.get"
@@ -1460,14 +1459,13 @@
         "getPlatformAddresses": {
           "label": "Get Multiple Platform Addresses",
           "description": "Fetch information about multiple Platform addresses.",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "addresses",
               "type": "array",
               "label": "Platform Addresses",
               "required": true,
-              "placeholder": "[\"tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm\"]"
+              "placeholder": "[\"tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf\"]"
             }
           ],
           "sdk_method": "addresses.getMany"
@@ -2498,7 +2496,7 @@
               "type": "text",
               "label": "Sender Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "senderNonce",
@@ -2518,7 +2516,7 @@
               "type": "text",
               "label": "Recipient Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             }
           ],
           "sdk_params": [
@@ -2545,7 +2543,7 @@
               "type": "text",
               "label": "Sender Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "senderNonce",
@@ -2578,7 +2576,7 @@
               "type": "text",
               "label": "Sender Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "senderNonce",
@@ -2627,7 +2625,7 @@
               "type": "text",
               "label": "Recipient Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "amount",
@@ -2653,7 +2651,7 @@
               "type": "text",
               "label": "Recipient Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "amount",
@@ -2680,7 +2678,7 @@
               "type": "text",
               "label": "Sender Platform Address",
               "required": true,
-              "placeholder": "tdashevo1..."
+              "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
               "name": "senderNonce",

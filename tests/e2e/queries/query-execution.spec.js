@@ -387,8 +387,8 @@ function validateTokenInfoResult(resultStr) {
   // Token info should have identity/token IDs as keys with info objects containing frozen status
   expect(Object.keys(tokenInfoData).length).toBeGreaterThan(0);
   Object.values(tokenInfoData).forEach(tokenInfo => {
-    expect(tokenInfo).toHaveProperty('frozen');
-    expect(typeof tokenInfo.frozen).toBe('boolean');
+    expect(tokenInfo).toHaveProperty('isFrozen');
+    expect(typeof tokenInfo.isFrozen).toBe('boolean');
   });
 }
 
@@ -662,7 +662,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(parsed.version.software).toHaveProperty('drive');
           expect(parsed.version.software).toHaveProperty('tenderdash');
           // Check chain structure
-          expect(parsed.chain).toHaveProperty('catchingUp');
+          expect(parsed.chain).toHaveProperty('isCatchingUp');
           expect(parsed.chain).toHaveProperty('latestBlockHash');
           expect(parsed.chain).toHaveProperty('latestBlockHeight');
           // Check time structure
@@ -1311,26 +1311,45 @@ test.describe('Evo SDK Query Execution Tests', () => {
     const addressQueries = [
       {
         name: 'getPlatformAddress',
-        hasProofSupport: false, // Server returns "Operation is not implemented"
+        hasProofSupport: true,
         needsParameters: true,
-        // Server doesn't support non-proof query for single address
-        skipNonProof: true,
-        validateFn: (result) => {
-          // Platform address may or may not exist (undefined is valid)
-          // Just verify we got a response
+        validateFn: (result, isProofMode = false) => {
           expect(result).toBeDefined();
+          const parsed = JSON.parse(result);
+          const addrData = isProofMode && parsed.data ? parsed.data : parsed;
+          expect(addrData).toHaveProperty('address');
+          expect(addrData).toHaveProperty('nonce');
+          expect(addrData).toHaveProperty('balance');
+          expect(typeof addrData.address).toBe('string');
+          expect(typeof addrData.nonce).toBe('number');
+          expect(typeof addrData.balance).toBe('number');
         }
       },
       {
         name: 'getPlatformAddresses',
         hasProofSupport: true,
         needsParameters: true,
-        // Skip: SDK 3.0.0 uses new address type constants (P2PKH=0xB0, P2SH=0x80)
-        // but testnet nodes may be running older version with different constants
-        skip: true,
-        validateFn: (result) => {
-          // Should return a map/object of addresses
+        validateFn: (result, isProofMode = false) => {
           expect(result).toBeDefined();
+          const parsed = JSON.parse(result);
+          const addrMap = isProofMode && parsed.data ? parsed.data : parsed;
+          expect(typeof addrMap).toBe('object');
+          const keys = Object.keys(addrMap);
+          expect(keys.length).toBeGreaterThan(0);
+          const first = addrMap[keys[0]];
+          expect(first).toHaveProperty('address');
+          expect(first).toHaveProperty('nonce');
+          expect(first).toHaveProperty('balance');
+          if (isProofMode) {
+            // Proof response returns address as byte array and balance as string
+            expect(Array.isArray(first.address)).toBe(true);
+            expect(typeof first.nonce).toBe('number');
+            expect(typeof first.balance).toBe('string');
+          } else {
+            expect(typeof first.address).toBe('string');
+            expect(typeof first.nonce).toBe('number');
+            expect(typeof first.balance).toBe('number');
+          }
         }
       }
     ];
@@ -1381,12 +1400,10 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
             if (proofEnabled) {
               validateResultWithProof(result);
-              // Extract data field for validation when in proof mode
-              const resultData = JSON.parse(result.result);
-              validateFn(JSON.stringify(resultData.data));
+              validateFn(result.result, true);
             } else {
               validateResultWithoutProof(result);
-              validateFn(result.result);
+              validateFn(result.result, false);
             }
           });
         } else {

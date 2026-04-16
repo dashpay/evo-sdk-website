@@ -64,7 +64,8 @@ TESTNET_TEST_DATA = {
     'document_type': 'domain',
     'document_id': '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r',
     'username': 'alice',
-    'epoch': 8635
+    'epoch': 8635,
+    'platform_address': 'tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf',
 }
 
 
@@ -306,14 +307,14 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.system.pathElements(['96'], ['{data['identity_id']}'])
         """),
         'waitForStateTransitionResult': example("""
-            return await sdk.system.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000')
+            return await sdk.stateTransitions.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000')
         """),
         # Platform Addresses
-        'getPlatformAddress': example("""
-            return await sdk.addresses.get('tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm')
+        'getPlatformAddress': example(f"""
+            return await sdk.addresses.get('{data['platform_address']}')
         """),
-        'getPlatformAddresses': example("""
-            return await sdk.addresses.getMany(['tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm'])
+        'getPlatformAddresses': example(f"""
+            return await sdk.addresses.getMany(['{data['platform_address']}'])
         """),
         'getIdentityTokenBalances': example(f"""
             return await sdk.identities.tokenBalances('{data['identity_id']}', ['{data['token_id']}'])

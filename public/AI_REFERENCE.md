@@ -1036,7 +1036,7 @@ Example:
 const result = await sdk.system.pathElements(['96'], ['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk']);
 ```
 
-**Wait for State Transition Result** - `system.waitForStateTransitionResult`
+**Wait for State Transition Result** - `stateTransitions.waitForStateTransitionResult`
 *Wait for a state transition to be processed and return the result.*
 
 Parameters:
@@ -1045,7 +1045,7 @@ Parameters:
 
 Example:
 ```javascript
-const result = await sdk.system.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000');
+const result = await sdk.stateTransitions.waitForStateTransitionResult('0000000000000000000000000000000000000000000000000000000000000000');
 ```
 
 #### Platform Address Queries
@@ -1055,11 +1055,11 @@ const result = await sdk.system.waitForStateTransitionResult('000000000000000000
 
 Parameters:
 - `Platform Address` (text, required)
-  - Example: `tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm`
+  - Example: `tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf`
 
 Example:
 ```javascript
-const result = await sdk.addresses.get('tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm');
+const result = await sdk.addresses.get('tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf');
 ```
 
 **Get Multiple Platform Addresses** - `addresses.getMany`
@@ -1067,11 +1067,11 @@ const result = await sdk.addresses.get('tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
 
 Parameters:
 - `Platform Addresses` (array, required)
-  - Example: `["tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm"]`
+  - Example: `["tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"]`
 
 Example:
 ```javascript
-const result = await sdk.addresses.getMany(['tdashevo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqrglsvm']);
+const result = await sdk.addresses.getMany(['tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf']);
 ```
 
 ## State Transition Operations

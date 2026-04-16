@@ -585,16 +585,16 @@ const testData = {
       getPlatformAddress: {
         testnet: [
           {
-            // Valid bech32m platform address from platform tests (tevo prefix for testnet)
-            address: "tevo1krma5z3ttj75la4m93xcndna9ullamq9y5rky7cg"
+            // Valid bech32m platform address (tdash prefix for testnet)
+            address: "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
           }
         ]
       },
       getPlatformAddresses: {
         testnet: [
           {
-            // Valid bech32m platform addresses from platform tests (tevo prefix for testnet)
-            addresses: ["tevo1krma5z3ttj75la4m93xcndna9ullamq9y5rky7cg", "tevo1sppl5xpu70aka8nacc4kj2htflydspzkxcdx0hkz"]
+            // Valid bech32m platform addresses (tdash prefix for testnet)
+            addresses: ["tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"]
           }
         ]
       }
