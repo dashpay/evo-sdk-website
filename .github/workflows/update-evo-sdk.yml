@@ -53,13 +53,16 @@ jobs:
           echo "current=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "latest=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
 
-          # Check if versions differ
-          if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
+          # Only update if the latest stable version is strictly higher than current
+          # npx semver returns the version if it satisfies the range, empty otherwise
+          IS_HIGHER=$(npx -y semver@7.7.4 "$LATEST_VERSION" -r ">$CURRENT_VERSION" || true)
+
+          if [ -n "$IS_HIGHER" ]; then
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
             echo "New version available: $LATEST_VERSION"
           else
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
-            echo "Already on latest version"
+            echo "Current version ($CURRENT_VERSION) is same or newer than latest ($LATEST_VERSION)"
           fi
 
       - name: Install dependencies
