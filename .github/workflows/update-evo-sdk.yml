@@ -55,7 +55,7 @@ jobs:
 
           # Only update if the latest stable version is strictly higher than current
           # npx semver returns the version if it satisfies the range, empty otherwise
-          IS_HIGHER=$(npx -y semver "$LATEST_VERSION" -r ">$CURRENT_VERSION" || true)
+          IS_HIGHER=$(npx -y semver@7.7.4 "$LATEST_VERSION" -r ">$CURRENT_VERSION" || true)
 
           if [ -n "$IS_HIGHER" ]; then
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
