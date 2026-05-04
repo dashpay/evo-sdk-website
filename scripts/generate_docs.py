@@ -1028,10 +1028,13 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
 <head>
     <meta charset=\"UTF-8\">
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <meta name=\"theme-color\" content=\"#2c3e50\">
     <title>Dash Platform Evo JS SDK Documentation</title>
     <link rel=\"icon\" type=\"image/svg+xml\" href=\"https://media.dash.org/wp-content/uploads/blue-d.svg\">
     <link rel=\"alternate icon\" type=\"image/png\" href=\"https://media.dash.org/wp-content/uploads/blue-d-250.png\">
+    <link rel=\"stylesheet\" href=\"theme.css\">
     <link rel=\"stylesheet\" href=\"docs.css\">
+    <script src=\"theme.js\"></script>
     <script type=\"module\">
 {textwrap.indent(docs_script, '        ')}
     </script>
