@@ -1017,8 +1017,8 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
 
             <p><strong>Tip:</strong> Examples below execute against Dash Platform Testnet via the Evo SDK client. Click "Run" to invoke any example.</p>
 
-            <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin-top: 15px;">
-                <strong>Test Identity:</strong> Examples use the testnet identity <code style="background-color: #fff; padding: 2px 6px; border-radius: 3px;">{DEFAULT_TEST_IDENTITY}</code><br>
+            <div class="info-note">
+                <strong>Test Identity:</strong> Examples use the testnet identity <code>{DEFAULT_TEST_IDENTITY}</code><br>
                 This identity has activity on testnet and is safe to use for read-only demonstrations.
             </div>
         </div>'''
@@ -1028,10 +1028,13 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
 <head>
     <meta charset=\"UTF-8\">
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+    <meta name=\"theme-color\" content=\"#2c3e50\">
     <title>Dash Platform Evo JS SDK Documentation</title>
     <link rel=\"icon\" type=\"image/svg+xml\" href=\"https://media.dash.org/wp-content/uploads/blue-d.svg\">
     <link rel=\"alternate icon\" type=\"image/png\" href=\"https://media.dash.org/wp-content/uploads/blue-d-250.png\">
+    <link rel=\"stylesheet\" href=\"theme.css\">
     <link rel=\"stylesheet\" href=\"docs.css\">
+    <script src=\"theme.js\"></script>
     <script type=\"module\">
 {textwrap.indent(docs_script, '        ')}
     </script>
@@ -1051,6 +1054,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict) -> str:
 
     <div class=\"sidebar\">
         <h2>Table of Contents</h2>
+        <div id=\"themeToggle\" class=\"docs-theme-toggle\"></div>
         <div class=\"search-container\">
             <input type=\"text\" id=\"sidebar-search\" class=\"search-input\" placeholder=\"Search queries and transitions...\">
         </div>
