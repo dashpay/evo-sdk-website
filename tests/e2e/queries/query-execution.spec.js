@@ -806,15 +806,13 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(result).toBeDefined();
           const parsed = JSON.parse(result);
           // In proof mode, data is wrapped in { data, metadata, proof }
-          const epochResult = isProofMode && parsed.data ? parsed.data : parsed;
-          // Result is wrapped in V0 with epoch info
-          expect(epochResult).toHaveProperty('V0');
-          const epochInfo = epochResult.V0;
+          const epochInfo = isProofMode && parsed.data ? parsed.data : parsed;
+          // evo-sdk 3.1+ returns a flat camelCase epoch object (no V0 wrapper).
           expect(epochInfo).toHaveProperty('index');
-          expect(epochInfo).toHaveProperty('first_block_time');
-          expect(epochInfo).toHaveProperty('first_block_height');
-          expect(epochInfo).toHaveProperty('first_core_block_height');
-          expect(epochInfo).toHaveProperty('fee_multiplier_permille');
+          expect(epochInfo).toHaveProperty('firstBlockTime');
+          expect(epochInfo).toHaveProperty('firstBlockHeight');
+          expect(epochInfo).toHaveProperty('firstCoreBlockHeight');
+          expect(epochInfo).toHaveProperty('feeMultiplierPermille');
           expect(typeof epochInfo.index).toBe('number');
           expect(epochInfo.index).toBeGreaterThanOrEqual(0);
         }
@@ -832,16 +830,14 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof epochData).toBe('object');
           const keys = Object.keys(epochData);
           expect(keys.length).toBeGreaterThan(0);
-          // Check first epoch structure (wrapped in V0)
+          // evo-sdk 3.1+ returns flat camelCase per-epoch objects (no V0 wrapper).
           const firstKey = keys[0];
-          const firstEpoch = epochData[firstKey];
-          expect(firstEpoch).toHaveProperty('V0');
-          const epochInfo = firstEpoch.V0;
+          const epochInfo = epochData[firstKey];
           expect(epochInfo).toHaveProperty('index');
-          expect(epochInfo).toHaveProperty('first_block_time');
-          expect(epochInfo).toHaveProperty('first_block_height');
-          expect(epochInfo).toHaveProperty('first_core_block_height');
-          expect(epochInfo).toHaveProperty('fee_multiplier_permille');
+          expect(epochInfo).toHaveProperty('firstBlockTime');
+          expect(epochInfo).toHaveProperty('firstBlockHeight');
+          expect(epochInfo).toHaveProperty('firstCoreBlockHeight');
+          expect(epochInfo).toHaveProperty('feeMultiplierPermille');
         }
       },
       {
@@ -858,15 +854,13 @@ test.describe('Evo SDK Query Execution Tests', () => {
           const keys = Object.keys(epochData);
           // Can be empty if no finalized epochs in range
           if (keys.length > 0) {
-            // Check first epoch structure (may or may not be wrapped in V0)
+            // evo-sdk 3.1+ returns flat camelCase per-epoch objects (no V0 wrapper).
             const firstKey = keys[0];
-            const firstEpoch = epochData[firstKey];
-            // Handle both wrapped (V0) and unwrapped formats
-            const epochInfo = firstEpoch.V0 || firstEpoch;
-            expect(epochInfo).toHaveProperty('first_block_time');
-            expect(epochInfo).toHaveProperty('first_block_height');
-            expect(epochInfo).toHaveProperty('first_core_block_height');
-            expect(epochInfo).toHaveProperty('fee_multiplier_permille');
+            const epochInfo = epochData[firstKey];
+            expect(epochInfo).toHaveProperty('firstBlockTime');
+            expect(epochInfo).toHaveProperty('firstBlockHeight');
+            expect(epochInfo).toHaveProperty('firstCoreBlockHeight');
+            expect(epochInfo).toHaveProperty('feeMultiplierPermille');
           }
         }
       },

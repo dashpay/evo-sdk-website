@@ -576,9 +576,12 @@ function buildClientOptions() {
     proofs: true,
   };
   const { advancedOptions } = state;
-  if (advancedOptions.platformVersion) {
-    opts.version = advancedOptions.platformVersion;
-  }
+  // TODO: pinned to protocol_version 11 (Platform v3.0.x) because
+  // rs-sdk seeds protocol_version from PlatformVersion::latest() and only
+  // ratchets upward, so an unpinned SDK sends V1-wire GetDocumentsRequest to
+  // v3.0.x testnet and fails to decode. Remove this default once testnet is
+  // on Platform v3.1+ (protocol_version 12).
+  opts.version = advancedOptions.platformVersion ?? 11;
   const settings = {};
   if (advancedOptions.connectTimeout) settings.connectTimeoutMs = advancedOptions.connectTimeout;
   if (advancedOptions.requestTimeout) settings.timeoutMs = advancedOptions.requestTimeout;
