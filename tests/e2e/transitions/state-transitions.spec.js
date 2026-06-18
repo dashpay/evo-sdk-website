@@ -71,7 +71,7 @@ async function executeWithRetry(executeFn, options = {}) {
 function validateBasicStateTransitionResult(result) {
   // Check for withdrawal-specific minimum amount error
   if (!result.success && result.result && result.result.includes('Missing response message')) {
-    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is ~190,000 credits.');
+    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is 1,000,000 credits.');
     console.error('Full error:', result.result);
   }
 
@@ -576,8 +576,8 @@ test.describe('Evo SDK State Transition Tests', () => {
       const testParams = parameterInjector.testData.stateTransitionParameters.identity.identityCreditWithdrawal.testnet[0];
 
       // Skip test if withdrawal amount is below minimum threshold
-      if (testParams.amount < 190000) {
-        test.skip(true, `Withdrawal amount ${testParams.amount} credits is below minimum threshold (~190,000 credits)`);
+      if (testParams.amount < 1000000) {
+        test.skip(true, `Withdrawal amount ${testParams.amount} credits is below minimum threshold (1,000,000 credits)`);
       }
 
       // Set up the identity credit withdrawal transition

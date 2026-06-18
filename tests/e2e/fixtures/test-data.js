@@ -643,7 +643,7 @@ const testData = {
           {
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             toAddress: "yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm",
-            amount: 190000, // 0.0000019 DASH in credits (minimum withdrawal amount)
+            amount: 1000000, // 0.00001 DASH in credits (minimum withdrawal amount)
             privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER || "PLACEHOLDER_TRANSFER_KEY",
             description: "Withdraw credits to Dash address"
           }
