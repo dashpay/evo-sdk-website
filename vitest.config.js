@@ -26,6 +26,7 @@ export default defineConfig({
         'public/src/definitions-data.js',
         'public/src/client-options.js',
         'public/src/form/parse-input.js',
+        'public/src/version-display.js',
       ],
     },
   },
