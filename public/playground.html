@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- blob: is required so user code can be executed as a dynamically-imported
+       ES module (Blob URL). This does NOT permit eval / new Function: there is
+       deliberately no 'unsafe-eval' here. The looser policy is scoped to this
+       page only; index.html keeps the stricter CSP. -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
+  <title>Code Playground — Dash Platform Evo JS SDK</title>
+  <link rel="icon" type="image/svg+xml" href="https://media.dash.org/wp-content/uploads/blue-d.svg">
+  <link rel="alternate icon" type="image/png" href="https://media.dash.org/wp-content/uploads/blue-d-250.png">
+  <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="playground.css">
+</head>
+
+<body>
+  <div class="header">
+    <div class="header-title">
+      <h1>Code Playground</h1>
+    </div>
+    <nav class="header-nav">
+      <a href="index.html">← Back to SDK</a>
+      <a href="docs.html">Documentation</a>
+      <a href="AI_REFERENCE.md">AI Reference</a>
+      <a href="https://github.com/dashpay/evo-sdk-website" target="_blank">GitHub</a>
+    </nav>
+  </div>
+
+  <div class="playground">
+    <p class="playground-note">
+      Write JavaScript that uses the Evo SDK and run it directly. Code executes
+      <strong>locally in your browser</strong> against the network you select in your script — nothing
+      is sent to a server. Import the SDK with
+      <code>import { EvoSDK } from '@dashevo/evo-sdk';</code> (or
+      <code>'./dist/evo-sdk.module.js'</code>) and use <code>console.log()</code> to print results.
+    </p>
+
+    <div class="playground-editor">
+      <div class="playground-toolbar">
+        <button id="playgroundRun" class="pg-button pg-button-primary">Run</button>
+        <button id="playgroundClear" class="pg-button">Clear output</button>
+        <button id="playgroundReset" class="pg-button">Reset to default</button>
+      </div>
+      <textarea id="playgroundCode" spellcheck="false" autocomplete="off" autocapitalize="off"
+        wrap="off"></textarea>
+    </div>
+
+    <h2 class="playground-output-heading">Output</h2>
+    <div id="playgroundOutput" class="result-content empty">Click Run to execute the code above.</div>
+
+    <h2 class="playground-examples-heading">Read-only examples</h2>
+    <p class="playground-examples-intro">
+      Self-contained query examples adapted from the
+      <a href="https://github.com/dashpay/platform-tutorials" target="_blank">platform tutorials</a>.
+      Each connects to testnet and only reads data. Insert one into the editor or copy it to your
+      clipboard.
+    </p>
+    <div id="playgroundExamples" class="playground-examples"></div>
+  </div>
+
+  <script type="module" src="./src/playground.js"></script>
+
+</body>
+
+</html>

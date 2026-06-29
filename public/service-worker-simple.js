@@ -1,5 +1,5 @@
 // Simple cache-first service worker
-const CACHE_NAME = 'evo-sdk-cache-v1';
+const CACHE_NAME = 'evo-sdk-cache-v2';
 
 // Core assets to cache for offline usage
 const urlsToCache = [
@@ -7,7 +7,10 @@ const urlsToCache = [
   '/index.html',
   '/index.css',
   '/app.js',
-  '/dist/evo-sdk.module.js'
+  '/dist/evo-sdk.module.js',
+  '/playground.html',
+  '/playground.css',
+  '/src/playground.js'
 ];
 
 // Install event - pre-cache resources
