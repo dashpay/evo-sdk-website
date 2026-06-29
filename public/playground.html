@@ -32,39 +32,72 @@
 
   <div class="playground">
     <p class="playground-note">
-      Write JavaScript that uses the Evo SDK and run it directly. Code executes
-      <strong>locally in your browser</strong> against the network you select in your script — nothing
-      is sent to a server. Import the SDK with
-      <code>import { EvoSDK } from '@dashevo/evo-sdk';</code> (or
-      <code>'./dist/evo-sdk.module.js'</code>) and use <code>console.log()</code> to print results.
+      Write JavaScript that uses the <strong>Evo SDK</strong> and run it directly — your code runs
+      entirely in your browser and is never sent anywhere. The SDK connects to Dash Platform nodes
+      to read and write data, as any SDK call would.
     </p>
 
-    <div class="playground-editor">
-      <div class="playground-toolbar">
-        <button id="playgroundRun" class="pg-button pg-button-primary">Run</button>
-        <button id="playgroundCopy" class="pg-button">Copy code</button>
+    <!-- Top toolbar: run/clear/reset on the left, a "code runs locally"
+         reassurance on the right. Button IDs are consumed by createPlayground()
+         and the smoke tests, so they must stay stable. -->
+    <div class="playground-toolbar">
+      <div class="playground-toolbar-actions">
+        <button id="playgroundRun" class="pg-button pg-button-primary">
+          <span class="pg-run-icon" aria-hidden="true">▶</span> Run
+        </button>
         <button id="playgroundClear" class="pg-button">Clear output</button>
-        <button id="playgroundReset" class="pg-button">Reset to default</button>
+        <button id="playgroundReset" class="pg-button">Reset</button>
       </div>
-      <!-- Plain textarea by default; playground.js upgrades it in place to a
-           syntax-highlighted CodeJar editor once its modules load. If those
-           modules fail to load (offline / CDN blocked), this stays a usable
-           editable textarea. -->
-      <textarea id="playgroundCode" spellcheck="false" autocomplete="off" autocapitalize="off"
-        wrap="off"></textarea>
+      <div class="playground-toolbar-note">
+        <span class="pg-lock" aria-hidden="true">🔒</span>
+        Your code runs locally · SDK calls go to Dash Platform
+      </div>
     </div>
 
-    <h2 class="playground-output-heading">Output</h2>
-    <div id="playgroundOutput" class="result-content empty">Click Run to execute the code above.</div>
+    <!-- Two-column workspace: editor on the left, output on the right.
+         Collapses to a single column on narrow viewports (see playground.css). -->
+    <div class="playground-workspace">
+      <div class="playground-editor">
+        <div class="pg-tabbar">
+          <span class="pg-tab">
+            <span class="pg-tab-dot" aria-hidden="true"></span>
+            playground.js
+          </span>
+          <span id="playgroundModified" class="pg-modified" hidden>modified</span>
+          <span class="pg-panel-header-spacer"></span>
+          <button id="playgroundTabCopy" class="pg-panel-action" type="button">copy</button>
+        </div>
 
-    <h2 class="playground-examples-heading">Read-only examples</h2>
+        <div class="pg-examples-bar">
+          <span class="pg-examples-label">Examples</span>
+          <!-- Example pills are rendered here by playground.js -->
+          <div id="playgroundExamples" class="playground-examples"></div>
+        </div>
+
+        <!-- Plain textarea by default; playground.js upgrades it in place to a
+             syntax-highlighted CodeJar editor once its modules load. If those
+             modules fail to load (offline / CDN blocked), this stays a usable
+             editable textarea. -->
+        <textarea id="playgroundCode" spellcheck="false" autocomplete="off" autocapitalize="off"
+          wrap="off"></textarea>
+      </div>
+
+      <div class="playground-output-card">
+        <div class="pg-panel-header">
+          <span class="pg-panel-title">Output</span>
+          <span id="playgroundStatus" class="pg-status" hidden></span>
+          <span class="pg-panel-header-spacer"></span>
+          <button id="playgroundOutputCopy" class="pg-panel-action" type="button">copy</button>
+        </div>
+        <div id="playgroundOutput" class="result-content empty">Click Run to execute the code.</div>
+      </div>
+    </div>
+
     <p class="playground-examples-intro">
-      Self-contained query examples adapted from the
+      Examples are self-contained read-only queries adapted from the
       <a href="https://github.com/dashpay/platform-tutorials" target="_blank">platform tutorials</a>.
-      Each connects to testnet and only reads data. Insert one into the editor or copy it to your
-      clipboard.
+      Each connects to testnet and only reads data.
     </p>
-    <div id="playgroundExamples" class="playground-examples"></div>
   </div>
 
   <script type="module" src="./src/playground.js"></script>

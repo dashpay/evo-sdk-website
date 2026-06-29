@@ -1,19 +1,25 @@
 /* Code playground page. Reuses .header / .header-nav and .result-content from index.css. */
 
+/* Keep the dark header bar full-bleed (site-wide pattern) but align its inner
+   content with the centered playground column below it. The background stays on
+   .header so it spans the viewport; padding pushes the title/nav inward to the
+   same left/right edges as .playground (1340px column + 24px inner padding). */
+.header {
+  padding-left: max(24px, calc((100% - 1340px) / 2 + 24px));
+  padding-right: max(24px, calc((100% - 1340px) / 2 + 24px));
+}
+
 .playground {
-  max-width: 1000px;
+  max-width: 1340px;
   margin: 0 auto;
-  padding: 24px 20px 60px;
+  padding: 24px 24px 60px;
 }
 
 .playground-note {
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 14px 18px;
-  color: #444;
+  color: #555;
   line-height: 1.6;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin: 0 0 18px;
+  font-size: 0.95em;
 }
 
 .playground-note code {
@@ -24,21 +30,114 @@
   font-size: 0.9em;
 }
 
-.playground-editor {
-  margin-top: 20px;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
+/* Top toolbar: actions left, "runs locally" note right. */
 .playground-toolbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.playground-toolbar-actions {
+  display: flex;
   gap: 10px;
-  padding: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.playground-toolbar-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6a737d;
+  font-size: 13px;
+}
+
+.pg-lock {
+  font-size: 12px;
+}
+
+.pg-run-icon {
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+/* Two-column workspace; collapses to one column on narrow viewports. */
+.playground-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.playground-editor {
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Filename strip above the editor. Matches .pg-panel-header (the Output
+   header) for a consistent style and height across both cards. */
+.pg-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
   background-color: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.pg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.pg-tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #1976d2;
+}
+
+.pg-modified {
+  font-size: 11px;
+  font-weight: 500;
+  color: #8a6d00;
+  background-color: #fff6e0;
+  border: 1px solid #f0d999;
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.pg-modified[hidden] {
+  display: none;
+}
+
+/* Examples row: label + inline pills. */
+.pg-examples-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.pg-examples-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #888;
+  text-transform: uppercase;
 }
 
 .pg-button {
@@ -77,7 +176,8 @@
   display: block;
   width: 100%;
   box-sizing: border-box;
-  min-height: 320px;
+  flex: 1;
+  min-height: 420px;
   border: none;
   padding: 16px;
   font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
@@ -121,19 +221,93 @@ textarea#playgroundCode {
 .hljs-emphasis { color: #24292e; font-style: italic; }
 .hljs-strong { color: #24292e; font-weight: 700; }
 
-.playground-output-heading {
-  margin: 28px 0 8px;
-  color: #333;
-  font-size: 1.2em;
+/* Output card mirrors the editor card. */
+.playground-output-card {
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.pg-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.pg-panel-header-spacer {
+  flex: 1;
+}
+
+/* Run status shown beside the Output title (not in the output body). */
+.pg-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6a737d;
+}
+
+.pg-status[hidden] {
+  display: none;
+}
+
+.pg-status.running {
+  color: #1976d2;
+}
+
+.pg-status.done {
+  color: #27ae60;
+}
+
+.pg-status.error {
+  color: #e74c3c;
+}
+
+.pg-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.pg-panel-title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #27ae60;
+}
+
+.pg-panel-action {
+  border: none;
+  background: none;
+  color: #6a737d;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.pg-panel-action:hover {
+  color: #1976d2;
+  background-color: #eef4fb;
 }
 
 #playgroundOutput {
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  max-height: 480px;
-  flex: none;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  min-height: 420px;
+  max-height: 600px;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .pg-line {
@@ -153,54 +327,111 @@ textarea#playgroundCode {
   color: #27ae60;
 }
 
-.playground-examples-heading {
-  margin: 32px 0 4px;
-  color: #333;
-  font-size: 1.2em;
+/* Example pills + overflow dropdown (rendered into #playgroundExamples). */
+.playground-examples {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.pg-pill {
+  border: 1px solid #dde1e6;
+  background-color: #fff;
+  color: #3a4a5a;
+  border-radius: 16px;
+  padding: 5px 13px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.pg-pill:hover {
+  background-color: #f3f6fa;
+  border-color: #c8d2dd;
+}
+
+.pg-pill.is-active {
+  background-color: #e8f1fb;
+  border-color: #9ec2ec;
+  color: #1565c0;
+  font-weight: 500;
+}
+
+.pg-pill-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pg-pill-caret {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.pg-pill-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #dde1e6;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+}
+
+.pg-pill-menu[hidden] {
+  display: none;
+}
+
+.pg-pill-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #3a4a5a;
+  cursor: pointer;
+}
+
+.pg-pill-menu-item:hover {
+  background-color: #f3f6fa;
+  color: #1565c0;
+}
+
+.pg-pill-menu-item .pg-pill-menu-desc {
+  display: block;
+  font-size: 11px;
+  color: #8a97a4;
+  margin-top: 2px;
 }
 
 .playground-examples-intro {
-  margin: 0 0 16px;
-  color: #555;
-  line-height: 1.6;
-}
-
-.playground-examples {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
-}
-
-.pg-example {
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  padding: 14px 16px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.pg-example-title {
-  margin: 0 0 6px;
-  font-size: 1em;
-  color: #2c3e50;
-}
-
-.pg-example-desc {
-  margin: 0 0 14px;
-  color: #555;
-  font-size: 0.9em;
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+  color: #888;
+  font-size: 0.85em;
   line-height: 1.5;
-  flex: 1;
+  text-align: center;
 }
 
-.pg-example-actions {
-  display: flex;
-  gap: 8px;
-}
+/* Collapse to a single column on narrow viewports. */
+@media (max-width: 900px) {
+  .playground-workspace {
+    grid-template-columns: 1fr;
+  }
 
-.pg-example-actions .pg-button {
-  font-size: 13px;
-  padding: 6px 12px;
+  #playgroundOutput {
+    min-height: 220px;
+  }
 }

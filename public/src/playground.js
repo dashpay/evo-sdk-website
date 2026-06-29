@@ -38,20 +38,10 @@ console.log(identity?.toJSON());
 // EvoSDK.testnetTrusted() and connect() (no setupDashClient / keys / env), so
 // every example runs in the playground as-is. State-transition tutorials
 // (anything that signs or writes) are intentionally excluded.
+// Ordered by importance — identity, contract, query come first (they become
+// the inline example pills), followed by system status and the DPNS examples
+// (which fall into the "All N" overflow dropdown).
 export const EXAMPLES = [
-  {
-    id: 'system-status',
-    title: 'System status',
-    description: 'Connect to testnet and read overall platform status.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
-
-const sdk = EvoSDK.testnetTrusted();
-await sdk.connect();
-
-const status = await sdk.system.status();
-console.log('Connected. System status:\\n', status.toJSON());
-`,
-  },
   {
     id: 'identity-retrieve',
     title: 'Retrieve an identity',
@@ -65,6 +55,56 @@ const IDENTITY_ID = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
 
 const identity = await sdk.identities.fetch(IDENTITY_ID);
 console.log('Identity retrieved:\\n', identity.toJSON());
+`,
+  },
+  {
+    id: 'contract-retrieve',
+    title: 'Retrieve a data contract',
+    description: 'Fetch a data contract by ID and print its schema.',
+    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+
+const sdk = EvoSDK.testnetTrusted();
+await sdk.connect();
+
+const DATA_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
+
+const contract = await sdk.contracts.fetch(DATA_CONTRACT_ID);
+console.log('Contract retrieved:\\n', contract.toJSON());
+`,
+  },
+  {
+    id: 'document-query',
+    title: 'Query documents',
+    description: 'Query documents of a given type from a contract, with a limit.',
+    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+
+const sdk = EvoSDK.testnetTrusted();
+await sdk.connect();
+
+const DATA_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
+
+const results = await sdk.documents.query({
+  dataContractId: DATA_CONTRACT_ID,
+  documentTypeName: 'domain',
+  limit: 5,
+});
+
+for (const [id, doc] of results) {
+  console.log('Document:', id.toString(), doc.toJSON());
+}
+`,
+  },
+  {
+    id: 'system-status',
+    title: 'System status',
+    description: 'Connect to testnet and read overall platform status.',
+    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+
+const sdk = EvoSDK.testnetTrusted();
+await sdk.connect();
+
+const status = await sdk.system.status();
+console.log('Connected. System status:\\n', status.toJSON());
 `,
   },
   {
@@ -127,43 +167,6 @@ const usernames = await sdk.dpns.usernames({ identityId: IDENTITY_ID });
 console.log(\`Name(s) for \${IDENTITY_ID}:\\n\`, usernames);
 `,
   },
-  {
-    id: 'contract-retrieve',
-    title: 'Retrieve a data contract',
-    description: 'Fetch a data contract by ID and print its schema.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
-
-const sdk = EvoSDK.testnetTrusted();
-await sdk.connect();
-
-const DATA_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
-
-const contract = await sdk.contracts.fetch(DATA_CONTRACT_ID);
-console.log('Contract retrieved:\\n', contract.toJSON());
-`,
-  },
-  {
-    id: 'document-query',
-    title: 'Query documents',
-    description: 'Query documents of a given type from a contract, with a limit.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
-
-const sdk = EvoSDK.testnetTrusted();
-await sdk.connect();
-
-const DATA_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
-
-const results = await sdk.documents.query({
-  dataContractId: DATA_CONTRACT_ID,
-  documentTypeName: 'domain',
-  limit: 5,
-});
-
-for (const [id, doc] of results) {
-  console.log('Document:', id.toString(), doc.toJSON());
-}
-`,
-  },
 ];
 
 // Rewrite the SDK import specifier to the bundled module's absolute URL.
@@ -223,6 +226,10 @@ async function attachEditor(textarea) {
       get scrollTop() { return code.scrollTop; },
       set scrollTop(v) { code.scrollTop = v; },
       focus() { code.focus(); },
+      // Delegate listeners to the underlying contenteditable element so callers
+      // can subscribe to `input` (CodeJar dispatches it on every edit).
+      addEventListener(...args) { code.addEventListener(...args); },
+      removeEventListener(...args) { code.removeEventListener(...args); },
     };
   } catch (_) {
     // Highlighting unavailable — fall back to the raw textarea.
@@ -230,7 +237,35 @@ async function attachEditor(textarea) {
   }
 }
 
-export function createPlayground({ editor, output, runButton, clearButton, resetButton, copyButton, examplesContainer }) {
+export function createPlayground({
+  editor, output, runButton, clearButton, resetButton,
+  tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,
+}) {
+  // Show transient run state ("Running…" / "Done" / "Error") beside the Output
+  // title, rather than as lines in the output body. `kind` drives the color.
+  function setStatus(text, kind) {
+    if (!statusEl) return;
+    statusEl.hidden = !text;
+    statusEl.textContent = text || '';
+    statusEl.className = `pg-status${kind ? ' ' + kind : ''}`;
+  }
+
+  // Baseline the editor is compared against for the "modified" badge: the
+  // default script, or the last example inserted. The badge shows whenever the
+  // current code differs from this baseline.
+  let baseline = DEFAULT_SCRIPT;
+
+  function updateModified() {
+    if (!modifiedBadge) return;
+    const isModified = editor.value !== baseline;
+    modifiedBadge.hidden = !isModified;
+  }
+
+  function setBaseline(value) {
+    baseline = value;
+    updateModified();
+  }
+
   function appendLine(text, kind) {
     output.classList.remove('empty');
     const line = document.createElement('div');
@@ -243,6 +278,7 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
   function clearOutput() {
     output.textContent = '';
     output.classList.add('empty');
+    setStatus('');
   }
 
   // Temporarily route console output to the panel while still forwarding to the
@@ -266,7 +302,7 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
   async function run() {
     runButton.disabled = true;
     clearOutput();
-    appendLine('Running…', 'log');
+    setStatus('Running…', 'running');
 
     const code = rewriteSdkSpecifier(editor.value);
     const blob = new Blob([code], { type: 'text/javascript' });
@@ -274,9 +310,14 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
     const restoreConsole = captureConsole();
     try {
       await import(/* webpackIgnore: true */ /* @vite-ignore */ url);
-      appendLine('Done.', 'result');
+      setStatus('Done', 'done');
+      // A successful run that logged nothing leaves the panel blank; hint at it.
+      if (output.classList.contains('empty')) {
+        output.textContent = 'Finished with no output.';
+      }
     } catch (err) {
       appendLine(err && (err.stack || err.message) ? (err.stack || err.message) : String(err), 'error');
+      setStatus('Error', 'error');
     } finally {
       restoreConsole();
       URL.revokeObjectURL(url);
@@ -290,19 +331,22 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
       return;
     }
     editor.value = DEFAULT_SCRIPT;
+    setBaseline(DEFAULT_SCRIPT);
   }
 
-  // Replace the editor contents with an example, confirming first if the editor
-  // holds anything other than the default or that same example (so edits aren't
-  // lost silently).
+  // Replace the editor contents with an example. Only confirm when the editor
+  // has unsaved edits (differs from the current baseline — the default script
+  // or last-inserted example); switching between unmodified examples is
+  // seamless.
   function insertExample(example) {
-    if (editor.value !== DEFAULT_SCRIPT && editor.value !== example.code &&
+    if (editor.value !== baseline &&
         !window.confirm(`Replace your code with the "${example.title}" example? Your current code will be lost.`)) {
       return;
     }
     editor.value = example.code;
     editor.scrollTop = 0;
     editor.focus();
+    setBaseline(example.code);
   }
 
   // Copy text to the clipboard, with a fallback for browsers/contexts without
@@ -335,48 +379,106 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
     return copyText(editor.value, button);
   }
 
+  // Copy the captured console output. No-op (no flash) when the panel is empty.
+  function copyOutput(button) {
+    const text = output.innerText.trim();
+    if (!text) return;
+    return copyText(text, button);
+  }
+
+  // Number of examples shown as inline pills; the "All examples" dropdown
+  // always lists every example regardless of this.
+  const INLINE_EXAMPLE_COUNT = 4;
+
+  // Render example pills into the examples bar. The first few examples are
+  // inline pills for quick access; an "All examples ▾" dropdown lists every
+  // example. Both routes call insertExample(). Closes over examplesContainer.
   function renderExamples() {
     if (!examplesContainer) return;
     examplesContainer.textContent = '';
-    for (const example of EXAMPLES) {
-      const card = document.createElement('div');
-      card.className = 'pg-example';
 
-      const title = document.createElement('h3');
-      title.className = 'pg-example-title';
-      title.textContent = example.title;
+    const inline = EXAMPLES.slice(0, INLINE_EXAMPLE_COUNT);
 
-      const desc = document.createElement('p');
-      desc.className = 'pg-example-desc';
-      desc.textContent = example.description;
-
-      const actions = document.createElement('div');
-      actions.className = 'pg-example-actions';
-
-      const insertBtn = document.createElement('button');
-      insertBtn.className = 'pg-button';
-      insertBtn.textContent = 'Insert into editor';
-      insertBtn.addEventListener('click', () => insertExample(example));
-
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'pg-button';
-      copyBtn.textContent = 'Copy';
-      copyBtn.addEventListener('click', () => copyExample(example, copyBtn));
-
-      actions.append(insertBtn, copyBtn);
-      card.append(title, desc, actions);
-      examplesContainer.appendChild(card);
+    for (const example of inline) {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'pg-pill';
+      pill.textContent = example.title;
+      pill.addEventListener('click', () => insertExample(example));
+      examplesContainer.appendChild(pill);
     }
+
+    // "All examples ▾" pill toggling a dropdown of every example.
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'pg-pill pg-pill-more';
+    moreBtn.setAttribute('aria-haspopup', 'true');
+    moreBtn.setAttribute('aria-expanded', 'false');
+    moreBtn.innerHTML =
+      `All examples <span class="pg-pill-caret" aria-hidden="true">▾</span>`;
+
+    const menu = document.createElement('div');
+    menu.className = 'pg-pill-menu';
+    menu.hidden = true;
+
+    for (const example of EXAMPLES) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'pg-pill-menu-item';
+      const title = document.createElement('span');
+      title.textContent = example.title;
+      const desc = document.createElement('span');
+      desc.className = 'pg-pill-menu-desc';
+      desc.textContent = example.description;
+      item.append(title, desc);
+      item.addEventListener('click', () => {
+        closeMenu();
+        insertExample(example);
+      });
+      menu.appendChild(item);
+    }
+
+    function openMenu() {
+      menu.hidden = false;
+      moreBtn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('click', onDocClick);
+      document.addEventListener('keydown', onKeydown);
+    }
+    function closeMenu() {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      moreBtn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKeydown);
+    }
+    function onDocClick(e) {
+      if (!menu.contains(e.target) && e.target !== moreBtn) closeMenu();
+    }
+    function onKeydown(e) {
+      if (e.key === 'Escape') closeMenu();
+    }
+
+    moreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (menu.hidden) openMenu(); else closeMenu();
+    });
+
+    examplesContainer.append(moreBtn, menu);
   }
 
   editor.value = DEFAULT_SCRIPT;
   runButton.addEventListener('click', run);
   clearButton.addEventListener('click', clearOutput);
   resetButton.addEventListener('click', reset);
-  if (copyButton) copyButton.addEventListener('click', () => copyCode(copyButton));
+  if (tabCopyButton) tabCopyButton.addEventListener('click', () => copyCode(tabCopyButton));
+  if (outputCopyButton) outputCopyButton.addEventListener('click', () => copyOutput(outputCopyButton));
+  // The editor element (textarea or CodeJar's contenteditable div) emits
+  // `input` on every keystroke; recompute the "modified" badge from it.
+  if (editor.addEventListener) editor.addEventListener('input', updateModified);
+  updateModified();
   renderExamples();
 
-  return { run, reset, clearOutput, insertExample, copyExample, copyCode };
+  return { run, reset, clearOutput, insertExample, copyExample, copyCode, copyOutput };
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -385,9 +487,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const runButton = document.getElementById('playgroundRun');
   const clearButton = document.getElementById('playgroundClear');
   const resetButton = document.getElementById('playgroundReset');
-  const copyButton = document.getElementById('playgroundCopy');
+  const tabCopyButton = document.getElementById('playgroundTabCopy');
+  const outputCopyButton = document.getElementById('playgroundOutputCopy');
+  const modifiedBadge = document.getElementById('playgroundModified');
+  const statusEl = document.getElementById('playgroundStatus');
   const examplesContainer = document.getElementById('playgroundExamples');
   if (!textarea || !output || !runButton || !clearButton || !resetButton) return;
   const editor = await attachEditor(textarea);
-  createPlayground({ editor, output, runButton, clearButton, resetButton, copyButton, examplesContainer });
+  createPlayground({
+    editor, output, runButton, clearButton, resetButton,
+    tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,
+  });
 });
