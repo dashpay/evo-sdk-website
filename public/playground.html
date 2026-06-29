@@ -42,9 +42,14 @@
     <div class="playground-editor">
       <div class="playground-toolbar">
         <button id="playgroundRun" class="pg-button pg-button-primary">Run</button>
+        <button id="playgroundCopy" class="pg-button">Copy code</button>
         <button id="playgroundClear" class="pg-button">Clear output</button>
         <button id="playgroundReset" class="pg-button">Reset to default</button>
       </div>
+      <!-- Plain textarea by default; playground.js upgrades it in place to a
+           syntax-highlighted CodeJar editor once its modules load. If those
+           modules fail to load (offline / CDN blocked), this stays a usable
+           editable textarea. -->
       <textarea id="playgroundCode" spellcheck="false" autocomplete="off" autocapitalize="off"
         wrap="off"></textarea>
     </div>

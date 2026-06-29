@@ -12,6 +12,13 @@ import { formatResult } from './result-format.js';
 // both locally and under the GitHub Pages subpath (/evo-sdk-website/).
 const SDK_MODULE_URL = new URL('../dist/evo-sdk.module.js', import.meta.url).href;
 
+// Pinned ESM builds of the syntax-highlighting editor, loaded on demand from
+// jsdelivr (already allowed by playground.html's script-src). CodeJar is a tiny
+// contenteditable wrapper; highlight.js does the actual tokenizing. Versions are
+// pinned so a published-package change can't alter behavior without a code edit.
+const CODEJAR_URL = 'https://cdn.jsdelivr.net/npm/codejar@4.2.0/dist/codejar.js';
+const HLJS_URL = 'https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/es/highlight.min.js';
+
 // Known-good default script. Single source of truth for the initial editor value
 // and the "Reset to default" button. Uses the package-style import that mirrors
 // real SDK usage; the specifier is rewritten to SDK_MODULE_URL before execution.
@@ -184,7 +191,46 @@ function formatArg(arg) {
   }
 }
 
-export function createPlayground({ editor, output, runButton, clearButton, resetButton, examplesContainer }) {
+// Upgrade a plain <textarea> into a syntax-highlighted CodeJar editor, in place.
+// Returns an adapter that exposes the same surface createPlayground() uses on a
+// textarea — `value` (get/set), `scrollTop`, and `focus()` — so the rest of the
+// playground is agnostic to which editor backs it. On any failure (CDN blocked,
+// import error) the original textarea is left untouched and returned as-is, so
+// the playground stays fully functional without highlighting.
+async function attachEditor(textarea) {
+  try {
+    const [{ CodeJar }, { default: hljs }] = await Promise.all([
+      import(/* webpackIgnore: true */ /* @vite-ignore */ CODEJAR_URL),
+      import(/* webpackIgnore: true */ /* @vite-ignore */ HLJS_URL),
+    ]);
+
+    // contenteditable div that inherits the textarea's id/styling.
+    const code = document.createElement('div');
+    code.id = textarea.id;
+    code.setAttribute('contenteditable', 'plaintext-only');
+    code.setAttribute('spellcheck', 'false');
+    code.setAttribute('autocapitalize', 'off');
+    textarea.replaceWith(code);
+
+    const highlight = (el) => {
+      el.innerHTML = hljs.highlight(el.textContent, { language: 'javascript' }).value;
+    };
+    const jar = CodeJar(code, highlight, { tab: '  ' });
+
+    return {
+      get value() { return jar.toString(); },
+      set value(v) { jar.updateCode(v); },
+      get scrollTop() { return code.scrollTop; },
+      set scrollTop(v) { code.scrollTop = v; },
+      focus() { code.focus(); },
+    };
+  } catch (_) {
+    // Highlighting unavailable — fall back to the raw textarea.
+    return textarea;
+  }
+}
+
+export function createPlayground({ editor, output, runButton, clearButton, resetButton, copyButton, examplesContainer }) {
   function appendLine(text, kind) {
     output.classList.remove('empty');
     const line = document.createElement('div');
@@ -259,13 +305,14 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
     editor.focus();
   }
 
-  async function copyExample(example, button) {
+  // Copy text to the clipboard, with a fallback for browsers/contexts without
+  // the async clipboard API, and flash "Copied!" on the triggering button.
+  async function copyText(text, button) {
     try {
-      await navigator.clipboard.writeText(example.code);
+      await navigator.clipboard.writeText(text);
     } catch (_) {
-      // Fallback for browsers/contexts without the async clipboard API.
       const ta = document.createElement('textarea');
-      ta.value = example.code;
+      ta.value = text;
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
       document.body.appendChild(ta);
@@ -278,6 +325,14 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
       button.textContent = 'Copied!';
       setTimeout(() => { button.textContent = label; }, 1500);
     }
+  }
+
+  function copyExample(example, button) {
+    return copyText(example.code, button);
+  }
+
+  function copyCode(button) {
+    return copyText(editor.value, button);
   }
 
   function renderExamples() {
@@ -318,18 +373,21 @@ export function createPlayground({ editor, output, runButton, clearButton, reset
   runButton.addEventListener('click', run);
   clearButton.addEventListener('click', clearOutput);
   resetButton.addEventListener('click', reset);
+  if (copyButton) copyButton.addEventListener('click', () => copyCode(copyButton));
   renderExamples();
 
-  return { run, reset, clearOutput, insertExample, copyExample };
+  return { run, reset, clearOutput, insertExample, copyExample, copyCode };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  const editor = document.getElementById('playgroundCode');
+document.addEventListener('DOMContentLoaded', async () => {
+  const textarea = document.getElementById('playgroundCode');
   const output = document.getElementById('playgroundOutput');
   const runButton = document.getElementById('playgroundRun');
   const clearButton = document.getElementById('playgroundClear');
   const resetButton = document.getElementById('playgroundReset');
+  const copyButton = document.getElementById('playgroundCopy');
   const examplesContainer = document.getElementById('playgroundExamples');
-  if (!editor || !output || !runButton || !clearButton || !resetButton) return;
-  createPlayground({ editor, output, runButton, clearButton, resetButton, examplesContainer });
+  if (!textarea || !output || !runButton || !clearButton || !resetButton) return;
+  const editor = await attachEditor(textarea);
+  createPlayground({ editor, output, runButton, clearButton, resetButton, copyButton, examplesContainer });
 });
