@@ -190,12 +190,28 @@ function rewriteSdkSpecifier(code) {
 // everything else is run through the SDK-aware formatter (handles WASM objects,
 // Maps, BigInt, .toJSON()/.toObject(), etc.).
 function formatArg(arg) {
-  if (typeof arg === 'string') return arg;
+  if (arg instanceof Error) return formatError(arg);
+  if (typeof arg === 'string') return relabelBlobUrls(arg);
   try {
     return formatResult(arg);
   } catch (_) {
     try { return String(arg); } catch { return '[unprintable]'; }
   }
+}
+
+// Replace the internal blob: object URL (origin + a random UUID) with
+// "your code", while preserving any trailing ":line:col" the stack appends —
+// so a trace reads "at your code:12:22" and still maps to the editor. The UUID
+// contains no ':' so the lazy match stops before the line/column.
+function relabelBlobUrls(text) {
+  return text.replace(/blob:\S*?\/[0-9a-f-]{8,}/gi, 'your code');
+}
+
+// Turn a thrown error into user-facing text. We show the real error verbatim —
+// no interpretation — just with the blob: URLs relabelled.
+function formatError(err) {
+  const raw = err && (err.stack || err.message) ? (err.stack || err.message) : String(err);
+  return relabelBlobUrls(raw);
 }
 
 export function createPlayground({
@@ -288,7 +304,7 @@ export function createPlayground({
         output.textContent = 'Finished with no output.';
       }
     } catch (err) {
-      appendLine(err && (err.stack || err.message) ? (err.stack || err.message) : String(err), 'error');
+      appendLine(formatError(err), 'error');
       setStatus('Error', 'error');
     } finally {
       restoreConsole();

@@ -283,6 +283,17 @@
   height: 8px;
   border-radius: 50%;
   background-color: #27ae60;
+  transition: background-color 0.15s;
+}
+
+/* Tint the status dot to match the run status shown next to it. The status
+   span (#playgroundStatus) is the title's immediate next sibling. */
+.pg-panel-title:has(+ .pg-status.running)::before {
+  background-color: #1976d2;
+}
+
+.pg-panel-title:has(+ .pg-status.error)::before {
+  background-color: #e74c3c;
 }
 
 
