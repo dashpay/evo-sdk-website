@@ -12,41 +12,21 @@ import { formatResult } from './result-format.js';
 // both locally and under the GitHub Pages subpath (/evo-sdk-website/).
 const SDK_MODULE_URL = new URL('../dist/evo-sdk.module.js', import.meta.url).href;
 
-// Pinned ESM builds of the syntax-highlighting editor, loaded on demand from
-// jsdelivr (already allowed by playground.html's script-src). CodeJar is a tiny
-// contenteditable wrapper; highlight.js does the actual tokenizing. Versions are
-// pinned so a published-package change can't alter behavior without a code edit.
-const CODEJAR_URL = 'https://cdn.jsdelivr.net/npm/codejar@4.2.0/dist/codejar.js';
-const HLJS_URL = 'https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/es/highlight.min.js';
-
-// Known-good default script. Single source of truth for the initial editor value
-// and the "Reset to default" button. Uses the package-style import that mirrors
-// real SDK usage; the specifier is rewritten to SDK_MODULE_URL before execution.
-export const DEFAULT_SCRIPT = `import { EvoSDK } from '@dashevo/evo-sdk';
-
-const sdk = EvoSDK.testnetTrusted();
-await sdk.connect();
-
-const identity = await sdk.identities.fetch(
-  '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'
-);
-console.log(identity?.toJSON());
-`;
-
 // Read-only example scripts adapted from the platform-tutorials repo.
 // Each is fully self-contained: it constructs its own client with
 // EvoSDK.testnetTrusted() and connect() (no setupDashClient / keys / env), so
 // every example runs in the playground as-is. State-transition tutorials
 // (anything that signs or writes) are intentionally excluded.
-// Ordered by importance — identity, contract, query come first (they become
-// the inline example pills), followed by system status and the DPNS examples
-// (which fall into the "All N" overflow dropdown).
+// `category` groups examples under headers in the "Load example" dropdown;
+// EXAMPLE_CATEGORIES below defines the header order.
 export const EXAMPLES = [
   {
     id: 'identity-retrieve',
+    category: 'Identities',
     title: 'Retrieve an identity',
     description: 'Fetch an identity by ID and print its full details.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Fetch an identity by ID and print its full details.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -59,9 +39,11 @@ console.log('Identity retrieved:\\n', identity.toJSON());
   },
   {
     id: 'contract-retrieve',
+    category: 'Contracts',
     title: 'Retrieve a data contract',
     description: 'Fetch a data contract by ID and print its schema.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Fetch a data contract by ID and print its schema.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -74,9 +56,11 @@ console.log('Contract retrieved:\\n', contract.toJSON());
   },
   {
     id: 'document-query',
+    category: 'Documents',
     title: 'Query documents',
     description: 'Query documents of a given type from a contract, with a limit.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Query documents of a given type from a contract, with a limit.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -96,9 +80,11 @@ for (const [id, doc] of results) {
   },
   {
     id: 'system-status',
+    category: 'System',
     title: 'System status',
     description: 'Connect to testnet and read overall platform status.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Connect to testnet and read overall platform status.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -109,9 +95,11 @@ console.log('Connected. System status:\\n', status.toJSON());
   },
   {
     id: 'name-resolve',
+    category: 'DPNS',
     title: 'Resolve a DPNS name',
     description: 'Resolve a full DPNS name (e.g. name.dash) to its identity ID.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Resolve a full DPNS name (e.g. name.dash) to its identity ID.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -124,9 +112,11 @@ console.log(\`Identity ID for "\${NAME}": \${result}\`);
   },
   {
     id: 'name-search',
+    category: 'DPNS',
     title: 'Search DPNS names by prefix',
     description: 'Query the DPNS contract for domain names matching a prefix.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// Query the DPNS contract for domain names matching a prefix.
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -154,9 +144,11 @@ for (const [id, doc] of results) {
   },
   {
     id: 'identity-names',
+    category: 'DPNS',
     title: 'Get DPNS names for an identity',
     description: 'Reverse-lookup: list all DPNS usernames registered to an identity.',
-    code: `import { EvoSDK } from '@dashevo/evo-sdk';
+    code: `// List all DPNS usernames registered to an identity (reverse lookup).
+import { EvoSDK } from '@dashevo/evo-sdk';
 
 const sdk = EvoSDK.testnetTrusted();
 await sdk.connect();
@@ -168,6 +160,18 @@ console.log(\`Name(s) for \${IDENTITY_ID}:\\n\`, usernames);
 `,
   },
 ];
+
+// Category header order for the "Load example" dropdown. Any example whose
+// category isn't listed here is appended under its own header at the end.
+export const EXAMPLE_CATEGORIES = ['Identities', 'Contracts', 'Documents', 'DPNS', 'System'];
+
+// Initial editor value and "Reset" target. Reuses the "Retrieve an identity"
+// example (single source of truth) and prepends a one-line orientation hint so
+// a first-time visitor knows what to do next. Loading that example from the
+// dropdown gives the same code minus this hint.
+export const DEFAULT_SCRIPT =
+  `// Edit the code or pick another example above, then hit Run.\n` +
+  EXAMPLES.find((e) => e.id === 'identity-retrieve').code;
 
 // Rewrite the SDK import specifier to the bundled module's absolute URL.
 // Inside a blob module a relative path resolves against the blob URL (and fails),
@@ -194,49 +198,6 @@ function formatArg(arg) {
   }
 }
 
-// Upgrade a plain <textarea> into a syntax-highlighted CodeJar editor, in place.
-// Returns an adapter that exposes the same surface createPlayground() uses on a
-// textarea — `value` (get/set), `scrollTop`, and `focus()` — so the rest of the
-// playground is agnostic to which editor backs it. On any failure (CDN blocked,
-// import error) the original textarea is left untouched and returned as-is, so
-// the playground stays fully functional without highlighting.
-async function attachEditor(textarea) {
-  try {
-    const [{ CodeJar }, { default: hljs }] = await Promise.all([
-      import(/* webpackIgnore: true */ /* @vite-ignore */ CODEJAR_URL),
-      import(/* webpackIgnore: true */ /* @vite-ignore */ HLJS_URL),
-    ]);
-
-    // contenteditable div that inherits the textarea's id/styling.
-    const code = document.createElement('div');
-    code.id = textarea.id;
-    code.setAttribute('contenteditable', 'plaintext-only');
-    code.setAttribute('spellcheck', 'false');
-    code.setAttribute('autocapitalize', 'off');
-    textarea.replaceWith(code);
-
-    const highlight = (el) => {
-      el.innerHTML = hljs.highlight(el.textContent, { language: 'javascript' }).value;
-    };
-    const jar = CodeJar(code, highlight, { tab: '  ' });
-
-    return {
-      get value() { return jar.toString(); },
-      set value(v) { jar.updateCode(v); },
-      get scrollTop() { return code.scrollTop; },
-      set scrollTop(v) { code.scrollTop = v; },
-      focus() { code.focus(); },
-      // Delegate listeners to the underlying contenteditable element so callers
-      // can subscribe to `input` (CodeJar dispatches it on every edit).
-      addEventListener(...args) { code.addEventListener(...args); },
-      removeEventListener(...args) { code.removeEventListener(...args); },
-    };
-  } catch (_) {
-    // Highlighting unavailable — fall back to the raw textarea.
-    return textarea;
-  }
-}
-
 export function createPlayground({
   editor, output, runButton, clearButton, resetButton,
   tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,
@@ -255,10 +216,21 @@ export function createPlayground({
   // current code differs from this baseline.
   let baseline = DEFAULT_SCRIPT;
 
+  // Menu item button per example id, populated by renderExamples(); used to
+  // show the "active" highlight on whichever example the editor matches.
+  const menuItems = new Map();
+
+  function refreshActiveItem() {
+    const current = editor.value;
+    for (const [id, button] of menuItems) {
+      const example = EXAMPLES.find((e) => e.id === id);
+      button.classList.toggle('is-active', !!example && example.code === current);
+    }
+  }
+
   function updateModified() {
-    if (!modifiedBadge) return;
-    const isModified = editor.value !== baseline;
-    modifiedBadge.hidden = !isModified;
+    if (modifiedBadge) modifiedBadge.hidden = editor.value === baseline;
+    refreshActiveItem();
   }
 
   function setBaseline(value) {
@@ -325,8 +297,12 @@ export function createPlayground({
     }
   }
 
+  // Reset to the default script. Only confirm when the editor has unsaved edits
+  // (differs from its baseline — the default or a cleanly-loaded example);
+  // resetting an unmodified example is seamless. No-op if already at the default.
   function reset() {
-    if (editor.value !== DEFAULT_SCRIPT &&
+    if (editor.value === DEFAULT_SCRIPT) return;
+    if (editor.value !== baseline &&
         !window.confirm('Replace your code with the default script? Your current code will be lost.')) {
       return;
     }
@@ -350,7 +326,8 @@ export function createPlayground({
   }
 
   // Copy text to the clipboard, with a fallback for browsers/contexts without
-  // the async clipboard API, and flash "Copied!" on the triggering button.
+  // the async clipboard API. Flashes confirmation on the triggering button via
+  // an `is-copied` class (CSS swaps the icon to a check) and the title/tooltip.
   async function copyText(text, button) {
     try {
       await navigator.clipboard.writeText(text);
@@ -365,9 +342,13 @@ export function createPlayground({
       document.body.removeChild(ta);
     }
     if (button) {
-      const label = button.textContent;
-      button.textContent = 'Copied!';
-      setTimeout(() => { button.textContent = label; }, 1500);
+      const title = button.getAttribute('title');
+      button.classList.add('is-copied');
+      button.setAttribute('title', 'Copied!');
+      setTimeout(() => {
+        button.classList.remove('is-copied');
+        if (title != null) button.setAttribute('title', title);
+      }, 1500);
     }
   }
 
@@ -386,84 +367,96 @@ export function createPlayground({
     return copyText(text, button);
   }
 
-  // Number of examples shown as inline pills; the "All examples" dropdown
-  // always lists every example regardless of this.
-  const INLINE_EXAMPLE_COUNT = 4;
+  // Order examples by EXAMPLE_CATEGORIES, returning [categoryName, examples[]]
+  // groups. Categories not listed are appended (in first-seen order) at the end.
+  function groupExamples() {
+    const byCategory = new Map();
+    for (const example of EXAMPLES) {
+      const cat = example.category || 'Other';
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat).push(example);
+    }
+    const ordered = [];
+    for (const cat of EXAMPLE_CATEGORIES) {
+      if (byCategory.has(cat)) { ordered.push([cat, byCategory.get(cat)]); byCategory.delete(cat); }
+    }
+    for (const [cat, items] of byCategory) ordered.push([cat, items]);
+    return ordered;
+  }
 
-  // Render example pills into the examples bar. The first few examples are
-  // inline pills for quick access; an "All examples ▾" dropdown lists every
-  // example. Both routes call insertExample(). Closes over examplesContainer.
+  // Render a "Load example ▾" button in the editor tab bar that opens a
+  // dropdown of all examples, grouped under category headers. Selecting an item
+  // calls insertExample(). Closes over examplesContainer.
   function renderExamples() {
     if (!examplesContainer) return;
     examplesContainer.textContent = '';
+    menuItems.clear();
 
-    const inline = EXAMPLES.slice(0, INLINE_EXAMPLE_COUNT);
-
-    for (const example of inline) {
-      const pill = document.createElement('button');
-      pill.type = 'button';
-      pill.className = 'pg-pill';
-      pill.textContent = example.title;
-      pill.addEventListener('click', () => insertExample(example));
-      examplesContainer.appendChild(pill);
-    }
-
-    // "All examples ▾" pill toggling a dropdown of every example.
-    const moreBtn = document.createElement('button');
-    moreBtn.type = 'button';
-    moreBtn.className = 'pg-pill pg-pill-more';
-    moreBtn.setAttribute('aria-haspopup', 'true');
-    moreBtn.setAttribute('aria-expanded', 'false');
-    moreBtn.innerHTML =
-      `All examples <span class="pg-pill-caret" aria-hidden="true">▾</span>`;
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.id = 'playgroundLoadExample';
+    toggle.className = 'pg-load-example';
+    toggle.setAttribute('aria-haspopup', 'true');
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('title', 'Load a ready-made example into the editor');
+    toggle.innerHTML = `Load example <span class="pg-pill-caret" aria-hidden="true">▾</span>`;
 
     const menu = document.createElement('div');
     menu.className = 'pg-pill-menu';
     menu.hidden = true;
 
-    for (const example of EXAMPLES) {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'pg-pill-menu-item';
-      const title = document.createElement('span');
-      title.textContent = example.title;
-      const desc = document.createElement('span');
-      desc.className = 'pg-pill-menu-desc';
-      desc.textContent = example.description;
-      item.append(title, desc);
-      item.addEventListener('click', () => {
-        closeMenu();
-        insertExample(example);
-      });
-      menu.appendChild(item);
+    for (const [category, examples] of groupExamples()) {
+      const header = document.createElement('div');
+      header.className = 'pg-pill-menu-header';
+      header.textContent = category;
+      menu.appendChild(header);
+
+      for (const example of examples) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'pg-pill-menu-item';
+        const title = document.createElement('span');
+        title.className = 'pg-pill-menu-title';
+        title.textContent = example.title;
+        const desc = document.createElement('span');
+        desc.className = 'pg-pill-menu-desc';
+        desc.textContent = example.description;
+        item.append(title, desc);
+        item.addEventListener('click', () => {
+          closeMenu();
+          insertExample(example);
+        });
+        menu.appendChild(item);
+        menuItems.set(example.id, item);
+      }
     }
 
     function openMenu() {
       menu.hidden = false;
-      moreBtn.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-expanded', 'true');
       document.addEventListener('click', onDocClick);
       document.addEventListener('keydown', onKeydown);
     }
     function closeMenu() {
       if (menu.hidden) return;
       menu.hidden = true;
-      moreBtn.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-expanded', 'false');
       document.removeEventListener('click', onDocClick);
       document.removeEventListener('keydown', onKeydown);
     }
     function onDocClick(e) {
-      if (!menu.contains(e.target) && e.target !== moreBtn) closeMenu();
+      if (!menu.contains(e.target) && e.target !== toggle) closeMenu();
     }
     function onKeydown(e) {
       if (e.key === 'Escape') closeMenu();
     }
 
-    moreBtn.addEventListener('click', (e) => {
+    toggle.addEventListener('click', (e) => {
       e.stopPropagation();
       if (menu.hidden) openMenu(); else closeMenu();
     });
 
-    examplesContainer.append(moreBtn, menu);
+    examplesContainer.append(toggle, menu);
   }
 
   editor.value = DEFAULT_SCRIPT;
@@ -472,17 +465,23 @@ export function createPlayground({
   resetButton.addEventListener('click', reset);
   if (tabCopyButton) tabCopyButton.addEventListener('click', () => copyCode(tabCopyButton));
   if (outputCopyButton) outputCopyButton.addEventListener('click', () => copyOutput(outputCopyButton));
-  // The editor element (textarea or CodeJar's contenteditable div) emits
-  // `input` on every keystroke; recompute the "modified" badge from it.
-  if (editor.addEventListener) editor.addEventListener('input', updateModified);
-  updateModified();
+  // Run the code with Ctrl+Enter / Cmd+Enter while editing.
+  editor.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!runButton.disabled) run();
+    }
+  });
+  // Recompute the "modified" badge and active-pill highlight on every edit.
+  editor.addEventListener('input', updateModified);
   renderExamples();
+  updateModified();
 
   return { run, reset, clearOutput, insertExample, copyExample, copyCode, copyOutput };
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const textarea = document.getElementById('playgroundCode');
+document.addEventListener('DOMContentLoaded', () => {
+  const editor = document.getElementById('playgroundCode');
   const output = document.getElementById('playgroundOutput');
   const runButton = document.getElementById('playgroundRun');
   const clearButton = document.getElementById('playgroundClear');
@@ -492,8 +491,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modifiedBadge = document.getElementById('playgroundModified');
   const statusEl = document.getElementById('playgroundStatus');
   const examplesContainer = document.getElementById('playgroundExamples');
-  if (!textarea || !output || !runButton || !clearButton || !resetButton) return;
-  const editor = await attachEditor(textarea);
+  if (!editor || !output || !runButton || !clearButton || !resetButton) return;
+
   createPlayground({
     editor, output, runButton, clearButton, resetButton,
     tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,

@@ -1,75 +1,103 @@
 const { test, expect } = require('@playwright/test');
 
-// Smoke coverage for the playground's CodeJar + highlight.js editor upgrade.
-// These tests exercise the editor UI only — they do not run user scripts against
-// the network — so they stay fast and deterministic. The editor modules load
-// from jsdelivr; if that CDN is unreachable the page falls back to a plain
-// textarea, which the final test asserts still works.
+// Smoke coverage for the playground editor UI. These tests exercise the UI
+// only — they do not run user scripts against the network — so they stay fast
+// and deterministic. The editor is a plain <textarea>.
 
 test.describe('Playground editor', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html');
   });
 
-  test('upgrades the textarea to a CodeJar contenteditable editor', async ({ page }) => {
+  test('loads the default script into the editor', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
     await expect(editor).toBeVisible();
-
-    // attachEditor() replaces the <textarea> with a contenteditable <div>.
-    // Wait for the swap rather than asserting immediately, since the editor
-    // modules load asynchronously.
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
-    expect(await editor.evaluate((el) => el.tagName)).toBe('DIV');
+    await expect(editor).toHaveValue(/import \{ EvoSDK \}/);
   });
 
-  test('loads the default script and highlights JS keywords', async ({ page }) => {
-    const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+  // Open the "Load example" dropdown and click the example with the given title.
+  async function loadExample(page, title) {
+    await page.locator('#playgroundLoadExample').click();
+    const menu = page.locator('.pg-pill-menu');
+    await expect(menu).toBeVisible();
+    await menu.locator('.pg-pill-menu-item', { hasText: title }).first().click();
+    await expect(menu).toBeHidden();
+  }
 
-    // The default script's text is present...
-    await expect(editor).toContainText('import { EvoSDK }');
-
-    // ...and highlight.js has tokenized it (the `import` keyword becomes a
-    // .hljs-keyword span). This proves highlighting is actually wired up.
-    const keyword = editor.locator('.hljs-keyword', { hasText: 'import' }).first();
-    await expect(keyword).toBeVisible();
+  test('the "Load example" dropdown is present on load', async ({ page }) => {
+    await expect(page.locator('#playgroundLoadExample')).toBeVisible();
   });
 
   test('Reset to default repopulates the editor', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(editor).toBeVisible();
 
     // Clear the editor, then reset. window.confirm fires because the contents
     // differ from the default — auto-accept it.
     page.on('dialog', (dialog) => dialog.accept());
-    await editor.evaluate((el) => { el.textContent = ''; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await editor.fill('');
 
     await page.locator('#playgroundReset').click();
-    await expect(editor).toContainText('EvoSDK.testnetTrusted()');
+    await expect(editor).toHaveValue(/EvoSDK\.testnetTrusted\(\)/);
   });
 
-  test('the editor copy action copies the code and flashes feedback', async ({ page, context }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  test('resetting an unmodified example needs no confirmation', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(editor).toBeVisible();
+
+    // Any confirm here is a regression — an unmodified example should reset
+    // straight back to the default.
+    page.on('dialog', (dialog) => {
+      throw new Error(`Unexpected confirm dialog: ${dialog.message()}`);
+    });
+
+    await loadExample(page, 'Query documents');
+    await expect(editor).toHaveValue(/sdk\.documents\.query/);
+
+    await page.locator('#playgroundReset').click();
+    await expect(editor).toHaveValue(/Edit the code or pick another example/);
+  });
+
+  test('the editor copy icon copies the code and flashes feedback', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await expect(page.locator('#playgroundCode')).toBeVisible();
 
     const copyButton = page.locator('#playgroundTabCopy');
     await copyButton.click();
 
-    // The label flashes "Copied!" on success or fallback alike.
-    await expect(copyButton).toHaveText('Copied!');
+    // Flashes confirmation via the is-copied class + "Copied!" tooltip.
+    await expect(copyButton).toHaveClass(/is-copied/);
+    await expect(copyButton).toHaveAttribute('title', 'Copied!');
 
     // And the clipboard holds the editor's default script.
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toContain('import { EvoSDK }');
 
-    // Label restores afterward.
-    await expect(copyButton).toHaveText('copy');
+    // Reverts afterward.
+    await expect(copyButton).not.toHaveClass(/is-copied/);
+  });
+
+  test('the dropdown is grouped by category', async ({ page }) => {
+    await page.locator('#playgroundLoadExample').click();
+    const menu = page.locator('.pg-pill-menu');
+    await expect(menu).toBeVisible();
+    await expect(menu.locator('.pg-pill-menu-header', { hasText: 'Identities' })).toBeVisible();
+    await expect(menu.locator('.pg-pill-menu-header', { hasText: 'DPNS' })).toBeVisible();
+  });
+
+  test('the caret reflects open/closed state via aria-expanded', async ({ page }) => {
+    const toggle = page.locator('#playgroundLoadExample');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // Close again (Escape) and the state reverts.
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('switching examples without edits needs no confirmation', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(editor).toBeVisible();
 
     // Fail loudly if any confirm dialog appears: an unmodified editor should
     // switch examples seamlessly.
@@ -77,63 +105,52 @@ test.describe('Playground editor', () => {
       throw new Error(`Unexpected confirm dialog: ${dialog.message()}`);
     });
 
-    // From the default (unmodified) → first inline pill loads with no confirm.
-    await page.locator('.pg-pill', { hasText: 'Retrieve an identity' }).first().click();
-    await expect(editor).toContainText('sdk.identities.fetch');
+    await loadExample(page, 'Retrieve an identity');
+    await expect(editor).toHaveValue(/sdk\.identities\.fetch/);
 
-    // From that example (still unmodified) → another pill loads with no confirm.
-    await page.locator('.pg-pill', { hasText: 'Query documents' }).first().click();
-    await expect(editor).toContainText('sdk.documents.query');
+    // From that example (still unmodified) → another loads with no confirm.
+    await loadExample(page, 'Query documents');
+    await expect(editor).toHaveValue(/sdk\.documents\.query/);
   });
 
   test('switching examples after edits asks for confirmation', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(editor).toBeVisible();
 
     // Edit the editor so it diverges from the baseline.
     await editor.click();
-    await editor.evaluate((el) => {
-      el.textContent = el.textContent + '\n// my edit';
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    await editor.press('End');
+    await editor.pressSequentially('\n// my edit');
 
     // Now a confirm must appear; accept it and verify the example loads.
     let confirmed = false;
     page.on('dialog', (dialog) => { confirmed = true; dialog.accept(); });
-    await page.locator('.pg-pill', { hasText: 'Query documents' }).first().click();
-    await expect(editor).toContainText('sdk.documents.query');
+    await loadExample(page, 'Query documents');
+    await expect(editor).toHaveValue(/sdk\.documents\.query/);
     expect(confirmed).toBe(true);
   });
 
-  test('the overflow dropdown opens and loads an example', async ({ page }) => {
-    const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+  test('the active example is highlighted in the dropdown', async ({ page }) => {
+    await loadExample(page, 'Get DPNS names');
+    await expect(page.locator('#playgroundCode')).toHaveValue(/sdk\.dpns\.usernames/);
 
-    const menu = page.locator('.pg-pill-menu');
-    await expect(menu).toBeHidden();
-
-    await page.locator('.pg-pill-more').click();
-    await expect(menu).toBeVisible();
-
-    // An overflow example: "Get DPNS names for an identity" → sdk.dpns.usernames(...).
-    await menu.locator('.pg-pill-menu-item', { hasText: 'Get DPNS names' }).click();
-    await expect(menu).toBeHidden();
-    await expect(editor).toContainText('sdk.dpns.usernames');
+    // Reopen the menu — the loaded example's item is marked active.
+    await page.locator('#playgroundLoadExample').click();
+    const active = page.locator('.pg-pill-menu-item.is-active', { hasText: 'Get DPNS names' });
+    await expect(active).toBeVisible();
   });
 
   test('the "modified" badge tracks edits', async ({ page }) => {
     const editor = page.locator('#playgroundCode');
-    await expect(editor).toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(editor).toBeVisible();
 
     const badge = page.locator('#playgroundModified');
     await expect(badge).toBeHidden();
 
     // Type something so the editor diverges from the default.
     await editor.click();
-    await editor.evaluate((el) => {
-      el.textContent = el.textContent + '\n// edited';
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    await editor.press('End');
+    await editor.pressSequentially('\n// edited');
     await expect(badge).toBeVisible();
 
     // Reset clears the badge.
@@ -144,8 +161,7 @@ test.describe('Playground editor', () => {
 
   test('Output copy copies captured output text', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await expect(page.locator('#playgroundCode'))
-      .toHaveAttribute('contenteditable', /plaintext-only|true/, { timeout: 15000 });
+    await expect(page.locator('#playgroundCode')).toBeVisible();
 
     // Seed the output panel directly (avoids a network run) and copy it.
     await page.locator('#playgroundOutput').evaluate((el) => {
@@ -155,9 +171,21 @@ test.describe('Playground editor', () => {
 
     const copyBtn = page.locator('#playgroundOutputCopy');
     await copyBtn.click();
-    await expect(copyBtn).toHaveText('Copied!');
+    await expect(copyBtn).toHaveClass(/is-copied/);
 
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toContain('hello from output');
+  });
+
+  test('Ctrl/Cmd+Enter runs the code', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    await expect(editor).toBeVisible();
+
+    // Replace with a trivial network-free script, then run via the shortcut.
+    page.on('dialog', (dialog) => dialog.accept());
+    await editor.fill('console.log("ran via shortcut");');
+    await editor.press('ControlOrMeta+Enter');
+
+    await expect(page.locator('#playgroundOutput')).toContainText('ran via shortcut');
   });
 });

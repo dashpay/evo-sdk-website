@@ -6,10 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- blob: is required so user code can be executed as a dynamically-imported
        ES module (Blob URL). This does NOT permit eval / new Function: there is
-       deliberately no 'unsafe-eval' here. The looser policy is scoped to this
-       page only; index.html keeps the stricter CSP. -->
+       deliberately no 'unsafe-eval' here. -->
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' blob: https://cdn.jsdelivr.net 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
+    content="default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://media.dash.org data:; connect-src 'self' https:">
   <title>Code Playground — Dash Platform Evo JS SDK</title>
   <link rel="icon" type="image/svg+xml" href="https://media.dash.org/wp-content/uploads/blue-d.svg">
   <link rel="alternate icon" type="image/png" href="https://media.dash.org/wp-content/uploads/blue-d-250.png">
@@ -36,23 +35,10 @@
       entirely in your browser and is never sent anywhere. The SDK connects to Dash Platform nodes
       to read and write data, as any SDK call would.
     </p>
-
-    <!-- Top toolbar: run/clear/reset on the left, a "code runs locally"
-         reassurance on the right. Button IDs are consumed by createPlayground()
-         and the smoke tests, so they must stay stable. -->
-    <div class="playground-toolbar">
-      <div class="playground-toolbar-actions">
-        <button id="playgroundRun" class="pg-button pg-button-primary">
-          <span class="pg-run-icon" aria-hidden="true">▶</span> Run
-        </button>
-        <button id="playgroundClear" class="pg-button">Clear output</button>
-        <button id="playgroundReset" class="pg-button">Reset</button>
-      </div>
-      <div class="playground-toolbar-note">
-        <span class="pg-lock" aria-hidden="true">🔒</span>
-        Your code runs locally · SDK calls go to Dash Platform
-      </div>
-    </div>
+    <p class="playground-note-local">
+      <span class="pg-lock" aria-hidden="true">🔒</span>
+      Your code runs locally · SDK calls go to Dash Platform
+    </p>
 
     <!-- Two-column workspace: editor on the left, output on the right.
          Collapses to a single column on narrow viewports (see playground.css). -->
@@ -61,25 +47,36 @@
         <div class="pg-tabbar">
           <span class="pg-tab">
             <span class="pg-tab-dot" aria-hidden="true"></span>
-            playground.js
+            Editor
           </span>
           <span id="playgroundModified" class="pg-modified" hidden>modified</span>
           <span class="pg-panel-header-spacer"></span>
-          <button id="playgroundTabCopy" class="pg-panel-action" type="button">copy</button>
-        </div>
-
-        <div class="pg-examples-bar">
-          <span class="pg-examples-label">Examples</span>
-          <!-- Example pills are rendered here by playground.js -->
+          <!-- "Load example" dropdown is rendered into here by playground.js. -->
           <div id="playgroundExamples" class="playground-examples"></div>
+          <button id="playgroundReset" class="pg-button pg-button-sm"
+            title="Reset the editor to the default example">Reset</button>
+          <button id="playgroundRun" class="pg-button pg-button-sm pg-button-primary"
+            title="Run the code (Ctrl/Cmd+Enter)">
+            <span class="pg-run-icon" aria-hidden="true">▶</span> Run
+          </button>
+          <button id="playgroundTabCopy" class="pg-copy-icon" type="button"
+            aria-label="Copy code" title="Copy code">
+            <svg class="pg-copy-glyph" viewBox="0 0 24 24" width="15" height="15" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <svg class="pg-check-glyph" viewBox="0 0 24 24" width="15" height="15" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
         </div>
 
-        <!-- Plain textarea by default; playground.js upgrades it in place to a
-             syntax-highlighted CodeJar editor once its modules load. If those
-             modules fail to load (offline / CDN blocked), this stays a usable
-             editable textarea. -->
-        <textarea id="playgroundCode" spellcheck="false" autocomplete="off" autocapitalize="off"
-          wrap="off"></textarea>
+        <textarea id="playgroundCode" spellcheck="false" autocorrect="off" autocomplete="off"
+          autocapitalize="off" wrap="off"></textarea>
       </div>
 
       <div class="playground-output-card">
@@ -87,7 +84,22 @@
           <span class="pg-panel-title">Output</span>
           <span id="playgroundStatus" class="pg-status" hidden></span>
           <span class="pg-panel-header-spacer"></span>
-          <button id="playgroundOutputCopy" class="pg-panel-action" type="button">copy</button>
+          <button id="playgroundClear" class="pg-button pg-button-sm"
+            title="Clear the output below">Clear</button>
+          <button id="playgroundOutputCopy" class="pg-copy-icon" type="button"
+            aria-label="Copy output" title="Copy output">
+            <svg class="pg-copy-glyph" viewBox="0 0 24 24" width="15" height="15" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <svg class="pg-check-glyph" viewBox="0 0 24 24" width="15" height="15" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+              aria-hidden="true">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
         </div>
         <div id="playgroundOutput" class="result-content empty">Click Run to execute the code.</div>
       </div>
