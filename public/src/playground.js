@@ -217,7 +217,35 @@ function formatError(err) {
 export function createPlayground({
   editor, output, runButton, clearButton, resetButton,
   tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,
+  highlightEl,
 }) {
+  // Whether Prism loaded as a `'self'` classic script (see playground.html).
+  // It's vendored, not CDN-loaded, so this is true in practice — but if it
+  // ever fails to load we degrade to a plain visible textarea rather than
+  // leaving transparent (unreadable) text. Decided once at init below.
+  const hasPrism = typeof window !== 'undefined' && !!window.Prism &&
+    !!window.Prism.languages && !!window.Prism.languages.javascript;
+
+  // Re-render the highlight layer to mirror the editor's current text. The
+  // textarea remains the source of truth; this only repaints the colored <pre>
+  // behind it. A trailing newline is added so the last line's height matches
+  // the textarea (an unterminated final line would leave the layers a row off).
+  function syncHighlight() {
+    if (!highlightEl || !hasPrism) return;
+    const value = editor.value.endsWith('\n') ? editor.value : editor.value + '\n';
+    highlightEl.innerHTML = window.Prism.highlight(
+      value, window.Prism.languages.javascript, 'javascript');
+  }
+
+  // Keep the highlight layer scrolled in lockstep with the textarea.
+  function syncScroll() {
+    if (!highlightEl) return;
+    const pre = highlightEl.parentElement;
+    if (!pre) return;
+    pre.scrollTop = editor.scrollTop;
+    pre.scrollLeft = editor.scrollLeft;
+  }
+
   // Show transient run state ("Running…" / "Done" / "Error") beside the Output
   // title, rather than as lines in the output body. `kind` drives the color.
   function setStatus(text, kind) {
@@ -323,6 +351,7 @@ export function createPlayground({
       return;
     }
     editor.value = DEFAULT_SCRIPT;
+    syncHighlight();
     setBaseline(DEFAULT_SCRIPT);
   }
 
@@ -337,6 +366,8 @@ export function createPlayground({
     }
     editor.value = example.code;
     editor.scrollTop = 0;
+    syncHighlight();
+    syncScroll();
     editor.focus();
     setBaseline(example.code);
   }
@@ -476,6 +507,12 @@ export function createPlayground({
   }
 
   editor.value = DEFAULT_SCRIPT;
+  // If Prism didn't load, mark the surface so CSS reverts the textarea to plain
+  // visible text (the colored layer would otherwise leave it transparent).
+  if (!hasPrism && highlightEl) {
+    const surface = highlightEl.closest('.pg-editor-surface');
+    if (surface) surface.classList.add('no-highlight');
+  }
   runButton.addEventListener('click', run);
   clearButton.addEventListener('click', clearOutput);
   resetButton.addEventListener('click', reset);
@@ -488,12 +525,15 @@ export function createPlayground({
       if (!runButton.disabled) run();
     }
   });
-  // Recompute the "modified" badge and active-pill highlight on every edit.
-  editor.addEventListener('input', updateModified);
+  // Recompute the "modified" badge + active-pill highlight and repaint the
+  // syntax-highlight layer on every edit; keep the layer scrolled with the text.
+  editor.addEventListener('input', () => { updateModified(); syncHighlight(); });
+  editor.addEventListener('scroll', syncScroll);
   renderExamples();
   updateModified();
+  syncHighlight();
 
-  return { run, reset, clearOutput, insertExample, copyExample, copyCode, copyOutput };
+  return { run, reset, clearOutput, insertExample, copyExample, copyCode, copyOutput, syncHighlight };
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -507,10 +547,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const modifiedBadge = document.getElementById('playgroundModified');
   const statusEl = document.getElementById('playgroundStatus');
   const examplesContainer = document.getElementById('playgroundExamples');
+  const highlightEl = document.getElementById('playgroundHighlight');
   if (!editor || !output || !runButton || !clearButton || !resetButton) return;
 
   createPlayground({
     editor, output, runButton, clearButton, resetButton,
     tabCopyButton, outputCopyButton, modifiedBadge, statusEl, examplesContainer,
+    highlightEl,
   });
 });

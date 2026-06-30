@@ -75,8 +75,18 @@
           </button>
         </div>
 
-        <textarea id="playgroundCode" spellcheck="false" autocorrect="off" autocomplete="off"
-          autocapitalize="off" wrap="off"></textarea>
+        <!-- Editor surface: a Prism-highlighted <pre> sits *behind* the real
+             textarea, which is made transparent (the caret stays visible) so
+             the colored layer shows through. The textarea is still the editor,
+             so every behavior (typing, selection, Ctrl/Cmd+Enter, copy) is
+             unchanged. playground.js keeps the <pre> in sync on input/scroll.
+             If Prism fails to load, JS adds .no-highlight here and the textarea
+             reverts to plain visible text (graceful degradation). -->
+        <div class="pg-editor-surface">
+          <pre class="pg-highlight" aria-hidden="true"><code id="playgroundHighlight" class="language-javascript"></code></pre>
+          <textarea id="playgroundCode" spellcheck="false" autocorrect="off" autocomplete="off"
+            autocapitalize="off" wrap="off"></textarea>
+        </div>
       </div>
 
       <div class="playground-output-card">
@@ -112,6 +122,16 @@
     </p>
   </div>
 
+  <!-- Vendored Prism (no CDN) for editor syntax highlighting. Classic scripts,
+       loaded in dependency order before the module: core → clike → javascript
+       (the JS grammar extends clike). See src/vendor/prism/README.md.
+       data-manual disables Prism's startup highlightAll() pass: highlighting is
+       driven solely by playground.js's syncHighlight(). Without it, the startup
+       pass would touch the hidden .pg-highlight <pre> and add tabindex="0" to
+       it, making the aria-hidden layer keyboard-focusable. -->
+  <script data-manual src="./src/vendor/prism/prism-core.min.js"></script>
+  <script src="./src/vendor/prism/prism-clike.min.js"></script>
+  <script src="./src/vendor/prism/prism-javascript.min.js"></script>
   <script type="module" src="./src/playground.js"></script>
 
 </body>

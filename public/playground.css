@@ -157,28 +157,144 @@
   font-size: 10px;
 }
 
-#playgroundCode {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
+/* Editor surface: a positioned box that overlays the highlight <pre> and the
+   textarea. It takes over the min-height the textarea used to own. */
+.pg-editor-surface {
+  position: relative;
   flex: 1;
   min-height: 420px;
-  border: none;
+  background-color: #fff;
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+}
+
+/* The textarea (input) and the highlight <pre> (display) must share EXACTLY
+   the same text metrics, or the colored glyphs drift out from under the caret.
+   Keep every property that affects glyph position in this one shared rule. */
+#playgroundCode,
+.pg-highlight {
+  margin: 0;
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
   padding: 16px;
+  border: none;
   font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: #2c3e50;
-  background-color: #fff;
+  letter-spacing: normal;
   tab-size: 2;
   white-space: pre;
-  overflow: auto;
-  resize: vertical;
+  word-break: normal;
+  overflow-wrap: normal;
   border-radius: 0 0 8px 8px;
+}
+
+/* The real editor, on top. Its text is transparent so the highlight layer
+   shows through; only the caret is painted. No resize — a resized textarea
+   would desync from the fixed-height highlight layer. */
+#playgroundCode {
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  color: transparent;
+  caret-color: #2c3e50;
+  background: transparent;
+  overflow: auto;
 }
 
 #playgroundCode:focus {
   outline: none;
+}
+
+/* The textarea text is transparent (the highlight layer shows through), so a
+   solid selection highlight would paint over the colored glyphs and leave the
+   selection unreadable. A translucent blue keeps the highlighted text visible
+   underneath while still marking the selection. */
+#playgroundCode::selection {
+  background-color: rgba(25, 118, 210, 0.25);
+}
+
+/* When highlighting is unavailable the textarea paints its own (opaque) text,
+   so a normal selection highlight is correct there. */
+.pg-editor-surface.no-highlight #playgroundCode::selection {
+  background-color: #b3d4fc;
+}
+
+/* The highlight layer, behind the textarea. Non-interactive; its scroll is
+   mirrored from the textarea in JS (so overflow is hidden here). */
+.pg-highlight {
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: #2c3e50;
+  background-color: #fff;
+}
+
+.pg-highlight code {
+  font: inherit;
+  white-space: inherit;
+  tab-size: inherit;
+}
+
+/* Graceful degradation: if Prism failed to load, JS sets .no-highlight, which
+   hides the (empty) highlight layer and restores the textarea's visible text —
+   identical to the plain editor we had before highlighting. */
+.pg-editor-surface.no-highlight .pg-highlight {
+  display: none;
+}
+
+.pg-editor-surface.no-highlight #playgroundCode {
+  color: #2c3e50;
+  caret-color: auto;
+}
+
+/* Inline Prism token theme, tuned to the light editor palette (#2c3e50 base
+   on #fff). Self-hosted — no vendored theme CSS, no CSP change. */
+.pg-highlight .token.comment,
+.pg-highlight .token.prolog,
+.pg-highlight .token.doctype,
+.pg-highlight .token.cdata {
+  color: #8a97a4;
+  font-style: italic;
+}
+
+.pg-highlight .token.punctuation {
+  color: #5b6b7b;
+}
+
+.pg-highlight .token.keyword,
+.pg-highlight .token.boolean,
+.pg-highlight .token.atrule {
+  color: #1565c0;
+}
+
+.pg-highlight .token.string,
+.pg-highlight .token.template-string,
+.pg-highlight .token.char,
+.pg-highlight .token.regex {
+  color: #1a7f5a;
+}
+
+.pg-highlight .token.number,
+.pg-highlight .token.constant,
+.pg-highlight .token.symbol {
+  color: #b5651d;
+}
+
+.pg-highlight .token.function,
+.pg-highlight .token.class-name {
+  color: #8a4fbf;
+}
+
+.pg-highlight .token.operator {
+  color: #c0392b;
+}
+
+.pg-highlight .token.parameter,
+.pg-highlight .token.property {
+  color: #2c3e50;
 }
 
 /* Copy icon button, at the far right of each card header (tab bar / output

@@ -188,4 +188,58 @@ test.describe('Playground editor', () => {
 
     await expect(page.locator('#playgroundOutput')).toContainText('ran via shortcut');
   });
+
+  // Syntax highlighting: a Prism-highlighted <pre> mirrors the textarea behind
+  // it. These assert the layer tracks the editor and is vendored (not CDN).
+
+  test('the highlight layer mirrors the editor text', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    const highlight = page.locator('#playgroundHighlight');
+    await expect(editor).toBeVisible();
+
+    // On load it reflects the default script (textContent strips the markup;
+    // trailing whitespace differs because we pad the layer with a newline).
+    const editorValue = await editor.inputValue();
+    await expect(highlight).toContainText('import { EvoSDK }');
+    expect((await highlight.textContent()).trimEnd()).toBe(editorValue.trimEnd());
+
+    // Loading another example updates the layer to match.
+    await loadExample(page, 'Query documents');
+    await expect(highlight).toContainText('sdk.documents.query');
+  });
+
+  test('keywords are tokenized in the highlight layer', async ({ page }) => {
+    await expect(page.locator('#playgroundCode')).toBeVisible();
+    // The default script has `import`, `const`, `await` — all keywords.
+    await expect(page.locator('#playgroundHighlight .token.keyword').first()).toBeVisible();
+  });
+
+  test('typing updates the highlight layer', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    const highlight = page.locator('#playgroundHighlight');
+    await expect(editor).toBeVisible();
+
+    await editor.click();
+    await editor.press('End');
+    await editor.pressSequentially('\nconst marker = 42;');
+
+    await expect(highlight).toContainText('const marker = 42;');
+  });
+
+  test('Prism is vendored, not loaded from a CDN', async ({ page }) => {
+    // The highlighter is present...
+    expect(await page.evaluate(() => typeof window.Prism)).toBe('object');
+
+    // ...and every script/style on the page is same-origin (no external CDN).
+    const origin = new URL(page.url()).origin;
+    const externalSources = await page.evaluate((origin) => {
+      const urls = [];
+      document.querySelectorAll('script[src]').forEach((s) => urls.push(s.src));
+      document.querySelectorAll('link[href]').forEach((l) => urls.push(l.href));
+      return urls.filter((u) => /^https?:/i.test(u) && !u.startsWith(origin));
+    }, origin);
+    // Favicons are the only allowed cross-origin refs (media.dash.org).
+    const nonFavicon = externalSources.filter((u) => !/media\.dash\.org/.test(u));
+    expect(nonFavicon).toEqual([]);
+  });
 });
