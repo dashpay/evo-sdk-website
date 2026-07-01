@@ -71,6 +71,10 @@ export function clearDynamicHandlers() {
 
 export function registerDynamicHandler(name, handler) {
   if (!name || !handler) return;
+  const previous = dynamicInputHandlers.get(name);
+  if (previous && previous !== handler && typeof previous.clear === 'function') {
+    try { previous.clear(); } catch (_) { /* ignore */ }
+  }
   dynamicInputHandlers.set(name, handler);
 }
 
