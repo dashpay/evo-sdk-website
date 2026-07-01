@@ -2,6 +2,7 @@ import { EvoSDK, wallet, DataContract, Document, IdentitySigner, Identifier } fr
 import { assembleClientOptions } from './client-options.js';
 import { elements, state } from './state.js';
 import { setStatus } from './ui.js';
+import { buildVersionDisplayModel } from './version-display.js';
 
 export function updateNetworkIndicator() {
   const selected = elements.networkRadios.find(r => r.checked)?.value || 'testnet';
@@ -49,6 +50,16 @@ export function applyAdvancedConfig() {
   setStatus('Configuration applied. Reconnect on next request.', 'success');
 }
 
+function createVersionLink(href, text) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.style.cssText = 'color: inherit; text-decoration: underline;';
+  a.textContent = text;
+  return a;
+}
+
 export async function loadVersionInfo() {
   try {
     const response = await fetch('version-info.json');
@@ -59,30 +70,17 @@ export async function loadVersionInfo() {
     const versionInfo = await response.json();
     const versionElement = document.getElementById('versionInfo');
     if (versionElement && versionInfo) {
-      const sdkVersion = versionInfo.sdkVersion || 'unknown';
-      const commitHash = versionInfo.commitHash || 'unknown';
-      const buildTime = versionInfo.buildTime || '';
-
-      // Format the build time if available
-      let buildDisplay = '';
-      if (buildTime) {
-        const d = new Date(buildTime);
-        buildDisplay = buildTime && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : '';
-      }
-
-      // Create the version display with clickable links
-      const githubUrl = `https://github.com/dashpay/evo-sdk-website/commit/${commitHash}`;
-      const sdkUrl = 'https://www.npmjs.com/package/@dashevo/evo-sdk';
-
-      const linkStyle = 'color: inherit; text-decoration: underline;';
-      versionElement.innerHTML = [
-        `<a href="${sdkUrl}" target="_blank" style="${linkStyle}">v${sdkVersion}↗</a>`,
-        '•',
-        `<a href="${githubUrl}" target="_blank" style="${linkStyle}">${commitHash}↗</a>`,
-        '•',
-        buildDisplay
-      ].join(' ');
-      versionElement.title = `SDK Version: ${sdkVersion}\nWebsite Commit: ${commitHash}\nBuild Time: ${buildTime}`;
+      const model = buildVersionDisplayModel(versionInfo);
+      // Preserve the original " • "-separated layout — including the trailing
+      // separator when buildDisplay is empty — using text nodes so nothing is
+      // ever parsed as HTML (CWE-79).
+      versionElement.replaceChildren(
+        createVersionLink(model.sdkLink.href, model.sdkLink.text),
+        document.createTextNode(' • '),
+        createVersionLink(model.commitLink.href, model.commitLink.text),
+        document.createTextNode(` • ${model.buildDisplay}`),
+      );
+      versionElement.title = model.title;
     }
   } catch (error) {
     console.warn('Could not load version info:', error);
