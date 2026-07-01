@@ -173,17 +173,147 @@ export const DEFAULT_SCRIPT =
   `// Edit the code or pick another example above, then hit Run.\n` +
   EXAMPLES.find((e) => e.id === 'identity-retrieve').code;
 
-// Rewrite the SDK import specifier to the bundled module's absolute URL.
-// Inside a blob module a relative path resolves against the blob URL (and fails),
-// and a bare package specifier has no resolver, so we normalize both forms:
-//   '@dashevo/evo-sdk' (and '@dashevo/evo-sdk/...') and any '...evo-sdk.module.js'.
-// Only the SDK specifier is touched; all other imports are left untouched.
+// Whether a module specifier is the SDK, in either form a user might write it:
+//   '@dashevo/evo-sdk' (and '@dashevo/evo-sdk/...') or any '...evo-sdk.module.js'.
+function isSdkSpecifier(spec) {
+  return /^@dashevo\/evo-sdk(?:\/.*)?$/.test(spec) || /evo-sdk\.module\.js$/.test(spec);
+}
+
+// Rewrite the SDK specifier in `import` forms to the bundled module's absolute
+// URL. Inside a blob module a relative path resolves against the blob URL (and
+// fails), and a bare package specifier has no resolver, so any un-rewritten
+// occurrence throws the opaque "Failed to resolve module specifier" error this
+// rewriter exists to prevent. We normalize the SDK specifier in:
+//   import { EvoSDK } from '<spec>';   import EvoSDK from '<spec>';
+//   import * as sdk from '<spec>';     import '<spec>';        (side-effect)
+//   const { EvoSDK } = await import('<spec>');                 (dynamic, literal)
+// Dynamic imports and side-effect imports are common in external tutorials, so
+// pasted code using them must work too — not just the `from` form the built-in
+// examples use.
+//
+// This is a tiny single-pass scanner, not a regex over raw text. A naive
+// /from ['"]...['"]/ also matches that text inside a *string literal* or
+// comment and would corrupt valid user code such as
+// `const msg = "from '@dashevo/evo-sdk'"`. Since this is the code the playground
+// exists to run, that's a real bug — but pulling a full ES parser into this
+// build-less page is overkill. Instead we skip strings, template literals, and
+// comments, and only act on a real `import` keyword in code context.
+//
+// Left untouched: `import.meta` (no specifier), `export ... from` re-exports
+// (no example uses them), and dynamic imports whose argument is a *computed*
+// expression rather than a string literal (nothing to rewrite). Known
+// limitation: a regex literal like /import 'x'/ isn't tracked; such a literal
+// also matching the SDK pattern is vanishingly unlikely.
 function rewriteSdkSpecifier(code) {
   const target = JSON.stringify(SDK_MODULE_URL);
-  return code.replace(
-    /(\bfrom\s*)(['"])(@dashevo\/evo-sdk(?:\/[^'"]*)?|[^'"]*evo-sdk\.module\.js)\2/g,
-    (_match, fromKeyword) => `${fromKeyword}${target}`
-  );
+  const n = code.length;
+  const isIdent = (ch) => ch === '_' || ch === '$' || (!!ch && /[\p{L}\p{N}]/u.test(ch));
+
+  // If `i` starts a string/template/comment, return the index just past it,
+  // else -1. Used to skip over regions where `import`/`from` aren't keywords.
+  function endOfToken(i) {
+    const ch = code[i];
+    if (ch === '/' && code[i + 1] === '/') {
+      const end = code.indexOf('\n', i);
+      return end === -1 ? n : end;
+    }
+    if (ch === '/' && code[i + 1] === '*') {
+      const end = code.indexOf('*/', i + 2);
+      return end === -1 ? n : end + 2;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      let j = i + 1;
+      while (j < n) {
+        const c = code[j];
+        if (c === '\\') { j += 2; continue; }
+        if (c === ch) return j + 1;
+        j++;
+      }
+      return n;
+    }
+    return -1;
+  }
+
+  // Given an `import` keyword at `i`, locate the SDK specifier string. Returns
+  // { open, close } (indexes of its quotes) when the specifier is the SDK, else
+  // null. Handles four forms:
+  //   import '<spec>'            (bare side-effect)
+  //   import <clause> from '<spec>'
+  //   import('<spec>')           (dynamic, string-literal argument)
+  // `import.meta` and computed dynamic args have no rewritable specifier.
+  function findSdkSpecifier(i) {
+    let j = i + 6; // past "import"
+    while (j < n && /\s/.test(code[j])) j++;
+
+    // Dynamic import: import( ... ). Rewrite only a string-literal argument.
+    if (code[j] === '(') {
+      j++;
+      while (j < n && /\s/.test(code[j])) j++;
+      return matchSpec(j); // returns null if the arg isn't a plain string
+    }
+
+    // import.meta — no specifier.
+    if (code[j] === '.') return null;
+
+    // Bare side-effect import.
+    if (code[j] === '"' || code[j] === "'") return matchSpec(j);
+
+    // Otherwise scan the clause for a real `from` keyword. An import statement
+    // may span lines, so only a `;` ends it early; a bare `import` with no
+    // `from` (and no `;`) simply runs to EOF and matches nothing.
+    while (j < n) {
+      const c = code[j];
+      if (c === ';') return null;
+      if (c === 'f' && code.startsWith('from', j) &&
+          !isIdent(code[j - 1]) && !isIdent(code[j + 4])) {
+        let k = j + 4;
+        while (k < n && /\s/.test(code[k])) k++;
+        return matchSpec(k);
+      }
+      j++;
+    }
+    return null;
+  }
+
+  // If `p` opens a quoted specifier that is the SDK, return its { open, close }
+  // quote indexes; else null.
+  function matchSpec(p) {
+    const q = code[p];
+    if (q !== '"' && q !== "'") return null;
+    const close = code.indexOf(q, p + 1);
+    if (close === -1) return null;
+    return isSdkSpecifier(code.slice(p + 1, close)) ? { open: p, close } : null;
+  }
+
+  let out = '';
+  let i = 0;
+  while (i < n) {
+    // Skip strings/templates/comments verbatim — `import`/`from` inside them
+    // are not keywords (this is what the old raw-text regex got wrong).
+    const skipped = endOfToken(i);
+    if (skipped !== -1) { out += code.slice(i, skipped); i = skipped; continue; }
+
+    // A real `import` keyword/callee in code context. The `import` token is a
+    // boundary — the next char can't be an identifier char (so `imported`,
+    // `importScripts` don't match); it may be whitespace, `(`, `.`, or a quote.
+    // findSdkSpecifier() sorts out static vs dynamic vs import.meta.
+    if (code[i] === 'i' && code.startsWith('import', i) &&
+        !isIdent(code[i - 1]) && !isIdent(code[i + 6])) {
+      const spec = findSdkSpecifier(i);
+      if (spec) {
+        // Emit through the opening quote unchanged, swap the specifier body for
+        // the target URL (which includes its own quotes), and resume past it.
+        out += code.slice(i, spec.open) + target;
+        i = spec.close + 1;
+        continue;
+      }
+    }
+
+    out += code[i];
+    i++;
+  }
+
+  return out;
 }
 
 // Format a single console argument for display. Strings pass through verbatim;

@@ -189,6 +189,79 @@ test.describe('Playground editor', () => {
     await expect(page.locator('#playgroundOutput')).toContainText('ran via shortcut');
   });
 
+  // Import-specifier rewriting: before running, the SDK import specifier is
+  // rewritten to the bundled module's URL. That rewrite must only touch real
+  // import syntax (static declarations and dynamic import()) — not text that
+  // merely looks like one.
+
+  test('a string that looks like an import is left intact', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    await expect(editor).toBeVisible();
+
+    // This is valid user code: a plain string that happens to contain
+    // `from '@dashevo/evo-sdk'`. A naive raw-text rewrite would corrupt it into
+    // invalid JS; the scanner must leave it verbatim so the script runs and
+    // logs the string unchanged.
+    page.on('dialog', (dialog) => dialog.accept());
+    await editor.fill(`console.log("from '@dashevo/evo-sdk'");`);
+    await editor.press('ControlOrMeta+Enter');
+
+    const output = page.locator('#playgroundOutput');
+    await expect(output).toContainText(`from '@dashevo/evo-sdk'`);
+    // And the run finished cleanly (no syntax error from a mangled string).
+    await expect(page.locator('#playgroundStatus')).toHaveText('Done');
+  });
+
+  test('a real SDK import is still rewritten and resolves', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    await expect(editor).toBeVisible();
+
+    // Importing the SDK loads the bundled module (same-origin, no testnet) and
+    // reads a symbol — proving the specifier was rewritten to a resolvable URL.
+    // No .connect() / DAPI call, so this stays network-free like the rest of
+    // the smoke suite.
+    page.on('dialog', (dialog) => dialog.accept());
+    await editor.fill(
+      `import { EvoSDK } from '@dashevo/evo-sdk';\nconsole.log('EvoSDK type:', typeof EvoSDK);`
+    );
+    await editor.press('ControlOrMeta+Enter');
+
+    await expect(page.locator('#playgroundOutput')).toContainText(/EvoSDK type: (function|object)/);
+    await expect(page.locator('#playgroundStatus')).toHaveText('Done');
+  });
+
+  test('a dynamic import() of the SDK is rewritten and resolves', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    await expect(editor).toBeVisible();
+
+    // `await import('@dashevo/evo-sdk')` is a common pattern in external docs.
+    // Its bare specifier can't resolve inside the blob module unless rewritten,
+    // so this guards that the rewrite covers the dynamic form, not just `from`.
+    page.on('dialog', (dialog) => dialog.accept());
+    await editor.fill(
+      `const { EvoSDK } = await import('@dashevo/evo-sdk');\nconsole.log('EvoSDK type:', typeof EvoSDK);`
+    );
+    await editor.press('ControlOrMeta+Enter');
+
+    await expect(page.locator('#playgroundOutput')).toContainText(/EvoSDK type: (function|object)/);
+    await expect(page.locator('#playgroundStatus')).toHaveText('Done');
+  });
+
+  test('a bare side-effect SDK import is rewritten and resolves', async ({ page }) => {
+    const editor = page.locator('#playgroundCode');
+    await expect(editor).toBeVisible();
+
+    // Side-effect `import '@dashevo/evo-sdk';` (no `from`) must resolve too — a
+    // bare specifier here would otherwise throw the opaque module-resolution
+    // error. It exposes no binding, so we assert only that the run finishes.
+    page.on('dialog', (dialog) => dialog.accept());
+    await editor.fill(`import '@dashevo/evo-sdk';\nconsole.log('side-effect import ok');`);
+    await editor.press('ControlOrMeta+Enter');
+
+    await expect(page.locator('#playgroundOutput')).toContainText('side-effect import ok');
+    await expect(page.locator('#playgroundStatus')).toHaveText('Done');
+  });
+
   // Syntax highlighting: a Prism-highlighted <pre> mirrors the textarea behind
   // it. These assert the layer tracks the editor and is vendored (not CDN).
 
