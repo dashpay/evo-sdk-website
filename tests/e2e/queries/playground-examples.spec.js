@@ -34,9 +34,12 @@ test.describe('Playground examples execute', () => {
 
   // Load the named example, run it, and wait for the run to settle. Loading a
   // clean example from the default editor never triggers a confirm, but accept
-  // one defensively so an unexpected dialog can't hang the run.
+  // one defensively so an unexpected dialog can't hang the run. Use a one-shot
+  // listener (page.once): a persistent page.on would stack a new handler per
+  // example, and a second handler firing on the same dialog throws "Cannot
+  // accept dialog which is already handled".
   async function runExample(page, title) {
-    page.on('dialog', (dialog) => dialog.accept());
+    page.once('dialog', (dialog) => dialog.accept());
 
     await page.locator('#playgroundLoadExample').click();
     const menu = page.locator('.pg-pill-menu');
