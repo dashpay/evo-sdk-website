@@ -227,19 +227,32 @@ test.describe('Playground editor', () => {
   });
 
   test('Prism is vendored, not loaded from a CDN', async ({ page }) => {
+    const origin = new URL(page.url()).origin;
+    // Only media.dash.org (favicons) is an allowed cross-origin reference.
+    const isExternal = (u) =>
+      /^https?:/i.test(u) && !u.startsWith(origin) && !/media\.dash\.org/.test(u);
+
+    // Capture every request made while reloading the page — a transient CDN
+    // fetch during load would appear here even if it left no trace in the
+    // final DOM (the DOM-only check below can't see a script that was fetched
+    // and then removed, or a fetch()/import() to a CDN).
+    const requests = [];
+    page.on('request', (req) => requests.push(req.url()));
+    await page.reload({ waitUntil: 'networkidle' });
+
     // The highlighter is present...
     expect(await page.evaluate(() => typeof window.Prism)).toBe('object');
 
-    // ...and every script/style on the page is same-origin (no external CDN).
-    const origin = new URL(page.url()).origin;
-    const externalSources = await page.evaluate((origin) => {
+    // ...no external request was made during load...
+    expect(requests.filter(isExternal)).toEqual([]);
+
+    // ...and every script/style in the final DOM is same-origin (no CDN).
+    const externalSources = await page.evaluate(() => {
       const urls = [];
       document.querySelectorAll('script[src]').forEach((s) => urls.push(s.src));
       document.querySelectorAll('link[href]').forEach((l) => urls.push(l.href));
-      return urls.filter((u) => /^https?:/i.test(u) && !u.startsWith(origin));
-    }, origin);
-    // Favicons are the only allowed cross-origin refs (media.dash.org).
-    const nonFavicon = externalSources.filter((u) => !/media\.dash\.org/.test(u));
-    expect(nonFavicon).toEqual([]);
+      return urls;
+    });
+    expect(externalSources.filter(isExternal)).toEqual([]);
   });
 });

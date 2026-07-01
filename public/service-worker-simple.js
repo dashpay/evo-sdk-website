@@ -11,6 +11,7 @@ const urlsToCache = [
   '/playground.html',
   '/playground.css',
   '/src/playground.js',
+  '/src/result-format.js',
   '/src/vendor/prism/prism-core.min.js',
   '/src/vendor/prism/prism-clike.min.js',
   '/src/vendor/prism/prism-javascript.min.js'

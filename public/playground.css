@@ -18,7 +18,7 @@
 .playground-note {
   color: #555;
   line-height: 1.6;
-  margin: 0 0 8px;
+  margin: 0 0 18px;
   font-size: 0.95em;
 }
 
@@ -28,20 +28,6 @@
   border-radius: 3px;
   font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
   font-size: 0.9em;
-}
-
-/* "Runs locally" reassurance, under the intro text. */
-.playground-note-local {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 18px;
-  color: #6a737d;
-  font-size: 13px;
-}
-
-.pg-lock {
-  font-size: 12px;
 }
 
 .pg-run-icon {
