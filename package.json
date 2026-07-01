@@ -20,6 +20,7 @@
     "test:unit:coverage": "vitest run --coverage",
     "test:smoke": "playwright test tests/e2e/smoke",
     "test:queries": "playwright test tests/e2e/queries",
+    "test:playground": "playwright test tests/e2e/queries/playground-examples.spec.js",
     "test:transitions": "playwright test tests/e2e/transitions",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
