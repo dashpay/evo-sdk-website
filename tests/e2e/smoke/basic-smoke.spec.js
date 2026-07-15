@@ -110,6 +110,20 @@ test.describe('Evo SDK Basic Smoke Tests', () => {
     await expect(testnetIndicator).toContainText('TESTNET');
   });
 
+  test('should apply a platform version override from advanced configuration', async () => {
+    await evoSdkPage.configureAdvancedSDK({ platformVersion: 13 });
+
+    await expect(evoSdkPage.page.locator('#statusBanner'))
+      .toContainText('Configuration applied');
+
+    const options = await evoSdkPage.page.evaluate(async () => {
+      const { buildClientOptions } = await import('/src/sdk-client.js');
+      return buildClientOptions();
+    });
+
+    expect(options.version).toBe(13);
+  });
+
   test('should show query types when category is selected', async () => {
     await evoSdkPage.setOperationType('queries');
     await evoSdkPage.setQueryCategory('identity');

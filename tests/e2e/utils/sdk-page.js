@@ -558,21 +558,21 @@ class EvoSdkPage extends BaseTest {
     const isOpen = await configDetails.getAttribute('open') !== null;
     
     if (!isOpen) {
-      await configDetails.locator('summary').click();
+      await configDetails.locator(':scope > summary').click();
     }
     
     // Fill configuration options
     if (options.platformVersion) {
-      await this.fillInput(this.selectors.platformVersion, options.platformVersion);
+      await this.fillInput(this.selectors.platformVersion, String(options.platformVersion));
     }
     if (options.connectTimeout) {
-      await this.fillInput(this.selectors.connectTimeout, options.connectTimeout);
+      await this.fillInput(this.selectors.connectTimeout, String(options.connectTimeout));
     }
     if (options.requestTimeout) {
-      await this.fillInput(this.selectors.requestTimeout, options.requestTimeout);
+      await this.fillInput(this.selectors.requestTimeout, String(options.requestTimeout));
     }
     if (options.retries) {
-      await this.fillInput(this.selectors.retries, options.retries);
+      await this.fillInput(this.selectors.retries, String(options.retries));
     }
     if (options.banFailedAddress !== undefined) {
       const checkbox = this.page.locator(this.selectors.banFailedAddress);

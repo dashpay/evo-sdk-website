@@ -24,7 +24,6 @@ describe('assembleClientOptions — base options', () => {
       network: 'mainnet',
       trusted: false,
       proofs: true,
-      version: 11,
     });
   });
 
@@ -33,18 +32,16 @@ describe('assembleClientOptions — base options', () => {
   });
 });
 
-describe('assembleClientOptions — protocol version pin', () => {
-  it('defaults version to 11 when no platformVersion is given', () => {
-    expect(assembleClientOptions('testnet', false, {}).version).toBe(11);
+describe('assembleClientOptions — protocol version override', () => {
+  it('lets the SDK choose its default when no platformVersion is given', () => {
+    expect(assembleClientOptions('testnet', false, {})).not.toHaveProperty('version');
   });
 
   it('uses the supplied platformVersion when provided', () => {
     expect(assembleClientOptions('testnet', false, { platformVersion: 12 }).version).toBe(12);
   });
 
-  it('keeps platformVersion 0 (nullish-coalescing, not falsy fallback)', () => {
-    // The pin uses ?? not ||, so an explicit 0 is preserved rather than
-    // falling back to 11.
+  it('keeps an explicitly supplied platformVersion 0', () => {
     expect(assembleClientOptions('testnet', false, { platformVersion: 0 }).version).toBe(0);
   });
 });
