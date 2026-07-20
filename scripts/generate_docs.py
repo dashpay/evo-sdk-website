@@ -1247,19 +1247,28 @@ def evo_example_for_transition(key: str):
         ),
         'addressWithdraw': compose_example(
             """
-            import { PlatformAddressInput, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';
+            import {
+              CoreScript,
+              PlatformAddressInput,
+              PlatformAddressSigner,
+              PoolingWasm,
+              PrivateKey,
+            } from '@dashevo/evo-sdk';
 
             const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
             const signer = new PlatformAddressSigner();
             const platformAddr = signer.addKey(privateKey);
             const input = new PlatformAddressInput(platformAddr, 0, 100000n);
 
-            // Provide a Core L1 output script (e.g. CoreScript.newP2PKH(...)).
+            // 20-byte pubkey hash for the Core L1 P2PKH destination.
+            const corePubkeyHash = new Uint8Array(20);
+            const outputScript = CoreScript.fromP2PKH(corePubkeyHash);
+
             const result = await sdk.addresses.withdraw({
               inputs: [input],
               coreFeePerByte: 1,
-              pooling: undefined,
-              outputScript: /* CoreScript */ undefined,
+              pooling: PoolingWasm.Standard,
+              outputScript,
               signer,
             });
             """,
