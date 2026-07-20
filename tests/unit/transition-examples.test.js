@@ -103,45 +103,48 @@ print(json.dumps(out))
   return JSON.parse(result.stdout);
 }
 
-function interfaceProperties(sourceText, interfaceName) {
-  const source = ts.createSourceFile('sdk.d.ts', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const props = new Set();
+const interfaceAllPropsCache = new Map();
+const interfaceRequiredPropsCache = new Map();
+const wasmSdkSource = ts.createSourceFile('sdk.d.ts', wasmSdkDts, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+
+function collectInterfaceProps(interfaceName) {
+  if (interfaceAllPropsCache.has(interfaceName)) {
+    return {
+      all: interfaceAllPropsCache.get(interfaceName),
+      required: interfaceRequiredPropsCache.get(interfaceName),
+    };
+  }
+
+  const all = new Set();
+  let required = null;
   function visit(node) {
     if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName && node.members) {
+      const requiredHere = new Set();
       for (const member of node.members) {
         if (ts.isPropertySignature(member) && member.name && ts.isIdentifier(member.name)) {
-          props.add(member.name.text);
+          all.add(member.name.text);
+          if (!member.questionToken) requiredHere.add(member.name.text);
         }
       }
+      // Prefer the first declaration for requiredness (write-options shapes).
+      if (required === null) required = requiredHere;
     }
     ts.forEachChild(node, visit);
   }
-  visit(source);
-  return props;
+  visit(wasmSdkSource);
+  if (required === null) required = new Set();
+  interfaceAllPropsCache.set(interfaceName, all);
+  interfaceRequiredPropsCache.set(interfaceName, required);
+  return { all, required };
+}
+
+function interfaceProperties(_sourceText, interfaceName) {
+  return collectInterfaceProps(interfaceName).all;
 }
 
 /** Required property names from the first matching interface declaration. */
-function interfaceRequiredProperties(sourceText, interfaceName) {
-  const source = ts.createSourceFile('sdk.d.ts', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const required = new Set();
-  function visit(node) {
-    if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName && node.members) {
-      for (const member of node.members) {
-        if (
-          ts.isPropertySignature(member)
-          && member.name
-          && ts.isIdentifier(member.name)
-          && !member.questionToken
-        ) {
-          required.add(member.name.text);
-        }
-      }
-      return;
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(source);
-  return required;
+function interfaceRequiredProperties(_sourceText, interfaceName) {
+  return collectInterfaceProps(interfaceName).required;
 }
 
 function sdkParamByName(transitionKey, paramName) {
