@@ -162,7 +162,17 @@ def main():
 
     report = '\n'.join(lines)
     print(report)
-    (PUBLIC_DIR / 'documentation-check-report.txt').write_text(report, encoding='utf-8')
+
+    # Avoid timestamp-only churn in git: keep the previous report when the
+    # status body is unchanged, rewriting only when warnings/errors change.
+    report_path = PUBLIC_DIR / 'documentation-check-report.txt'
+    previous = report_path.read_text(encoding='utf-8') if report_path.exists() else ''
+
+    def body_without_timestamp(text: str) -> str:
+        return re.sub(r'^Timestamp:.*$', 'Timestamp:', text, count=1, flags=re.M)
+
+    if body_without_timestamp(previous) != body_without_timestamp(report):
+        report_path.write_text(report, encoding='utf-8')
 
     sys.exit(1 if errors else 0)
 
