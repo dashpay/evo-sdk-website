@@ -120,6 +120,35 @@ function interfaceProperties(sourceText, interfaceName) {
   return props;
 }
 
+/** Required property names from the first matching interface declaration. */
+function interfaceRequiredProperties(sourceText, interfaceName) {
+  const source = ts.createSourceFile('sdk.d.ts', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const required = new Set();
+  function visit(node) {
+    if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName && node.members) {
+      for (const member of node.members) {
+        if (
+          ts.isPropertySignature(member)
+          && member.name
+          && ts.isIdentifier(member.name)
+          && !member.questionToken
+        ) {
+          required.add(member.name.text);
+        }
+      }
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  return required;
+}
+
+function sdkParamByName(transitionKey, paramName) {
+  const params = TRANSITION_BY_KEY[transitionKey]?.sdk_params || [];
+  return params.find((p) => p.name === paramName);
+}
+
 function extractSdkCallSites(example) {
   const calls = [];
   const callRe = /await\s+sdk\.([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\s*\(/g;
@@ -284,5 +313,86 @@ describe('v4 state transition documentation examples', () => {
     expect(aiReference).toContain('new Document({');
     expect(aiReference).toContain('typed options object');
     expect(aiReference).not.toContain('{ ...params, privateKeyWif }');
+  });
+
+  it('uses concrete CoreScript / PoolingWasm values for address withdraw', () => {
+    const example = generatedExamples.addressWithdraw;
+    expect(example).toMatch(/CoreScript\.fromP2PKH/);
+    expect(example).toMatch(/PoolingWasm\.Standard/);
+    expect(example).not.toMatch(/CoreScript\.newP2PKH/);
+    expect(example).not.toMatch(/pooling:\s*undefined/);
+    expect(example).not.toMatch(/outputScript:\s*(?:\/\*[^*]*\*\/\s*)?undefined/);
+
+    const writeCall = extractSdkCallSites(example).find((call) => call.method === 'addresses.withdraw');
+    expect(writeCall).toBeTruthy();
+    const keys = topLevelObjectKeys(writeCall.argsText);
+    const required = interfaceRequiredProperties(wasmSdkDts, 'AddressFundsWithdrawOptions');
+    for (const name of required) {
+      expect(keys, `missing required option ${name}`).toContain(name);
+    }
+  });
+
+  it('documents Platform Address option metadata with v4 types and requiredness', () => {
+    expect(sdkParamByName('addressTopUpIdentity', 'identity')).toMatchObject({
+      type: 'Identity',
+      required: true,
+    });
+    expect(sdkParamByName('addressTopUpIdentity', 'identityId')).toBeUndefined();
+
+    expect(sdkParamByName('addressTransferFromIdentity', 'identity')).toMatchObject({
+      type: 'Identity',
+      required: true,
+    });
+    expect(sdkParamByName('addressTransferFromIdentity', 'identityId')).toBeUndefined();
+
+    expect(sdkParamByName('addressWithdraw', 'coreFeePerByte')).toMatchObject({
+      type: 'number',
+      required: true,
+    });
+    expect(sdkParamByName('addressWithdraw', 'pooling')).toMatchObject({
+      type: 'Pooling',
+      required: true,
+    });
+    expect(sdkParamByName('addressWithdraw', 'outputScript')).toMatchObject({
+      type: 'CoreScript',
+      required: true,
+    });
+    expect(sdkParamByName('addressWithdraw', 'signer')).toMatchObject({
+      type: 'PlatformAddressSigner',
+      required: true,
+    });
+
+    expect(sdkParamByName('addressFundFromAssetLock', 'assetLockProof')).toMatchObject({
+      type: 'AssetLockProof',
+      required: true,
+    });
+    expect(sdkParamByName('addressFundFromAssetLock', 'assetLockPrivateKey')).toMatchObject({
+      type: 'PrivateKey',
+      required: true,
+    });
+    expect(sdkParamByName('addressFundFromAssetLock', 'outputs')).toMatchObject({
+      required: true,
+    });
+    expect(sdkParamByName('addressFundFromAssetLock', 'signer')).toMatchObject({
+      type: 'PlatformAddressSigner',
+      required: true,
+    });
+
+    // Example option objects must include every required declaration member.
+    const requiredChecks = [
+      ['addressTopUpIdentity', 'addresses.topUpIdentity', 'IdentityTopUpFromAddressesOptions'],
+      ['addressTransferFromIdentity', 'addresses.transferFromIdentity', 'IdentityTransferToAddressesOptions'],
+      ['addressFundFromAssetLock', 'addresses.fundFromAssetLock', 'AddressFundingFromAssetLockOptions'],
+    ];
+    for (const [key, method, optionsName] of requiredChecks) {
+      const example = generatedExamples[key];
+      const writeCall = extractSdkCallSites(example).find((call) => call.method === method);
+      expect(writeCall, key).toBeTruthy();
+      const keys = topLevelObjectKeys(writeCall.argsText);
+      const required = interfaceRequiredProperties(wasmSdkDts, optionsName);
+      for (const name of required) {
+        expect(keys, `${key} missing required option ${name}`).toContain(name);
+      }
+    }
   });
 });
