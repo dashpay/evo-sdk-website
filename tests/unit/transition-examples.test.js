@@ -368,24 +368,56 @@ describe('v4 state transition documentation examples', () => {
   });
 
   it('documents Platform Address option metadata with v4 types and requiredness', () => {
+    // Transfer: typed input/output arrays, not plain objects.
+    expect(sdkParamByName('addressTransfer', 'inputs')).toMatchObject({
+      type: 'PlatformAddressInput[]',
+      required: true,
+    });
+    expect(sdkParamByName('addressTransfer', 'outputs')).toMatchObject({
+      type: 'PlatformAddressOutput[]',
+      required: true,
+    });
+    expect(sdkParamByName('addressTransfer', 'signer')).toMatchObject({
+      type: 'PlatformAddressSigner',
+      required: true,
+    });
+    expect(sdkParamByName('addressTransfer', 'inputs').description).toMatch(/PlatformAddressInput/);
+    expect(sdkParamByName('addressTransfer', 'outputs').description).toMatch(/PlatformAddressOutput/);
+    expect(sdkParamByName('addressTransfer', 'inputs').description).not.toMatch(/\{address, nonce, amount/);
+    expect(sdkParamByName('addressTransfer', 'outputs').description).not.toMatch(/\{address, amount/);
+
     expect(sdkParamByName('addressTopUpIdentity', 'identity')).toMatchObject({
       type: 'Identity',
       required: true,
     });
     expect(sdkParamByName('addressTopUpIdentity', 'identityId')).toBeUndefined();
+    expect(sdkParamByName('addressTopUpIdentity', 'inputs')).toMatchObject({
+      type: 'PlatformAddressInput[]',
+      required: true,
+    });
+    expect(sdkParamByName('addressTopUpIdentity', 'inputs').description).not.toMatch(/or \{address/);
 
     expect(sdkParamByName('addressTransferFromIdentity', 'identity')).toMatchObject({
       type: 'Identity',
       required: true,
     });
     expect(sdkParamByName('addressTransferFromIdentity', 'identityId')).toBeUndefined();
+    expect(sdkParamByName('addressTransferFromIdentity', 'outputs')).toMatchObject({
+      type: 'PlatformAddressOutput[]',
+      required: true,
+    });
+    expect(sdkParamByName('addressTransferFromIdentity', 'outputs').description).not.toMatch(/or \{address/);
 
+    expect(sdkParamByName('addressWithdraw', 'inputs')).toMatchObject({
+      type: 'PlatformAddressInput[]',
+      required: true,
+    });
     expect(sdkParamByName('addressWithdraw', 'coreFeePerByte')).toMatchObject({
       type: 'number',
       required: true,
     });
     expect(sdkParamByName('addressWithdraw', 'pooling')).toMatchObject({
-      type: 'Pooling',
+      type: 'PoolingWasm',
       required: true,
     });
     expect(sdkParamByName('addressWithdraw', 'outputScript')).toMatchObject({
@@ -396,6 +428,7 @@ describe('v4 state transition documentation examples', () => {
       type: 'PlatformAddressSigner',
       required: true,
     });
+    expect(sdkParamByName('addressWithdraw', 'inputs').description).not.toMatch(/or \{address/);
 
     expect(sdkParamByName('addressFundFromAssetLock', 'assetLockProof')).toMatchObject({
       type: 'AssetLockProof',
@@ -406,18 +439,40 @@ describe('v4 state transition documentation examples', () => {
       required: true,
     });
     expect(sdkParamByName('addressFundFromAssetLock', 'outputs')).toMatchObject({
+      type: 'PlatformAddressOutput[]',
       required: true,
     });
     expect(sdkParamByName('addressFundFromAssetLock', 'signer')).toMatchObject({
       type: 'PlatformAddressSigner',
       required: true,
     });
+    expect(sdkParamByName('addressFundFromAssetLock', 'outputs').description).not.toMatch(/or \{address/);
+
+    expect(sdkParamByName('addressCreateIdentity', 'identity')).toMatchObject({
+      type: 'Identity',
+      required: true,
+    });
+    expect(sdkParamByName('addressCreateIdentity', 'inputs')).toMatchObject({
+      type: 'PlatformAddressInput[]',
+      required: true,
+    });
+    expect(sdkParamByName('addressCreateIdentity', 'identitySigner')).toMatchObject({
+      type: 'IdentitySigner',
+      required: true,
+    });
+    expect(sdkParamByName('addressCreateIdentity', 'addressSigner')).toMatchObject({
+      type: 'PlatformAddressSigner',
+      required: true,
+    });
+    expect(sdkParamByName('addressCreateIdentity', 'inputs').description).not.toMatch(/\{address, nonce, amount/);
 
     // Example option objects must include every required declaration member.
     const requiredChecks = [
+      ['addressTransfer', 'addresses.transfer', 'AddressFundsTransferOptions'],
       ['addressTopUpIdentity', 'addresses.topUpIdentity', 'IdentityTopUpFromAddressesOptions'],
       ['addressTransferFromIdentity', 'addresses.transferFromIdentity', 'IdentityTransferToAddressesOptions'],
       ['addressFundFromAssetLock', 'addresses.fundFromAssetLock', 'AddressFundingFromAssetLockOptions'],
+      ['addressCreateIdentity', 'addresses.createIdentity', 'IdentityCreateFromAddressesOptions'],
     ];
     for (const [key, method, optionsName] of requiredChecks) {
       const example = generatedExamples[key];
@@ -429,5 +484,45 @@ describe('v4 state transition documentation examples', () => {
         expect(keys, `${key} missing required option ${name}`).toContain(name);
       }
     }
+  });
+
+  it('formats multiline query examples as valid top-level const result assignments', () => {
+    const querySection = aiReference.split('## State Transition Operations')[0] || '';
+    const queryBlocks = [...querySection.matchAll(/```javascript\n([\s\S]*?)```/g)].map((m) => m[1]);
+
+    // Pattern intro block uses a placeholder, not a real call — skip blocks without sdk.
+    const queryCallBlocks = queryBlocks.filter((b) => /\bsdk\./.test(b));
+    expect(queryCallBlocks.length).toBeGreaterThan(10);
+
+    const invalidTopLevelReturn = queryCallBlocks.filter((b) => /^\s*return\s+await\b/m.test(b));
+    expect(invalidTopLevelReturn, invalidTopLevelReturn.map((b) => b.slice(0, 80)).join('\n---\n')).toEqual([]);
+
+    const multilineExpressionBlocks = queryCallBlocks.filter((b) => {
+      const codeLines = b.split('\n').filter((l) => l.trim() && !l.trim().startsWith('//'));
+      return codeLines.length > 1 && !codeLines.some((l) => /^\s*(import|const|let|var|function|class)\b/.test(l));
+    });
+    // After the formatter fix there should be no bare multiline expressions left;
+    // every former return-await multiline query is wrapped as const result = ...
+    expect(multilineExpressionBlocks).toEqual([]);
+
+    // Representative multiline queries must be const result = await ...
+    for (const needle of [
+      "sdk.identities.getKeys({",
+      "sdk.documents.query({",
+      "sdk.contracts.getMany([",
+      "sdk.tokens.statuses([",
+    ]) {
+      const block = queryCallBlocks.find((b) => b.includes(needle));
+      expect(block, needle).toBeTruthy();
+      expect(block).toMatch(/^\s*const result = await /m);
+      expect(block.trimEnd().endsWith(';')).toBe(true);
+    }
+
+    // Transition examples stay multi-statement and must not be force-wrapped into one assignment.
+    const transitionSection = aiReference.split('## State Transition Operations')[1] || '';
+    expect(transitionSection).toMatch(/import \{[\s\S]*IdentitySigner[\s\S]*\} from '@dashevo\/evo-sdk';/);
+    expect(transitionSection).toMatch(/const result = await sdk\.tokens\.mint\(\{/);
+    // Multi-statement identity create still has setup before the call.
+    expect(transitionSection).toMatch(/new Identity\(assetLockProof\.createIdentityId\(\)\)/);
   });
 });
