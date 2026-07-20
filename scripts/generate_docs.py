@@ -482,44 +482,764 @@ def evo_example_for_query(key: str, inputs: List[dict]):
 
 
 def evo_example_for_transition(key: str):
+    """Return practical v4 state-transition examples matching shipped Options interfaces.
+
+    Examples build typed payload objects, select identity keys, and construct
+    IdentitySigner / asset-lock PrivateKey instances rather than the pre-v4
+    privateKeyWif-in-call shape.
+    """
+    identity = TESTNET_TEST_DATA['identity_id']
+    contract = TESTNET_TEST_DATA['data_contract_id']
+    document_id = TESTNET_TEST_DATA['document_id']
+    document_type = TESTNET_TEST_DATA['document_type']
+    pro_tx = TESTNET_TEST_DATA['pro_tx_hash']
+    platform_address = TESTNET_TEST_DATA['platform_address']
+
     m = {
         # Identities
-        # 'identityCreate' - example in api-definitions.json
-        # 'identityTopUp' - example in api-definitions.json
-        'identityCreditTransfer': "await client.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId })",
-        'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId })",
-        'identityUpdate': "await client.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif })",
-        'dataContractCreate': "await client.contracts.publish({ ownerId, definition, privateKeyWif, keyId })",
-        'dataContractUpdate': "await client.contracts.update({ contractId, ownerId, updates, privateKeyWif, keyId })",
+        'identityCreate': example(f"""
+            import {{
+              AssetLockProof,
+              Identity,
+              IdentityPublicKeyInCreation,
+              IdentitySigner,
+              KeyType,
+              PrivateKey,
+              Purpose,
+              SecurityLevel,
+            }} from '@dashevo/evo-sdk';
+
+            // Asset lock from Core (hex) + the private key that controls that output.
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+            const assetLockPrivateKey = PrivateKey.fromWIF('cVExampleAssetLockKeyForIdentityFunding');
+
+            // Build the identity shell and attach public keys that will be registered.
+            const identity = new Identity('random-or-derived-identity-id');
+            const masterKey = new IdentityPublicKeyInCreation({{
+              keyId: 0,
+              purpose: Purpose.AUTHENTICATION,
+              securityLevel: SecurityLevel.MASTER,
+              keyType: KeyType.ECDSA_SECP256K1,
+              data: Uint8Array.from(atob('A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ'), c => c.charCodeAt(0)),
+            }}).toIdentityPublicKey();
+            identity.addPublicKey(masterKey);
+
+            // IdentitySigner holds private keys for proving ownership of identity keys.
+            // Keep this separate from the asset-lock key.
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+            await sdk.identities.create({{
+              identity,
+              assetLockProof,
+              assetLockPrivateKey,
+              signer,
+            }});
+        """),
+        'identityTopUp': example(f"""
+            import {{ AssetLockProof, PrivateKey }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+            // Asset-lock signing only — top-up does not use IdentitySigner.
+            const assetLockPrivateKey = PrivateKey.fromWIF('cVExampleAssetLockKeyForIdentityFunding');
+
+            const newBalance = await sdk.identities.topUp({{
+              identity,
+              assetLockProof,
+              assetLockPrivateKey,
+            }});
+        """),
+        'identityCreditTransfer': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            // Optional: pass signingKey when you need a specific transfer/auth key.
+            const signingKey = identity.getPublicKeyById(3) // TRANSFER key when present
+              || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
+
+            await sdk.identities.creditTransfer({{
+              identity,
+              recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              amount: 1000000n,
+              signer,
+              signingKey,
+            }});
+        """),
+        'identityCreditWithdrawal': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const signingKey = identity.getPublicKeyById(3)
+              || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
+
+            const remainingBalance = await sdk.identities.creditWithdrawal({{
+              identity,
+              amount: 1000000n,
+              toAddress: 'yT8DDY5NkX4Zt44Fy8QjmCekheJQH4EMkv',
+              coreFeePerByte: 1,
+              signer,
+              signingKey,
+            }});
+        """),
+        'identityUpdate': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const signer = new IdentitySigner();
+            // Master key is required to add/disable identity keys.
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+            await sdk.identities.update({{
+              identity,
+              addPublicKeys: undefined, // optional IdentityPublicKeyInCreation[]
+              disablePublicKeys: [2],   // optional key ids to disable
+              signer,
+            }});
+        """),
+
+        # Data contracts
+        'dataContractCreate': example(f"""
+            import {{ DataContract, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            // Contract publish requires a CRITICAL authentication key.
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL',
+            );
+
+            const identityNonce = (await sdk.identities.nonce(ownerId)) ?? 0n;
+            const dataContract = new DataContract({{
+              ownerId,
+              identityNonce: identityNonce + 1n,
+              schemas: {{
+                note: {{
+                  type: 'object',
+                  properties: {{
+                    message: {{ type: 'string', maxLength: 200, position: 0 }},
+                  }},
+                  required: ['message'],
+                  additionalProperties: false,
+                }},
+              }},
+            }});
+
+            const published = await sdk.contracts.publish({{
+              dataContract,
+              identityKey,
+              signer,
+            }});
+        """),
+        'dataContractUpdate': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const contractId = '{contract}';
+            const dataContract = await sdk.contracts.fetch(contractId);
+            dataContract.version = (dataContract.version || 1) + 1;
+            // Optionally merge additional document type schemas before update:
+            // dataContract.setSchemas(mergedSchemas, undefined, false, sdk.version());
+
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL',
+            );
+
+            await sdk.contracts.update({{ dataContract, identityKey, signer }});
+        """),
+
         # Documents
-        'documentCreate': "await client.documents.create({ contractId, type: documentType, ownerId, data, entropyHex, privateKeyWif })",
-        'documentReplace': "await client.documents.replace({ contractId, type: documentType, documentId, ownerId, data, revision, privateKeyWif })",
-        'documentDelete': "await client.documents.delete({ contractId, type: documentType, documentId, ownerId, privateKeyWif })",
-        'documentTransfer': "await client.documents.transfer({ contractId, type: documentType, documentId, ownerId, recipientId, privateKeyWif })",
-        'documentPurchase': "await client.documents.purchase({ contractId, type: documentType, documentId, buyerId, price, privateKeyWif })",
-        'documentSetPrice': "await client.documents.setPrice({ contractId, type: documentType, documentId, ownerId, price, privateKeyWif })",
+        'documentCreate': example(f"""
+            import {{ Document, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const document = new Document({{
+              dataContractId: '{contract}',
+              documentTypeName: '{document_type}',
+              ownerId,
+              properties: {{ /* fields required by the document type schema */ }},
+            }});
+
+            await sdk.documents.create({{ document, identityKey, signer }});
+        """),
+        'documentReplace': example(f"""
+            import {{ Document, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            // Fetch current document, then rebuild/replace with revision + 1.
+            const current = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            const document = new Document({{
+              dataContractId: '{contract}',
+              documentTypeName: '{document_type}',
+              ownerId,
+              id: '{document_id}',
+              revision: BigInt(current.revision) + 1n,
+              properties: {{ /* updated properties */ }},
+            }});
+
+            await sdk.documents.replace({{ document, identityKey, signer }});
+        """),
+        'documentDelete': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.documents.delete({{
+              document: {{
+                id: '{document_id}',
+                ownerId,
+                dataContractId: '{contract}',
+                documentTypeName: '{document_type}',
+              }},
+              identityKey,
+              signer,
+            }});
+        """),
+        'documentTransfer': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.transfer({{
+              document,
+              recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              identityKey,
+              signer,
+            }});
+        """),
+        'documentPurchase': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const buyerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: buyerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.purchase({{
+              document,
+              buyerId,
+              price: 1000n,
+              identityKey,
+              signer,
+            }});
+        """),
+        'documentSetPrice': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{
+              identityId: ownerId,
+              request: {{ type: 'all' }},
+            }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.setPrice({{
+              document,
+              price: 1000n,
+              identityKey,
+              signer,
+            }});
+        """),
+
         # Tokens
-        'tokenMint': "await client.tokens.mint({ contractId, tokenPosition, amount, identityId, privateKeyWif, recipientId, publicNote })",
-        'tokenBurn': "await client.tokens.burn({ contractId, tokenPosition, amount, identityId, privateKeyWif, publicNote })",
-        'tokenTransfer': "await client.tokens.transfer({ contractId, tokenPosition, amount, senderId, recipientId, privateKeyWif, publicNote })",
-        'tokenFreeze': "await client.tokens.freeze({ contractId, tokenPosition, identityToFreeze, identityId, privateKeyWif, publicNote })",
-        'tokenUnfreeze': "await client.tokens.unfreeze({ contractId, tokenPosition, identityToUnfreeze, identityId, privateKeyWif, publicNote })",
-        'tokenDestroyFrozen': "await client.tokens.destroyFrozen({ contractId, tokenPosition, frozenIdentityId, identityId, privateKeyWif, publicNote })",
-        'tokenSetPriceForDirectPurchase': "await client.tokens.setPrice({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote })",
-        'tokenDirectPurchase': "await client.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif })",
-        'tokenClaim': "await client.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote })",
-        'tokenEmergencyAction': "await client.tokens.emergencyAction({ contractId, tokenPosition, actionType, identityId, privateKeyWif, publicNote })",
-        # Voting
-        'dpnsUsername': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
-        'masternodeVote': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
-        'dpnsRegister': "await client.dpns.registerName({ label, identityId, publicKeyId, privateKeyWif, onPreorder })",
-        # Platform Addresses
-        'addressTransfer': "await client.addresses.transfer({ inputs, outputs, signer })",
-        'addressTopUpIdentity': "await client.addresses.topUpIdentity({ identityId, inputs, signer })",
-        'addressWithdraw': "await client.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer })",
-        'addressTransferFromIdentity': "await client.addresses.transferFromIdentity({ identityId, outputs, signer })",
-        'addressFundFromAssetLock': "await client.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer })",
-        'addressCreateIdentity': "await client.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner })",
+        'tokenMint': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const result = await sdk.tokens.mint({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              amount: 100n,
+              identityId,
+              recipientId: identityId,
+              publicNote: 'mint',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenBurn': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const result = await sdk.tokens.burn({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              amount: 10n,
+              identityId,
+              publicNote: 'burn',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenTransfer': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const senderId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: senderId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const result = await sdk.tokens.transfer({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              amount: 5n,
+              senderId,
+              recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              publicNote: 'transfer',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenFreeze': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: authorityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.tokens.freeze({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              publicNote: 'freeze',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenUnfreeze': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: authorityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.tokens.unfreeze({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              publicNote: 'unfreeze',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenDestroyFrozen': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: authorityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.tokens.destroyFrozen({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
+              publicNote: 'destroy',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenSetPriceForDirectPurchase': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: authorityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.tokens.setPrice({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              authorityId,
+              price: 1000n, // or null to clear
+              publicNote: 'set price',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenDirectPurchase': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const buyerId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: buyerId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const result = await sdk.tokens.directPurchase({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              buyerId,
+              amount: 10n,
+              maxTotalCost: 10000n,
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenClaim': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            const result = await sdk.tokens.claim({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              identityId,
+              distributionType: 'perpetual', // or 'preProgrammed'
+              publicNote: 'claim',
+              identityKey,
+              signer,
+            }});
+        """),
+        'tokenEmergencyAction': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            const keys = await sdk.identities.getKeys({{ identityId: authorityId, request: {{ type: 'all' }} }});
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
+            );
+
+            await sdk.tokens.emergencyAction({{
+              dataContractId: '{contract}',
+              tokenPosition: 0,
+              authorityId,
+              action: 'pause', // or 'resume'
+              publicNote: 'pause trading',
+              identityKey,
+              signer,
+            }});
+        """),
+
+        # DPNS / voting
+        'dpnsRegister': example(f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            const identity = await sdk.identities.fetch(identityId);
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+            // HIGH authentication key is typically used for DPNS registration.
+            const identityKey = identity.getPublicKeyById(1)
+              || identity.publicKeys.find(
+                k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'HIGH',
+              );
+
+            const result = await sdk.dpns.registerName({{
+              label: 'alice',
+              identity,
+              identityKey,
+              signer,
+              preorderCallback: (preorderDocument) => {{
+                console.log('preorder submitted', preorderDocument.id?.toString?.());
+              }},
+            }});
+        """),
+        'dpnsUsername': example(f"""
+            import {{ IdentitySigner, ResourceVoteChoice, VotePoll }} from '@dashevo/evo-sdk';
+
+            const masternodeProTxHash = '{pro_tx}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
+            // Voting key must match the masternode voting public key on the identity.
+            const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
+              || votingIdentity.getPublicKeyById(0);
+
+            const votePoll = new VotePoll({{
+              contractId: '{contract}',
+              documentTypeName: 'domain',
+              indexName: 'parentNameAndLabel',
+              indexValues: ['dash', 'alice'],
+            }});
+
+            await sdk.voting.masternodeVote({{
+              masternodeProTxHash,
+              votePoll,
+              voteChoice: ResourceVoteChoice.TowardsIdentity('{identity}'),
+              votingKey,
+              signer,
+            }});
+        """),
+        'masternodeVote': example(f"""
+            import {{ IdentitySigner, ResourceVoteChoice, VotePoll }} from '@dashevo/evo-sdk';
+
+            const masternodeProTxHash = '{pro_tx}';
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
+            const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
+              || votingIdentity.getPublicKeyById(0);
+
+            const votePoll = new VotePoll({{
+              contractId: '{contract}',
+              documentTypeName: 'domain',
+              indexName: 'parentNameAndLabel',
+              indexValues: ['dash', 'alice'],
+            }});
+
+            await sdk.voting.masternodeVote({{
+              masternodeProTxHash,
+              votePoll,
+              voteChoice: ResourceVoteChoice.TowardsIdentity('{identity}'),
+              votingKey,
+              signer,
+            }});
+        """),
+
+        # Platform Addresses — keep address-signer vs identity-signer distinction
+        'addressTransfer': example(f"""
+            import {{
+              PlatformAddressInput,
+              PlatformAddressOutput,
+              PlatformAddressSigner,
+              PrivateKey,
+            }} from '@dashevo/evo-sdk';
+
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const senderAddr = signer.addKey(privateKey); // derives P2PKH platform address
+
+            const input = new PlatformAddressInput(senderAddr, 0n, 100000n);
+            const output = new PlatformAddressOutput(
+              /* recipient PlatformAddress or bech32m */ '{platform_address}',
+              90000n,
+            );
+
+            const result = await sdk.addresses.transfer({{
+              inputs: [input],
+              outputs: [output],
+              signer,
+            }});
+        """),
+        'addressTopUpIdentity': example(f"""
+            import {{ PlatformAddressInput, PlatformAddressSigner, PrivateKey }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const sourceAddr = signer.addKey(privateKey);
+            const input = new PlatformAddressInput(sourceAddr, 0n, 50000n);
+
+            const result = await sdk.addresses.topUpIdentity({{
+              identityId: identity.id,
+              inputs: [input],
+              signer,
+            }});
+        """),
+        'addressWithdraw': example(f"""
+            import {{ PlatformAddressInput, PlatformAddressSigner, PrivateKey }} from '@dashevo/evo-sdk';
+
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const platformAddr = signer.addKey(privateKey);
+            const input = new PlatformAddressInput(platformAddr, 0n, 100000n);
+
+            // Provide a Core L1 output script (e.g. CoreScript.newP2PKH(...)).
+            const result = await sdk.addresses.withdraw({{
+              inputs: [input],
+              coreFeePerByte: 1,
+              pooling: undefined,
+              outputScript: /* CoreScript */ undefined,
+              signer,
+            }});
+        """),
+        'addressTransferFromIdentity': example(f"""
+            import {{ IdentitySigner, PlatformAddressOutput }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            // Uses IdentitySigner (identity transfer key), not PlatformAddressSigner.
+            const signer = new IdentitySigner();
+            signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+            const output = new PlatformAddressOutput('{platform_address}', 100000n);
+            const result = await sdk.addresses.transferFromIdentity({{
+              identityId,
+              outputs: [output],
+              signer,
+            }});
+        """),
+        'addressFundFromAssetLock': example(f"""
+            import {{
+              AssetLockProof,
+              PlatformAddressOutput,
+              PlatformAddressSigner,
+              PrivateKey,
+            }} from '@dashevo/evo-sdk';
+
+            // Asset-lock key signs the L1 funding proof; address signer controls outputs.
+            const assetLockPrivateKey = PrivateKey.fromWIF('cAssetLockPrivateKeyWif...');
+            const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+
+            const signer = new PlatformAddressSigner();
+            const platformAddr = signer.addKey(addressPrivateKey);
+            const output = new PlatformAddressOutput(platformAddr, 100000n);
+
+            const result = await sdk.addresses.fundFromAssetLock({{
+              assetLockProof,
+              assetLockPrivateKey,
+              outputs: [output],
+              signer,
+            }});
+        """),
+        'addressCreateIdentity': example(f"""
+            import {{
+              Identity,
+              IdentityPublicKeyInCreation,
+              IdentitySigner,
+              Identifier,
+              KeyType,
+              PlatformAddressSigner,
+              PrivateKey,
+              Purpose,
+              SecurityLevel,
+            }} from '@dashevo/evo-sdk';
+
+            const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
+            const identityPrivateKey = PrivateKey.fromWIF('cIdentityKeyWif...');
+
+            const identity = new Identity(Identifier.random());
+            identity.addPublicKey(
+              new IdentityPublicKeyInCreation({{
+                keyId: 0,
+                purpose: Purpose.AUTHENTICATION,
+                securityLevel: SecurityLevel.MASTER,
+                keyType: KeyType.ECDSA_SECP256K1,
+                data: identityPrivateKey.getPublicKey().toBuffer(),
+              }}).toIdentityPublicKey(),
+            );
+
+            const addressSigner = new PlatformAddressSigner();
+            const sourceAddr = addressSigner.addKey(addressPrivateKey);
+            const identitySigner = new IdentitySigner();
+            identitySigner.addKey(identityPrivateKey);
+
+            const result = await sdk.addresses.createIdentity({{
+              identity,
+              inputs: [{{ address: sourceAddr, amount: 50_000_000_000n }}],
+              identitySigner,
+              addressSigner,
+            }});
+        """),
     }
     return m.get(key)
 
@@ -584,20 +1304,25 @@ def format_example(code: str, header: str) -> str:
     if not formatted:
         return header
 
-    body_lines = formatted.split('\n')
-    if body_lines:
-        first_line = body_lines[0].lstrip()
-        if first_line and not first_line.startswith('return'):
-            body_lines[0] = f'return {first_line}'
+    body_lines = [re.sub(r'\bclient\b', 'sdk', line) for line in formatted.split('\n')]
 
-    def replace_client(line: str) -> str:
-        return line.replace('client', 'sdk')
+    # Only auto-prefix `return` for single-expression snippets. Multi-line
+    # examples already contain setup + an explicit final call/return.
+    code_line_indexes = [
+        index
+        for index, line in enumerate(body_lines)
+        if line.strip() and not line.strip().startswith('//')
+    ]
+    if len(code_line_indexes) == 1:
+        index = code_line_indexes[0]
+        stripped = body_lines[index].lstrip()
+        indent = body_lines[index][: len(body_lines[index]) - len(stripped)]
+        if not stripped.startswith('return '):
+            body_lines[index] = f'{indent}return {stripped}'
 
-    processed = [replace_client(line) for line in body_lines]
     lines = [header]
-    lines.extend(processed)
+    lines.extend(body_lines)
     return '\n'.join(lines).rstrip()
-
 
 def render_operation(
     prefix: str,
@@ -1240,28 +1965,29 @@ def format_ai_example_block(code: str | None, item_key: str) -> str:
         return f"// Example currently unavailable for `{item_key}`"
 
     raw_lines = snippet.split('\n')
-    processed = [line.replace('client', 'sdk') for line in raw_lines]
+    processed = [re.sub(r'\bclient\b', 'sdk', line) for line in raw_lines]
 
-    first_index = 0
-    while first_index < len(processed) and processed[first_index].strip().startswith('//'):
-        first_index += 1
+    # Multi-line examples already declare imports/setup and a final call — leave intact.
+    code_line_indexes = [
+        index
+        for index, line in enumerate(processed)
+        if line.strip() and not line.strip().startswith('//')
+    ]
+    if len(code_line_indexes) != 1:
+        return '\n'.join(processed).rstrip()
 
-    if first_index >= len(processed):
-        result_only = '\n'.join(processed).rstrip()
-        if not result_only.endswith(';'):
-            result_only += ';'
-        return result_only
-
+    first_index = code_line_indexes[0]
     first_line = processed[first_index]
     stripped = first_line.lstrip()
     indent = first_line[: len(first_line) - len(stripped)]
 
-    # Check if the example already contains variable declarations or const result
     already_has_declaration = (
-        stripped.startswith('const ') or
-        stripped.startswith('let ') or
-        stripped.startswith('var ') or
-        'const result' in snippet
+        stripped.startswith('const ')
+        or stripped.startswith('let ')
+        or stripped.startswith('var ')
+        or stripped.startswith('import ')
+        or stripped.startswith('await ')
+        or 'const result' in snippet
     )
 
     if not already_has_declaration:
@@ -1270,7 +1996,7 @@ def format_ai_example_block(code: str | None, item_key: str) -> str:
         processed[first_index] = f"{indent}const result = {stripped}"
 
     joined = '\n'.join(processed).rstrip()
-    if not joined.endswith(';'):
+    if joined and not joined.endswith(';'):
         joined += ';'
     return joined
 
@@ -1302,12 +2028,23 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '```',
         '',
         '## Authentication',
-        'Most state transitions require an identity identifier and a signing key in Wallet Import '
-        'Format (WIF). Keep credentials secure and never embed production keys in source control:',
+        'State transitions authenticate with typed objects, not a `privateKeyWif` field on the call:',
+        '- Identity writes: fetch/build the payload, select an `IdentityPublicKey`, and sign with `IdentitySigner`.',
+        '- Asset-lock writes (identity create/top-up, fund-from-asset-lock): use `AssetLockProof` + `PrivateKey` '
+        'for the L1 lock; identity create also needs a separate `IdentitySigner` for key proofs.',
+        '- Platform address writes: use `PlatformAddressSigner` for address inputs/outputs; '
+        'identity-funded address ops use `IdentitySigner`.',
+        'Keep credentials secure and never embed production keys in source control:',
         '```javascript',
+        "import { IdentitySigner, PrivateKey } from '@dashevo/evo-sdk';",
+        '',
         f"const identityId = '{identity_sample}';",
         "const privateKeyWif = 'L1ExamplePrivateKeyWifGoesHere';",
         "const assetLockPrivateKeyWif = 'cVExampleAssetLockKeyForIdentityFunding';",
+        '',
+        'const signer = new IdentitySigner();',
+        'signer.addKeyFromWif(privateKeyWif);',
+        'const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);',
         '```',
         '',
         '## Query Operations',
@@ -1402,10 +2139,21 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '## State Transition Operations',
         '',
         '### Pattern',
-        'All state transitions require authentication and are invoked with namespace methods:',
+        'State transitions take a typed options object. Typical identity-signed writes look like:',
         '```javascript',
-        'const result = await sdk.<namespace>.<transition>({ ...params, privateKeyWif });',
+        'const identity = await sdk.identities.fetch(identityId);',
+        'const signer = new IdentitySigner();',
+        'signer.addKeyFromWif(privateKeyWif);',
+        'const identityKey = identity.getPublicKeyById(keyId);',
+        '',
+        'const result = await sdk.<namespace>.<transition>({',
+        '  /* payload fields: identity / document / dataContract / ... */',
+        '  identityKey, // when required by the method',
+        '  signer,',
+        '});',
         '```',
+        'Asset-lock methods take `assetLockProof` + `assetLockPrivateKey` instead of (or in addition to) '
+        'an `IdentitySigner`. See each operation example below.',
         '',
         '### Available State Transitions',
     ])
