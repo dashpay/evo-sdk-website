@@ -486,38 +486,38 @@ def evo_example_for_transition(key: str):
         # Identities
         # 'identityCreate' - example in api-definitions.json
         # 'identityTopUp' - example in api-definitions.json
-        'identityCreditTransfer': "await client.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId })",
-        'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId })",
-        'identityUpdate': "await client.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif })",
-        'dataContractCreate': "await client.contracts.publish({ ownerId, definition, privateKeyWif, keyId })",
-        'dataContractUpdate': "await client.contracts.update({ contractId, ownerId, updates, privateKeyWif, keyId })",
+        'identityCreditTransfer': "await client.identities.creditTransfer({ identity, recipientId, amount: BigInt(amount), signer, signingKey: identityKey })",
+        'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identity, amount: BigInt(amount), toAddress, coreFeePerByte, signer, signingKey: identityKey })",
+        'identityUpdate': "await client.identities.update({ identity, addPublicKeys, disablePublicKeys, signer })",
+        'dataContractCreate': "await client.contracts.publish({ dataContract, identityKey, signer })",
+        'dataContractUpdate': "await client.contracts.update({ dataContract, identityKey, signer })",
         # Documents
-        'documentCreate': "await client.documents.create({ contractId, type: documentType, ownerId, data, entropyHex, privateKeyWif })",
-        'documentReplace': "await client.documents.replace({ contractId, type: documentType, documentId, ownerId, data, revision, privateKeyWif })",
-        'documentDelete': "await client.documents.delete({ contractId, type: documentType, documentId, ownerId, privateKeyWif })",
-        'documentTransfer': "await client.documents.transfer({ contractId, type: documentType, documentId, ownerId, recipientId, privateKeyWif })",
-        'documentPurchase': "await client.documents.purchase({ contractId, type: documentType, documentId, buyerId, price, privateKeyWif })",
-        'documentSetPrice': "await client.documents.setPrice({ contractId, type: documentType, documentId, ownerId, price, privateKeyWif })",
+        'documentCreate': "await client.documents.create({ document, identityKey, signer })",
+        'documentReplace': "await client.documents.replace({ document, identityKey, signer })",
+        'documentDelete': "await client.documents.delete({ document, identityKey, signer })",
+        'documentTransfer': "await client.documents.transfer({ document, recipientId, identityKey, signer })",
+        'documentPurchase': "await client.documents.purchase({ document, buyerId, price: BigInt(price), identityKey, signer })",
+        'documentSetPrice': "await client.documents.setPrice({ document, price: BigInt(price), identityKey, signer })",
         # Tokens
-        'tokenMint': "await client.tokens.mint({ contractId, tokenPosition, amount, identityId, privateKeyWif, recipientId, publicNote })",
-        'tokenBurn': "await client.tokens.burn({ contractId, tokenPosition, amount, identityId, privateKeyWif, publicNote })",
-        'tokenTransfer': "await client.tokens.transfer({ contractId, tokenPosition, amount, senderId, recipientId, privateKeyWif, publicNote })",
-        'tokenFreeze': "await client.tokens.freeze({ contractId, tokenPosition, identityToFreeze, identityId, privateKeyWif, publicNote })",
-        'tokenUnfreeze': "await client.tokens.unfreeze({ contractId, tokenPosition, identityToUnfreeze, identityId, privateKeyWif, publicNote })",
-        'tokenDestroyFrozen': "await client.tokens.destroyFrozen({ contractId, tokenPosition, frozenIdentityId, identityId, privateKeyWif, publicNote })",
-        'tokenSetPriceForDirectPurchase': "await client.tokens.setPrice({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote })",
-        'tokenDirectPurchase': "await client.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif })",
-        'tokenClaim': "await client.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote })",
-        'tokenEmergencyAction': "await client.tokens.emergencyAction({ contractId, tokenPosition, actionType, identityId, privateKeyWif, publicNote })",
+        'tokenMint': "await client.tokens.mint({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, recipientId, publicNote, identityKey, signer })",
+        'tokenBurn': "await client.tokens.burn({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, publicNote, identityKey, signer })",
+        'tokenTransfer': "await client.tokens.transfer({ dataContractId, tokenPosition, amount: BigInt(amount), senderId, recipientId, publicNote, identityKey, signer })",
+        'tokenFreeze': "await client.tokens.freeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
+        'tokenUnfreeze': "await client.tokens.unfreeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
+        'tokenDestroyFrozen': "await client.tokens.destroyFrozen({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
+        'tokenSetPriceForDirectPurchase': "await client.tokens.setPrice({ dataContractId, tokenPosition, authorityId, price: BigInt(price), publicNote, identityKey, signer })",
+        'tokenDirectPurchase': "await client.tokens.directPurchase({ dataContractId, tokenPosition, buyerId, amount: BigInt(amount), maxTotalCost: BigInt(maxTotalCost), identityKey, signer })",
+        'tokenClaim': "await client.tokens.claim({ dataContractId, tokenPosition, distributionType, identityId, publicNote, identityKey, signer })",
+        'tokenEmergencyAction': "await client.tokens.emergencyAction({ dataContractId, tokenPosition, authorityId, action, publicNote, identityKey, signer })",
         # Voting
-        'dpnsUsername': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
-        'masternodeVote': "await client.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif })",
-        'dpnsRegister': "await client.dpns.registerName({ label, identityId, publicKeyId, privateKeyWif, onPreorder })",
+        'dpnsUsername': "await client.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer })",
+        'masternodeVote': "await client.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer })",
+        'dpnsRegister': "await client.dpns.registerName({ label, identity, identityKey, signer, preorderCallback })",
         # Platform Addresses
         'addressTransfer': "await client.addresses.transfer({ inputs, outputs, signer })",
-        'addressTopUpIdentity': "await client.addresses.topUpIdentity({ identityId, inputs, signer })",
+        'addressTopUpIdentity': "await client.addresses.topUpIdentity({ identity, inputs, signer })",
         'addressWithdraw': "await client.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer })",
-        'addressTransferFromIdentity': "await client.addresses.transferFromIdentity({ identityId, outputs, signer })",
+        'addressTransferFromIdentity': "await client.addresses.transferFromIdentity({ identity, outputs, signer })",
         'addressFundFromAssetLock': "await client.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer })",
         'addressCreateIdentity': "await client.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner })",
     }
@@ -579,13 +579,13 @@ def render_parameters(params: List[dict]) -> str:
     return '\n'.join(render_parameter(param) for param in params)
 
 
-def format_example(code: str, header: str) -> str:
+def format_example(code: str, header: str, add_return: bool) -> str:
     formatted = (code or '').replace('\\n', '\n').strip()
     if not formatted:
         return header
 
     body_lines = formatted.split('\n')
-    if body_lines:
+    if add_return and body_lines:
         first_line = body_lines[0].lstrip()
         if first_line and not first_line.startswith('return'):
             body_lines[0] = f'return {first_line}'
@@ -611,7 +611,7 @@ def render_operation(
     description = safe_value(item.get('description', 'No description available'))
     params = item.get('sdk_params') or item.get('inputs', [])
     params_html = render_parameters(params)
-    example_html = safe_value(format_example(example_code, header))
+    example_html = safe_value(format_example(example_code, header, include_run_button))
     return_type = safe_value(item.get('_return_type'))
     return_links = render_type_links_html(item.get('_return_references', []))
 
@@ -1225,7 +1225,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict, type_metadata: d
 {query_content}
 
         <h2 id=\"state-transitions\">State Transitions</h2>
-        <p class=\"description\">State transitions require valid identities, funds, and private keys. Configure your Evo SDK client appropriately before running these operations on mainnet.</p>
+        <p class=\"description\">Evo SDK v4 state transitions accept constructed payload objects plus the appropriate public key and signer object. Build an <code>IdentitySigner</code> with <code>addKeyFromWif</code>; do not pass a WIF string directly in a transition call. Identity creation and asset-lock top ups instead take typed <code>AssetLockProof</code> and <code>PrivateKey</code> objects.</p>
 {transition_content}
     </div>
 </body>
@@ -1291,7 +1291,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '',
         '## Quick Setup',
         '```javascript',
-        "import { EvoSDK } from '@dashevo/evo-sdk';",
+        "import { EvoSDK, IdentitySigner } from '@dashevo/evo-sdk';",
         '',
         '// Create a trusted testnet client and connect',
         'const sdk = EvoSDK.testnetTrusted();',
@@ -1302,12 +1302,21 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '```',
         '',
         '## Authentication',
-        'Most state transitions require an identity identifier and a signing key in Wallet Import '
-        'Format (WIF). Keep credentials secure and never embed production keys in source control:',
+        'Evo SDK v4 state transitions accept typed payload objects and signer objects. Fetch the '
+        'identity, select the public key that matches your private key, and keep production keys '
+        'out of source control:',
         '```javascript',
         f"const identityId = '{identity_sample}';",
         "const privateKeyWif = 'L1ExamplePrivateKeyWifGoesHere';",
-        "const assetLockPrivateKeyWif = 'cVExampleAssetLockKeyForIdentityFunding';",
+        'const keyId = 2;',
+        '',
+        'const identity = await sdk.identities.fetch(identityId);',
+        "if (!identity) throw new Error('Identity not found');",
+        'const identityKey = identity.getPublicKeyById(keyId);',
+        "if (!identityKey) throw new Error('Identity key not found');",
+        '',
+        'const signer = new IdentitySigner();',
+        'signer.addKeyFromWif(privateKeyWif);',
         '```',
         '',
         '## Query Operations',
@@ -1402,18 +1411,14 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '## State Transition Operations',
         '',
         '### Pattern',
-        'All state transitions require authentication and are invoked with namespace methods:',
+        'State transitions take their v4 payload plus the appropriate public key and signer. '
+        'Identity credit operations take the fetched `identity` and may call the key `signingKey`:',
         '```javascript',
-        'const result = await sdk.<namespace>.<transition>({ ...params, privateKeyWif });',
+        'const result = await sdk.<namespace>.<transition>({ payload, identityKey, signer });',
         '```',
         '',
         '### Available State Transitions',
     ])
-
-    sdk_param_overrides = {
-        'identityCreate': {'assetLockProofPrivateKey': 'assetLockPrivateKeyWif'},
-        'identityTopUp': {'assetLockProofPrivateKey': 'assetLockPrivateKeyWif'},
-    }
 
     def append_transition_params(
         item_key: str,
@@ -1429,9 +1434,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         for param in params:
             name = param.get('name', 'unknown')
             label = param.get('label')
-            override_name = sdk_param_overrides.get(item_key, {}).get(name)
-            effective_name = override_name or name
-            display_name = label if label and label != name else effective_name
+            display_name = label if label and label != name else name
             param_type = param.get('type', 'text')
             required = 'required' if param.get('required') else 'optional'
             target.append(f"- `{display_name}` ({param_type}, {required})")

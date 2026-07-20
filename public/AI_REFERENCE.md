@@ -7,7 +7,7 @@ The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. 
 
 ## Quick Setup
 ```javascript
-import { EvoSDK } from '@dashevo/evo-sdk';
+import { EvoSDK, IdentitySigner } from '@dashevo/evo-sdk';
 
 // Create a trusted testnet client and connect
 const sdk = EvoSDK.testnetTrusted();
@@ -18,11 +18,19 @@ await sdk.connect();
 ```
 
 ## Authentication
-Most state transitions require an identity identifier and a signing key in Wallet Import Format (WIF). Keep credentials secure and never embed production keys in source control:
+Evo SDK v4 state transitions accept typed payload objects and signer objects. Fetch the identity, select the public key that matches your private key, and keep production keys out of source control:
 ```javascript
 const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
 const privateKeyWif = 'L1ExamplePrivateKeyWifGoesHere';
-const assetLockPrivateKeyWif = 'cVExampleAssetLockKeyForIdentityFunding';
+const keyId = 2;
+
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
+if (!identityKey) throw new Error('Identity key not found');
+
+const signer = new IdentitySigner();
+signer.addKeyFromWif(privateKeyWif);
 ```
 
 ## Query Operations
@@ -1369,9 +1377,9 @@ const result = await sdk.addresses.getMany(['tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5
 ## State Transition Operations
 
 ### Pattern
-All state transitions require authentication and are invoked with namespace methods:
+State transitions take their v4 payload plus the appropriate public key and signer. Identity credit operations take the fetched `identity` and may call the key `signingKey`:
 ```javascript
-const result = await sdk.<namespace>.<transition>({ ...params, privateKeyWif });
+const result = await sdk.<namespace>.<transition>({ payload, identityKey, signer });
 ```
 
 ### Available State Transitions
@@ -1381,14 +1389,17 @@ const result = await sdk.<namespace>.<transition>({ ...params, privateKeyWif });
 *Create a new identity with initial credits*
 
 Parameters:
-- `Asset Lock Proof` (string, required)
-  - Hex-encoded JSON asset lock proof
+- `Identity` (object, required)
+  - Identity instance with public keys configured
 
-- `Asset Lock Private Key (WIF)` (string, required)
-  - WIF format private key
+- `Asset Lock Proof` (object, required)
+  - AssetLockProof instance
 
-- `Public Keys` (string, required)
-  - JSON array of public keys. Key requirements: ECDSA_SECP256K1 requires privateKeyHex or privateKeyWif for signing, BLS12_381 requires privateKeyHex for signing, ECDSA_HASH160 requires either the data field (base64-encoded 20-byte public key hash) or privateKeyHex (produces empty signatures).
+- `Asset Lock Private Key` (object, required)
+  - PrivateKey instance controlling the asset lock output
+
+- `Identity Signer` (object, required)
+  - IdentitySigner containing the private keys for the identity's public keys
 
 Returns:
 
@@ -1396,56 +1407,29 @@ Returns:
 
 Example:
 ```javascript
-// Asset lock proof is a hex-encoded JSON object
-const assetLockProof = "a9147d3b... (hex-encoded)";
-const assetLockPrivateKeyWif = "XFfpaSbZq52HPy3WWwe1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+import { AssetLockProof, IdentitySigner, PrivateKey } from '@dashevo/evo-sdk';
 
-// Public keys array with proper key types
-const publicKeys = JSON.stringify([
-  {
-    id: 0,
-    type: 0, // ECDSA_SECP256K1 = 0, BLS12_381 = 1, ECDSA_HASH160 = 2, BIP13_SCRIPT_HASH = 3
-    purpose: 0, // AUTHENTICATION = 0, ENCRYPTION = 1, DECRYPTION = 2, TRANSFER = 3, SYSTEM = 4, VOTING = 5, OWNER = 6
-    securityLevel: 0, // MASTER = 0, CRITICAL = 1, HIGH = 2, MEDIUM = 3
-    data: "A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ", // Base64-encoded public key
-    readOnly: false,
-    privateKeyWif: "XBrZJKcW4ajWVNAU6yP87WQog6CjFnpbqyAKgNTZRqmhYvPgMNV2" // Required for ECDSA_SECP256K1 signing
-  },
-  {
-    id: 1,
-    type: 0, // ECDSA_SECP256K1
-    purpose: 0, // AUTHENTICATION
-    securityLevel: 2, // HIGH
-    data: "AnotherBase64EncodedPublicKeyHere", // Base64-encoded public key
-    readOnly: false,
-    privateKeyWif: "XAnotherPrivateKeyInWIFFormat" // Required for signing
-  },
-  {
-    id: 2,
-    type: 2, // ECDSA_HASH160
-    purpose: 0, // AUTHENTICATION
-    securityLevel: 2, // HIGH
-    data: "ripemd160hash20bytes1234", // Base64-encoded 20-byte RIPEMD160 hash
-    readOnly: false
-    // ECDSA_HASH160 keys produce empty signatures (privateKey not required/used for signing)
-  }
-]);
+// Build `identity` with its public keys before submitting the transition.
+const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
+const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
+const signer = new IdentitySigner();
+identityPrivateKeyWifs.forEach((wif) => signer.addKeyFromWif(wif));
 
-const result = await sdk.identities.create({ assetLockProof, assetLockPrivateKeyWif, publicKeys });
+const result = await sdk.identities.create({ identity, assetLockProof, assetLockPrivateKey, signer });
 ```
 
 **Identity Top Up** - `identities.topUp`
 *Add credits to an existing identity*
 
 Parameters:
-- `Identity ID` (string, required)
-  - Base58 format identity ID
+- `Identity` (object, required)
+  - Fetched Identity instance to top up
 
-- `Asset Lock Proof` (string, required)
-  - Hex-encoded JSON asset lock proof
+- `Asset Lock Proof` (object, required)
+  - AssetLockProof instance
 
-- `Asset Lock Private Key (WIF)` (string, required)
-  - WIF format private key
+- `Asset Lock Private Key` (object, required)
+  - PrivateKey instance controlling the asset lock output
 
 Returns:
 
@@ -1453,11 +1437,14 @@ Returns:
 
 Example:
 ```javascript
-const identityId = "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"; // base58
-const assetLockProof = "a9147d3b... (hex-encoded)";
-const assetLockPrivateKeyWif = "XFfpaSbZq52HPy3WWve1dXsZMiU1bQn8vQd34HNXkSZThevBWRn1"; // WIF format
+import { AssetLockProof, PrivateKey } from '@dashevo/evo-sdk';
 
-const result = await sdk.identities.topUp({ identityId, assetLockProof, assetLockPrivateKeyWif });
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
+const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
+
+const result = await sdk.identities.topUp({ identity, assetLockProof, assetLockPrivateKey });
 ```
 
 **Identity Update** - `identities.update`
@@ -1476,7 +1463,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.identities.update({ identityId, addPublicKeys, disablePublicKeyIds, privateKeyWif });
+const result = await sdk.identities.update({ identity, addPublicKeys, disablePublicKeys, signer });
 ```
 
 **Identity Credit Transfer** - `identities.creditTransfer`
@@ -1494,7 +1481,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.identities.creditTransfer({ senderId, recipientId, amount, privateKeyWif, keyId });
+const result = await sdk.identities.creditTransfer({ identity, recipientId, amount: BigInt(amount), signer, signingKey: identityKey });
 ```
 
 **Identity Credit Withdrawal** - `identities.creditWithdrawal`
@@ -1513,7 +1500,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.identities.creditWithdrawal({ identityId, toAddress, amount, coreFeePerByte, privateKeyWif, keyId });
+const result = await sdk.identities.creditWithdrawal({ identity, amount: BigInt(amount), toAddress, coreFeePerByte, signer, signingKey: identityKey });
 ```
 
 #### Data Contract Transitions
@@ -1571,7 +1558,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.contracts.publish({ ownerId, definition, privateKeyWif, keyId });
+const result = await sdk.contracts.publish({ dataContract, identityKey, signer });
 ```
 
 **Data Contract Update** - `contracts.update`
@@ -1608,7 +1595,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.contracts.update({ contractId, ownerId, updates, privateKeyWif, keyId });
+const result = await sdk.contracts.update({ dataContract, identityKey, signer });
 ```
 
 #### Document Transitions
@@ -1631,7 +1618,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.create({ contractId, type: documentType, ownerId, data, entropyHex, privateKeyWif });
+const result = await sdk.documents.create({ document, identityKey, signer });
 ```
 
 **Document Replace** - `documents.replace`
@@ -1654,7 +1641,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.replace({ contractId, type: documentType, documentId, ownerId, data, revision, privateKeyWif });
+const result = await sdk.documents.replace({ document, identityKey, signer });
 ```
 
 **Document Delete** - `documents.delete`
@@ -1673,7 +1660,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.delete({ contractId, type: documentType, documentId, ownerId, privateKeyWif });
+const result = await sdk.documents.delete({ document, identityKey, signer });
 ```
 
 **Document Transfer** - `documents.transfer`
@@ -1694,7 +1681,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.transfer({ contractId, type: documentType, documentId, ownerId, recipientId, privateKeyWif });
+const result = await sdk.documents.transfer({ document, recipientId, identityKey, signer });
 ```
 
 **Document Purchase** - `documents.purchase`
@@ -1715,7 +1702,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.purchase({ contractId, type: documentType, documentId, buyerId, price, privateKeyWif });
+const result = await sdk.documents.purchase({ document, buyerId, price: BigInt(price), identityKey, signer });
 ```
 
 **Document Set Price** - `documents.setPrice`
@@ -1736,7 +1723,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.documents.setPrice({ contractId, type: documentType, documentId, ownerId, price, privateKeyWif });
+const result = await sdk.documents.setPrice({ document, price: BigInt(price), identityKey, signer });
 ```
 
 **DPNS Register Name** - `dpns.registerName`
@@ -1753,7 +1740,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.dpns.registerName({ label, identityId, publicKeyId, privateKeyWif, onPreorder });
+const result = await sdk.dpns.registerName({ label, identity, identityKey, signer, preorderCallback });
 ```
 
 #### Token Transitions
@@ -1777,7 +1764,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.burn({ contractId, tokenPosition, amount, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.burn({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, publicNote, identityKey, signer });
 ```
 
 **Token Mint** - `tokens.mint`
@@ -1801,7 +1788,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.mint({ contractId, tokenPosition, amount, identityId, privateKeyWif, recipientId, publicNote });
+const result = await sdk.tokens.mint({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, recipientId, publicNote, identityKey, signer });
 ```
 
 **Token Claim** - `tokens.claim`
@@ -1824,7 +1811,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.claim({ contractId, tokenPosition, distributionType, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.claim({ dataContractId, tokenPosition, distributionType, identityId, publicNote, identityKey, signer });
 ```
 
 **Token Set Price** - `tokens.setPrice`
@@ -1850,7 +1837,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.setPrice({ contractId, tokenPosition, identityId, priceType, priceData, privateKeyWif, publicNote });
+const result = await sdk.tokens.setPrice({ dataContractId, tokenPosition, authorityId, price: BigInt(price), publicNote, identityKey, signer });
 ```
 
 **Token Direct Purchase** - `tokens.directPurchase`
@@ -1872,7 +1859,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.directPurchase({ contractId, tokenPosition, amount, identityId, totalAgreedPrice, privateKeyWif });
+const result = await sdk.tokens.directPurchase({ dataContractId, tokenPosition, buyerId, amount: BigInt(amount), maxTotalCost: BigInt(maxTotalCost), identityKey, signer });
 ```
 
 **Token Emergency Action** - `tokens.emergencyAction`
@@ -1895,7 +1882,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.emergencyAction({ contractId, tokenPosition, actionType, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.emergencyAction({ dataContractId, tokenPosition, authorityId, action, publicNote, identityKey, signer });
 ```
 
 **Token Transfer** - `tokens.transfer`
@@ -1919,7 +1906,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.transfer({ contractId, tokenPosition, amount, senderId, recipientId, privateKeyWif, publicNote });
+const result = await sdk.tokens.transfer({ dataContractId, tokenPosition, amount: BigInt(amount), senderId, recipientId, publicNote, identityKey, signer });
 ```
 
 **Token Freeze** - `tokens.freeze`
@@ -1941,7 +1928,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.freeze({ contractId, tokenPosition, identityToFreeze, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.freeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer });
 ```
 
 **Token Unfreeze** - `tokens.unfreeze`
@@ -1963,7 +1950,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.unfreeze({ contractId, tokenPosition, identityToUnfreeze, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.unfreeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer });
 ```
 
 **Token Destroy Frozen** - `tokens.destroyFrozen`
@@ -1985,7 +1972,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.tokens.destroyFrozen({ contractId, tokenPosition, frozenIdentityId, identityId, privateKeyWif, publicNote });
+const result = await sdk.tokens.destroyFrozen({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer });
 ```
 
 #### Voting Transitions
@@ -2009,7 +1996,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif });
+const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
 ```
 
 **Contested Resource** - `voting.masternodeVote`
@@ -2035,7 +2022,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.voting.masternodeVote({ masternodeProTxHash, contractId, documentTypeName, indexName, indexValues, voteChoice, votingKeyWif });
+const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
 ```
 
 #### Platform Address Transitions
@@ -2083,7 +2070,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.addresses.topUpIdentity({ identityId, inputs, signer });
+const result = await sdk.addresses.topUpIdentity({ identity, inputs, signer });
 ```
 
 **Withdraw to Core** - `addresses.withdraw`
@@ -2135,7 +2122,7 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.addresses.transferFromIdentity({ identityId, outputs, signer });
+const result = await sdk.addresses.transferFromIdentity({ identity, outputs, signer });
 ```
 
 **Fund Address from Asset Lock** - `addresses.fundFromAssetLock`
