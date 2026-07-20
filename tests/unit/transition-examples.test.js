@@ -11,9 +11,11 @@ const aiReference = fs.readFileSync(path.join(ROOT, 'public/AI_REFERENCE.md'), '
 const apiDefinitions = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/api-definitions.json'), 'utf8'));
 const wasmSdkDts = fs.readFileSync(path.join(ROOT, 'node_modules/@dashevo/wasm-sdk/dist/sdk.d.ts'), 'utf8');
 
-const TRANSITION_KEYS = Object.values(apiDefinitions.transitions).flatMap((category) =>
-  Object.keys(category.transitions || {}),
+const TRANSITION_ENTRIES = Object.values(apiDefinitions.transitions).flatMap((category) =>
+  Object.entries(category.transitions || {}),
 );
+const TRANSITION_KEYS = TRANSITION_ENTRIES.map(([key]) => key);
+const TRANSITION_BY_KEY = Object.fromEntries(TRANSITION_ENTRIES);
 
 const METHOD_TO_OPTIONS = {
   'identities.create': 'IdentityCreateOptions',
@@ -50,7 +52,7 @@ const METHOD_TO_OPTIONS = {
 };
 
 /** Pre-v4 call-shape markers that must not appear as options on SDK write calls. */
-const FORBIDDEN_CALL_OPTION_NAMES = [
+const FORBIDDEN_CALL_OPTION_NAMES = new Set([
   'privateKeyWif',
   'assetLockPrivateKeyWif',
   'votingKeyWif',
@@ -68,6 +70,14 @@ const FORBIDDEN_CALL_OPTION_NAMES = [
   'destroyerId',
   'definition',
   'updates',
+]);
+
+/** Classic one-liners from issue #63 that must not reappear in generated docs. */
+const CLASSIC_PRE_V4_PATTERNS = [
+  /documents\.create\(\{\s*contractId,\s*type:\s*documentType,\s*ownerId,\s*data,\s*entropyHex,\s*privateKeyWif\s*\}\)/,
+  /identities\.topUp\(\{\s*identityId,\s*assetLockProof,\s*assetLockPrivateKeyWif\s*\}\)/,
+  /identities\.create\(\{\s*assetLockProof,\s*assetLockPrivateKeyWif,\s*publicKeys\s*\}\)/,
+  /sdk\.<namespace>\.<transition>\(\{\s*\.\.\.params,\s*privateKeyWif\s*\}\)/,
 ];
 
 function loadTransitionExamplesFromGenerator() {
@@ -96,12 +106,8 @@ print(json.dumps(out))
 function interfaceProperties(sourceText, interfaceName) {
   const source = ts.createSourceFile('sdk.d.ts', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const props = new Set();
-  const visit = (node) => {
-    if (
-      ts.isInterfaceDeclaration(node)
-      && node.name.text === interfaceName
-      && node.members
-    ) {
+  function visit(node) {
+    if (ts.isInterfaceDeclaration(node) && node.name.text === interfaceName && node.members) {
       for (const member of node.members) {
         if (ts.isPropertySignature(member) && member.name && ts.isIdentifier(member.name)) {
           props.add(member.name.text);
@@ -109,7 +115,7 @@ function interfaceProperties(sourceText, interfaceName) {
       }
     }
     ts.forEachChild(node, visit);
-  };
+  }
   visit(source);
   return props;
 }
@@ -136,28 +142,35 @@ function extractSdkCallSites(example) {
       }
     }
     if (end === -1) continue;
-    const argsText = example.slice(openIdx + 1, end).trim();
-    calls.push({ method: `${namespace}.${method}`, argsText });
+    calls.push({
+      method: `${namespace}.${method}`,
+      argsText: example.slice(openIdx + 1, end).trim(),
+    });
   }
   return calls;
 }
 
 function topLevelObjectKeys(argsText) {
-  // Expect a single object literal argument: { ... }
   const trimmed = argsText.trim();
   if (!trimmed.startsWith('{')) return [];
-  const source = ts.createSourceFile('example.ts', `const __opts = ${trimmed};`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const source = ts.createSourceFile(
+    'example.ts',
+    `const __opts = ${trimmed};`,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
   const keys = [];
-  const visit = (node) => {
+  function visit(node) {
     if (ts.isObjectLiteralExpression(node) && node.parent && ts.isVariableDeclaration(node.parent)) {
       for (const prop of node.properties) {
-        if (ts.isPropertyAssignment(prop) || ts.isShorthandPropertyAssignment(prop)) {
-          if (ts.isIdentifier(prop.name)) keys.push(prop.name.text);
+        if ((ts.isPropertyAssignment(prop) || ts.isShorthandPropertyAssignment(prop)) && ts.isIdentifier(prop.name)) {
+          keys.push(prop.name.text);
         }
       }
     }
     ts.forEachChild(node, visit);
-  };
+  }
   visit(source);
   return keys;
 }
@@ -165,23 +178,23 @@ function topLevelObjectKeys(argsText) {
 function exampleMentionsForbiddenCallOption(example) {
   const hits = [];
   for (const call of extractSdkCallSites(example)) {
-    const keys = topLevelObjectKeys(call.argsText);
-    for (const key of keys) {
-      if (FORBIDDEN_CALL_OPTION_NAMES.includes(key)) {
+    for (const key of topLevelObjectKeys(call.argsText)) {
+      if (FORBIDDEN_CALL_OPTION_NAMES.has(key)) {
         hits.push(`${call.method}({ ${key} })`);
       }
     }
   }
-  // Also catch single-line pre-v4 shapes that put privateKeyWif in the same object as contractId/type.
-  if (/\{\s*[^}]*\bprivateKeyWif\b[^}]*\}/.test(example)) {
-    // Only flag when it is not purely a key-construction object for IdentityPublicKeyInCreation etc.
-    // Those objects use privateKeyWif only in the removed pre-v4 publicKeys JSON; current examples
-    // should not include privateKeyWif as an object property at all.
-    if (/\bprivateKeyWif\s*:/.test(example)) {
-      hits.push('object property privateKeyWif');
-    }
+  // Current examples must not document privateKeyWif as an object property at all.
+  if (/\bprivateKeyWif\s*:/.test(example)) {
+    hits.push('object property privateKeyWif');
   }
   return hits;
+}
+
+function collectClassicPreV4Hits(text, label) {
+  return CLASSIC_PRE_V4_PATTERNS
+    .filter((re) => re.test(text))
+    .map((re) => `${label} still contains ${re}`);
 }
 
 const generatedExamples = loadTransitionExamplesFromGenerator();
@@ -199,18 +212,8 @@ describe('v4 state transition documentation examples', () => {
       const hits = exampleMentionsForbiddenCallOption(example);
       if (hits.length) failures.push(`${key}: ${hits.join(', ')}`);
     }
-    // Generated artifacts must also be free of the classic one-liners from issue #63.
-    for (const [label, text] of [['docs.html', docs], ['AI_REFERENCE.md', aiReference]]) {
-      const classic = [
-        /documents\.create\(\{\s*contractId,\s*type:\s*documentType,\s*ownerId,\s*data,\s*entropyHex,\s*privateKeyWif\s*\}\)/,
-        /identities\.topUp\(\{\s*identityId,\s*assetLockProof,\s*assetLockPrivateKeyWif\s*\}\)/,
-        /identities\.create\(\{\s*assetLockProof,\s*assetLockPrivateKeyWif,\s*publicKeys\s*\}\)/,
-        /sdk\.<namespace>\.<transition>\(\{\s*\.\.\.params,\s*privateKeyWif\s*\}\)/,
-      ];
-      for (const re of classic) {
-        if (re.test(text)) failures.push(`${label} still contains ${re}`);
-      }
-    }
+    failures.push(...collectClassicPreV4Hits(docs, 'docs.html'));
+    failures.push(...collectClassicPreV4Hits(aiReference, 'AI_REFERENCE.md'));
     expect(failures).toEqual([]);
   });
 
@@ -234,13 +237,7 @@ describe('v4 state transition documentation examples', () => {
 
   it('passes only declared option properties on the final sdk write call', () => {
     const failures = [];
-    for (const [key, item] of Object.entries(
-      Object.fromEntries(
-        Object.values(apiDefinitions.transitions).flatMap((category) =>
-          Object.entries(category.transitions || {}),
-        ),
-      ),
-    )) {
+    for (const [key, item] of Object.entries(TRANSITION_BY_KEY)) {
       const example = generatedExamples[key];
       const sdkMethod = item.sdk_method;
       const optionsName = METHOD_TO_OPTIONS[sdkMethod];
@@ -248,6 +245,7 @@ describe('v4 state transition documentation examples', () => {
         failures.push(`${key}: no Options mapping for ${sdkMethod}`);
         continue;
       }
+
       const allowed = interfaceProperties(wasmSdkDts, optionsName);
       // TypeScript may declare the same interface name more than once in the giant d.ts
       // (transition object variants). Prefer the richest write-options set when ambiguous.
@@ -261,15 +259,19 @@ describe('v4 state transition documentation examples', () => {
         failures.push(`${key}: no await sdk.${sdkMethod}(...) call in example`);
         continue;
       }
-      const call = writeCalls[writeCalls.length - 1];
-      const keys = topLevelObjectKeys(call.argsText);
+
+      const keys = topLevelObjectKeys(writeCalls[writeCalls.length - 1].argsText);
       if (!keys.length) {
         failures.push(`${key}: could not parse options object for ${sdkMethod}`);
         continue;
       }
+
       const unknown = keys.filter((k) => !allowed.has(k));
       if (unknown.length) {
-        failures.push(`${key}: unknown option(s) on ${sdkMethod}: ${unknown.join(', ')} (allowed: ${[...allowed].sort().join(', ')})`);
+        failures.push(
+          `${key}: unknown option(s) on ${sdkMethod}: ${unknown.join(', ')} `
+          + `(allowed: ${[...allowed].sort().join(', ')})`,
+        );
       }
     }
     expect(failures).toEqual([]);

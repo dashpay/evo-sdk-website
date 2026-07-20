@@ -105,14 +105,26 @@ def main():
     # Guard against pre-v4 privateKeyWif-in-call examples (issue #63).
     if not errors:
         classic_patterns = [
-            (r'documents\.create\(\{\s*contractId,\s*type:\s*documentType,\s*ownerId,\s*data,\s*entropyHex,\s*privateKeyWif\s*\}',
-             'pre-v4 documents.create(... privateKeyWif) example'),
-            (r'identities\.topUp\(\{\s*identityId,\s*assetLockProof,\s*assetLockPrivateKeyWif\s*\}',
-             'pre-v4 identities.topUp(... assetLockPrivateKeyWif) example'),
-            (r'identities\.create\(\{\s*assetLockProof,\s*assetLockPrivateKeyWif,\s*publicKeys\s*\}',
-             'pre-v4 identities.create(... assetLockPrivateKeyWif, publicKeys) example'),
-            (r'sdk\.<namespace>\.<transition>\(\{\s*\.\.\.params,\s*privateKeyWif\s*\}',
-             'pre-v4 state-transition pattern with privateKeyWif in call'),
+            (
+                r'documents\.create\(\{\s*contractId,\s*type:\s*documentType,\s*ownerId,\s*data,\s*entropyHex,\s*privateKeyWif\s*\}',
+                'pre-v4 documents.create(... privateKeyWif) example',
+            ),
+            (
+                r'identities\.topUp\(\{\s*identityId,\s*assetLockProof,\s*assetLockPrivateKeyWif\s*\}',
+                'pre-v4 identities.topUp(... assetLockPrivateKeyWif) example',
+            ),
+            (
+                r'identities\.create\(\{\s*assetLockProof,\s*assetLockPrivateKeyWif,\s*publicKeys\s*\}',
+                'pre-v4 identities.create(... assetLockPrivateKeyWif, publicKeys) example',
+            ),
+            (
+                r'sdk\.<namespace>\.<transition>\(\{\s*\.\.\.params,\s*privateKeyWif\s*\}',
+                'pre-v4 state-transition pattern with privateKeyWif in call',
+            ),
+            (
+                r'\bprivateKeyWif\s*:',
+                'privateKeyWif object property; use IdentitySigner.addKeyFromWif / PrivateKey.fromWIF',
+            ),
         ]
         for label, file_path in (('docs.html', docs_file), ('AI_REFERENCE.md', ai_file)):
             if not file_path.exists():
@@ -121,12 +133,6 @@ def main():
             for pattern, description in classic_patterns:
                 if re.search(pattern, content):
                     errors.append(f'ERROR: {label} still contains {description}')
-            # Broad guard: privateKeyWif used as an object property in generated examples.
-            if re.search(r'\bprivateKeyWif\s*:', content):
-                errors.append(
-                    f'ERROR: {label} still documents privateKeyWif as an object property; '
-                    'v4 examples must use IdentitySigner.addKeyFromWif / PrivateKey.fromWIF instead'
-                )
             if 'IdentitySigner' not in content:
                 errors.append(f'ERROR: {label} is missing IdentitySigner usage expected for v4 write examples')
 
