@@ -613,6 +613,16 @@ def evo_example_for_transition(key: str):
         comment='Master key is required to add/disable identity keys.',
         comment_before_add_key=True,
     )
+    # Credit transfer requires a TRANSFER key; withdrawal allows TRANSFER or OWNER.
+    # Examples omit signingKey so the SDK auto-selects a matching purpose key.
+    signer_transfer = identity_signer_setup(
+        comment='Add the private key for a TRANSFER purpose identity key.',
+        comment_before_add_key=True,
+    )
+    signer_transfer_or_owner = identity_signer_setup(
+        comment='Add the private key for a TRANSFER or OWNER purpose identity key.',
+        comment_before_add_key=True,
+    )
     signer_voting = identity_signer_setup(EXAMPLE_VOTING_KEY_WIF)
     signer_and_doc_key = signer_and_auth_key_setup('ownerId')
     signer_and_buyer_key = signer_and_auth_key_setup('buyerId')
@@ -687,18 +697,15 @@ def evo_example_for_transition(key: str):
 
             const identity = await sdk.identities.fetch('{identity}');
             """,
-            signer_only,
+            signer_transfer,
             f"""
-            // Optional: pass signingKey when you need a specific transfer/auth key.
-            const signingKey = identity.getPublicKeyById(3) // TRANSFER key when present
-              || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
-
+            // Omit signingKey so the SDK auto-selects an available TRANSFER key.
+            // Supplying a non-TRANSFER key (for example AUTHENTICATION) is invalid.
             await sdk.identities.creditTransfer({{
               identity,
               recipientId: '{recipient}',
               amount: 1000000n,
               signer,
-              signingKey,
             }});
             """,
         ),
@@ -708,18 +715,16 @@ def evo_example_for_transition(key: str):
 
             const identity = await sdk.identities.fetch('{identity}');
             """,
-            signer_only,
+            signer_transfer_or_owner,
             """
-            const signingKey = identity.getPublicKeyById(3)
-              || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
-
+            // Omit signingKey so the SDK auto-selects a matching TRANSFER or OWNER key.
+            // Supplying a non-matching key (for example AUTHENTICATION) is invalid.
             const remainingBalance = await sdk.identities.creditWithdrawal({
               identity,
               amount: 1000000n,
               toAddress: 'yT8DDY5NkX4Zt44Fy8QjmCekheJQH4EMkv',
               coreFeePerByte: 1,
               signer,
-              signingKey,
             });
             """,
         ),

@@ -1543,18 +1543,16 @@ import { IdentitySigner } from '@dashevo/evo-sdk';
 const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 
 const signer = new IdentitySigner();
+// Add the private key for a TRANSFER purpose identity key.
 signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
 
-// Optional: pass signingKey when you need a specific transfer/auth key.
-const signingKey = identity.getPublicKeyById(3) // TRANSFER key when present
-  || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
-
+// Omit signingKey so the SDK auto-selects an available TRANSFER key.
+// Supplying a non-TRANSFER key (for example AUTHENTICATION) is invalid.
 await sdk.identities.creditTransfer({
   identity,
   recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
   amount: 1000000n,
   signer,
-  signingKey,
 });
 ```
 
@@ -1579,18 +1577,17 @@ import { IdentitySigner } from '@dashevo/evo-sdk';
 const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
 
 const signer = new IdentitySigner();
+// Add the private key for a TRANSFER or OWNER purpose identity key.
 signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
 
-const signingKey = identity.getPublicKeyById(3)
-  || identity.publicKeys.find(k => k.purpose === 'AUTHENTICATION');
-
+// Omit signingKey so the SDK auto-selects a matching TRANSFER or OWNER key.
+// Supplying a non-matching key (for example AUTHENTICATION) is invalid.
 const remainingBalance = await sdk.identities.creditWithdrawal({
   identity,
   amount: 1000000n,
   toAddress: 'yT8DDY5NkX4Zt44Fy8QjmCekheJQH4EMkv',
   coreFeePerByte: 1,
   signer,
-  signingKey,
 });
 ```
 
