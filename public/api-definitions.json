@@ -2527,24 +2527,24 @@
           "sdk_params": [
             {
               "name": "inputs",
-              "type": "array",
+              "type": "PlatformAddressInput[]",
               "label": "Inputs",
               "required": true,
-              "description": "Array of {address, nonce, amount (credits)} objects for sender addresses"
+              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
             },
             {
               "name": "outputs",
-              "type": "array",
+              "type": "PlatformAddressOutput[]",
               "label": "Outputs",
               "required": true,
-              "description": "Array of {address, amount (credits)} objects for recipient addresses"
+              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
             },
             {
               "name": "signer",
-              "type": "object",
+              "type": "PlatformAddressSigner",
               "label": "Signer",
               "required": true,
-              "description": "PlatformAddressSigner instance"
+              "description": "PlatformAddressSigner containing private keys for all input addresses."
             }
           ],
           "sdk_method": "addresses.transfer"
@@ -2592,10 +2592,10 @@
             },
             {
               "name": "inputs",
-              "type": "array",
+              "type": "PlatformAddressInput[]",
               "label": "Inputs",
               "required": true,
-              "description": "Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects"
+              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
             },
             {
               "name": "signer",
@@ -2650,10 +2650,10 @@
           "sdk_params": [
             {
               "name": "inputs",
-              "type": "array",
+              "type": "PlatformAddressInput[]",
               "label": "Inputs",
               "required": true,
-              "description": "Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects"
+              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
             },
             {
               "name": "coreFeePerByte",
@@ -2664,10 +2664,10 @@
             },
             {
               "name": "pooling",
-              "type": "Pooling",
+              "type": "PoolingWasm",
               "label": "Pooling",
               "required": true,
-              "description": "Pooling strategy (PoolingWasm.Never / IfAvailable / Standard)"
+              "description": "Pooling strategy (PoolingWasm.Never / IfAvailable / Standard)."
             },
             {
               "name": "outputScript",
@@ -2715,10 +2715,10 @@
             },
             {
               "name": "outputs",
-              "type": "array",
+              "type": "PlatformAddressOutput[]",
               "label": "Outputs",
               "required": true,
-              "description": "Array of PlatformAddressOutput (or {address, amount (credits)}) objects for recipient addresses"
+              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
             },
             {
               "name": "signer",
@@ -2766,10 +2766,10 @@
             },
             {
               "name": "outputs",
-              "type": "array",
+              "type": "PlatformAddressOutput[]",
               "label": "Outputs",
               "required": true,
-              "description": "Array of PlatformAddressOutput (or {address, amount (credits)}) objects"
+              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
             },
             {
               "name": "signer",
@@ -2817,31 +2817,31 @@
           "sdk_params": [
             {
               "name": "identity",
-              "type": "object",
+              "type": "Identity",
               "label": "Identity",
               "required": true,
-              "description": "Identity object with public keys"
+              "description": "Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation)."
             },
             {
               "name": "inputs",
-              "type": "array",
+              "type": "PlatformAddressInput[]",
               "label": "Inputs",
               "required": true,
-              "description": "Array of {address, nonce, amount (credits)} objects"
+              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
             },
             {
               "name": "identitySigner",
-              "type": "object",
+              "type": "IdentitySigner",
               "label": "Identity Signer",
               "required": true,
-              "description": "IdentitySigner for signing identity keys"
+              "description": "IdentitySigner holding private keys that prove ownership of the identity public keys being registered."
             },
             {
               "name": "addressSigner",
-              "type": "object",
+              "type": "PlatformAddressSigner",
               "label": "Address Signer",
               "required": true,
-              "description": "PlatformAddressSigner instance"
+              "description": "PlatformAddressSigner containing private keys for all input addresses."
             }
           ],
           "sdk_method": "addresses.createIdentity"
