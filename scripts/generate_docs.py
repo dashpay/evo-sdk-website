@@ -601,6 +601,7 @@ def evo_example_for_transition(key: str):
     """
     identity = TESTNET_TEST_DATA['identity_id']
     contract = TESTNET_TEST_DATA['data_contract_id']
+    token_contract = TESTNET_TEST_DATA['token_contract_id']
     document_id = TESTNET_TEST_DATA['document_id']
     document_type = TESTNET_TEST_DATA['document_type']
     pro_tx = TESTNET_TEST_DATA['pro_tx_hash']
@@ -928,7 +929,7 @@ def evo_example_for_transition(key: str):
             signer_and_identity_key,
             f"""
             const result = await sdk.tokens.mint({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               amount: 100n,
               identityId,
@@ -948,7 +949,7 @@ def evo_example_for_transition(key: str):
             signer_and_identity_key,
             f"""
             const result = await sdk.tokens.burn({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               amount: 10n,
               identityId,
@@ -967,7 +968,7 @@ def evo_example_for_transition(key: str):
             signer_and_sender_key,
             f"""
             const result = await sdk.tokens.transfer({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               amount: 5n,
               senderId,
@@ -987,7 +988,7 @@ def evo_example_for_transition(key: str):
             signer_and_authority_key,
             f"""
             await sdk.tokens.freeze({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               authorityId,
               frozenIdentityId: '{recipient}',
@@ -1006,7 +1007,7 @@ def evo_example_for_transition(key: str):
             signer_and_authority_key,
             f"""
             await sdk.tokens.unfreeze({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               authorityId,
               frozenIdentityId: '{recipient}',
@@ -1025,7 +1026,7 @@ def evo_example_for_transition(key: str):
             signer_and_authority_key,
             f"""
             await sdk.tokens.destroyFrozen({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               authorityId,
               frozenIdentityId: '{recipient}',
@@ -1044,7 +1045,7 @@ def evo_example_for_transition(key: str):
             signer_and_authority_key,
             f"""
             await sdk.tokens.setPrice({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               authorityId,
               price: 1000n, // or null to clear
@@ -1063,7 +1064,7 @@ def evo_example_for_transition(key: str):
             signer_and_auth_key_setup('buyerId', compact=True, blank_before_keys=False),
             f"""
             const result = await sdk.tokens.directPurchase({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               buyerId,
               amount: 10n,
@@ -1082,7 +1083,7 @@ def evo_example_for_transition(key: str):
             signer_and_identity_key,
             f"""
             const result = await sdk.tokens.claim({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               identityId,
               distributionType: 'perpetual', // or 'preProgrammed'
@@ -1101,7 +1102,7 @@ def evo_example_for_transition(key: str):
             signer_and_authority_key,
             f"""
             await sdk.tokens.emergencyAction({{
-              dataContractId: '{contract}',
+              dataContractId: '{token_contract}',
               tokenPosition: 0,
               authorityId,
               action: 'pause', // or 'resume'

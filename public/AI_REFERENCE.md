@@ -2087,7 +2087,7 @@ const identityKey = keys.find(
 );
 
 const result = await sdk.tokens.burn({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   amount: 10n,
   identityId,
@@ -2130,7 +2130,7 @@ const identityKey = keys.find(
 );
 
 const result = await sdk.tokens.mint({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   amount: 100n,
   identityId,
@@ -2173,7 +2173,7 @@ const identityKey = keys.find(
 );
 
 const result = await sdk.tokens.claim({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   identityId,
   distributionType: 'perpetual', // or 'preProgrammed'
@@ -2218,7 +2218,7 @@ const identityKey = keys.find(
 );
 
 await sdk.tokens.setPrice({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   authorityId,
   price: 1000n, // or null to clear
@@ -2259,7 +2259,7 @@ const identityKey = keys.find(
 );
 
 const result = await sdk.tokens.directPurchase({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   buyerId,
   amount: 10n,
@@ -2301,7 +2301,7 @@ const identityKey = keys.find(
 );
 
 await sdk.tokens.emergencyAction({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   authorityId,
   action: 'pause', // or 'resume'
@@ -2344,7 +2344,7 @@ const identityKey = keys.find(
 );
 
 const result = await sdk.tokens.transfer({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   amount: 5n,
   senderId,
@@ -2386,7 +2386,7 @@ const identityKey = keys.find(
 );
 
 await sdk.tokens.freeze({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   authorityId,
   frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
@@ -2427,7 +2427,7 @@ const identityKey = keys.find(
 );
 
 await sdk.tokens.unfreeze({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   authorityId,
   frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
@@ -2468,7 +2468,7 @@ const identityKey = keys.find(
 );
 
 await sdk.tokens.destroyFrozen({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
   tokenPosition: 0,
   authorityId,
   frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',

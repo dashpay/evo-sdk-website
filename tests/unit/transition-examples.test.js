@@ -16,6 +16,20 @@ const TRANSITION_ENTRIES = Object.values(apiDefinitions.transitions).flatMap((ca
 );
 const TRANSITION_KEYS = TRANSITION_ENTRIES.map(([key]) => key);
 const TRANSITION_BY_KEY = Object.fromEntries(TRANSITION_ENTRIES);
+const TOKEN_TRANSITION_KEYS = [
+  'tokenMint',
+  'tokenBurn',
+  'tokenTransfer',
+  'tokenFreeze',
+  'tokenUnfreeze',
+  'tokenDestroyFrozen',
+  'tokenSetPriceForDirectPurchase',
+  'tokenDirectPurchase',
+  'tokenClaim',
+  'tokenEmergencyAction',
+];
+const DPNS_CONTRACT_ID = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
+const TOKEN_CONTRACT_ID = 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A';
 
 const METHOD_TO_OPTIONS = {
   'identities.create': 'IdentityCreateOptions',
@@ -312,6 +326,14 @@ describe('v4 state transition documentation examples', () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+
+  it('uses the token contract only for token transition examples', () => {
+    for (const key of TOKEN_TRANSITION_KEYS) {
+      expect(generatedExamples[key], key).toContain(`dataContractId: '${TOKEN_CONTRACT_ID}'`);
+      expect(generatedExamples[key], key).not.toContain(`dataContractId: '${DPNS_CONTRACT_ID}'`);
+    }
+    expect(generatedExamples.documentCreate).toContain(`dataContractId: '${DPNS_CONTRACT_ID}'`);
   });
 
   it('embeds v4 document create / identity top-up examples in generated docs', () => {
