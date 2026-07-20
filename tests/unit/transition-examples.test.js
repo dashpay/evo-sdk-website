@@ -350,6 +350,11 @@ describe('v4 state transition documentation examples', () => {
     expect(example).toMatch(/CoreScript\.fromP2PKH/);
     expect(example).toMatch(/PoolingWasm\.Standard/);
     expect(example).not.toMatch(/CoreScript\.newP2PKH/);
+    expect(example).not.toMatch(/new Uint8Array\(20\)/);
+    expect(example).toMatch(/const corePubkeyHashHex = 'replace-with-40-hex-character-core-pubkey-hash'/);
+    expect(example).toMatch(/\^\[0-9a-fA-F\]\{40\}\$/);
+    expect(example).toMatch(/Uint8Array\.from\(/);
+    expect(example).toMatch(/CoreScript\.fromP2PKH\(corePubkeyHash\)/);
     expect(example).not.toMatch(/pooling:\s*undefined/);
     expect(example).not.toMatch(/outputScript:\s*(?:\/\*[^*]*\*\/\s*)?undefined/);
 

@@ -2697,8 +2697,15 @@ const signer = new PlatformAddressSigner();
 const platformAddr = signer.addKey(privateKey);
 const input = new PlatformAddressInput(platformAddr, 0, 100000n);
 
-// 20-byte pubkey hash for the Core L1 P2PKH destination.
-const corePubkeyHash = new Uint8Array(20);
+// Caller-supplied 20-byte public-key hash for the spendable Core L1 destination.
+const corePubkeyHashHex = 'replace-with-40-hex-character-core-pubkey-hash';
+if (!/^[0-9a-fA-F]{40}$/.test(corePubkeyHashHex)) {
+  throw new Error('Set corePubkeyHashHex to the 20-byte hash from your Core P2PKH address');
+}
+const corePubkeyHash = Uint8Array.from(
+  corePubkeyHashHex.match(/../g),
+  byte => Number.parseInt(byte, 16),
+);
 const outputScript = CoreScript.fromP2PKH(corePubkeyHash);
 
 const result = await sdk.addresses.withdraw({
