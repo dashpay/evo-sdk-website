@@ -2584,25 +2584,25 @@
           ],
           "sdk_params": [
             {
-              "name": "identityId",
-              "type": "string",
-              "label": "Identity ID",
+              "name": "identity",
+              "type": "Identity",
+              "label": "Identity",
               "required": true,
-              "description": "Base58 identity ID to top up"
+              "description": "Fetched Identity object to top up (sdk.identities.fetch)."
             },
             {
               "name": "inputs",
               "type": "array",
               "label": "Inputs",
               "required": true,
-              "description": "Array of {address, nonce, amount (credits)} objects"
+              "description": "Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects"
             },
             {
               "name": "signer",
-              "type": "object",
+              "type": "PlatformAddressSigner",
               "label": "Signer",
               "required": true,
-              "description": "PlatformAddressSigner instance"
+              "description": "PlatformAddressSigner containing keys for the input addresses"
             }
           ],
           "sdk_method": "addresses.topUpIdentity"
@@ -2643,7 +2643,7 @@
               "name": "coreFeePerByte",
               "type": "number",
               "label": "Core Fee Per Byte",
-              "required": false,
+              "required": true,
               "placeholder": "1"
             }
           ],
@@ -2653,35 +2653,35 @@
               "type": "array",
               "label": "Inputs",
               "required": true,
-              "description": "Array of {address, nonce, amount (credits)} objects"
+              "description": "Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects"
             },
             {
               "name": "coreFeePerByte",
               "type": "number",
               "label": "Core Fee Per Byte",
-              "required": false,
-              "description": "Fee per byte for Core transaction"
+              "required": true,
+              "description": "Core (L1) mining fee per byte for the withdrawal transaction"
             },
             {
               "name": "pooling",
-              "type": "string",
+              "type": "Pooling",
               "label": "Pooling",
-              "required": false,
-              "description": "Pooling strategy"
+              "required": true,
+              "description": "Pooling strategy (PoolingWasm.Never / IfAvailable / Standard)"
             },
             {
               "name": "outputScript",
-              "type": "string",
+              "type": "CoreScript",
               "label": "Output Script",
               "required": true,
-              "description": "Dash Core output script"
+              "description": "Core L1 destination script (CoreScript.fromP2PKH / fromP2SH)"
             },
             {
               "name": "signer",
-              "type": "object",
+              "type": "PlatformAddressSigner",
               "label": "Signer",
               "required": true,
-              "description": "PlatformAddressSigner instance"
+              "description": "PlatformAddressSigner containing keys for the input addresses"
             }
           ],
           "sdk_method": "addresses.withdraw"
@@ -2707,25 +2707,25 @@
           ],
           "sdk_params": [
             {
-              "name": "identityId",
-              "type": "string",
-              "label": "Identity ID",
+              "name": "identity",
+              "type": "Identity",
+              "label": "Identity",
               "required": true,
-              "description": "Base58 identity ID to transfer from"
+              "description": "Fetched Identity object to transfer from (sdk.identities.fetch)."
             },
             {
               "name": "outputs",
               "type": "array",
               "label": "Outputs",
               "required": true,
-              "description": "Array of {address, amount (credits)} objects for recipient addresses"
+              "description": "Array of PlatformAddressOutput (or {address, amount (credits)}) objects for recipient addresses"
             },
             {
               "name": "signer",
-              "type": "object",
+              "type": "IdentitySigner",
               "label": "Signer",
               "required": true,
-              "description": "IdentitySigner instance"
+              "description": "IdentitySigner with the identity transfer key"
             }
           ],
           "sdk_method": "addresses.transferFromIdentity"
@@ -2752,31 +2752,31 @@
           "sdk_params": [
             {
               "name": "assetLockProof",
-              "type": "string",
+              "type": "AssetLockProof",
               "label": "Asset Lock Proof",
               "required": true,
-              "description": "Hex-encoded asset lock proof"
+              "description": "AssetLockProof from Core (AssetLockProof.fromHex / createInstantAssetLockProof / createChainAssetLockProof)."
             },
             {
               "name": "assetLockPrivateKey",
-              "type": "string",
+              "type": "PrivateKey",
               "label": "Asset Lock Private Key",
               "required": true,
-              "description": "WIF private key for asset lock"
+              "description": "PrivateKey controlling the asset-lock output (PrivateKey.fromWIF)."
             },
             {
               "name": "outputs",
               "type": "array",
               "label": "Outputs",
               "required": true,
-              "description": "Array of {address, amount (credits)} objects"
+              "description": "Array of PlatformAddressOutput (or {address, amount (credits)}) objects"
             },
             {
               "name": "signer",
-              "type": "object",
+              "type": "PlatformAddressSigner",
               "label": "Signer",
-              "required": false,
-              "description": "Optional PlatformAddressSigner instance"
+              "required": true,
+              "description": "PlatformAddressSigner containing keys for the funded output addresses"
             }
           ],
           "sdk_method": "addresses.fundFromAssetLock"
