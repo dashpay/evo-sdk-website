@@ -2074,34 +2074,54 @@ def generate_docs_html(query_defs: dict, transition_defs: dict, type_metadata: d
 
 
 def format_ai_example_block(code: str | None, item_key: str) -> str:
+    """Format a snippet for AI_REFERENCE.md code fences.
+
+    Query examples are often a single expression that spans multiple lines and
+    begin with `return await ...`. Those must become valid top-level JS
+    (`const result = await ...`). Multi-statement transition examples already
+    include imports/setup and a final call — leave them intact.
+    """
     processed = normalize_example_lines(code)
     if not processed:
         return f"// Example currently unavailable for `{item_key}`"
 
-    # Multi-line examples already declare imports/setup and a final call — leave intact.
     indexes = code_line_indexes(processed)
-    if len(indexes) != 1:
+    if not indexes:
         return '\n'.join(processed).rstrip()
 
-    first_index = indexes[0]
-    first_line = processed[first_index]
-    stripped = first_line.lstrip()
-    indent = first_line[: len(first_line) - len(stripped)]
-    snippet = '\n'.join(processed)
+    def is_setup_line(line: str) -> bool:
+        stripped = line.lstrip()
+        return (
+            stripped.startswith('import ')
+            or stripped.startswith('const ')
+            or stripped.startswith('let ')
+            or stripped.startswith('var ')
+            or stripped.startswith('function ')
+            or stripped.startswith('class ')
+            or stripped.startswith('if ')
+            or stripped.startswith('throw ')
+        )
 
-    already_has_declaration = (
-        stripped.startswith('const ')
-        or stripped.startswith('let ')
-        or stripped.startswith('var ')
-        or stripped.startswith('import ')
-        or stripped.startswith('await ')
-        or 'const result' in snippet
-    )
+    # Pure multi-line expressions (no imports/bindings) still need wrapping.
+    has_setup = any(is_setup_line(processed[i]) for i in indexes)
 
-    if not already_has_declaration:
+    if not has_setup:
+        first_index = indexes[0]
+        first_line = processed[first_index]
+        stripped = first_line.lstrip()
+        indent = first_line[: len(first_line) - len(stripped)]
         if stripped.startswith('return '):
             stripped = stripped[len('return ') :].lstrip()
-        processed[first_index] = f'{indent}const result = {stripped}'
+        if not (
+            stripped.startswith('const ')
+            or stripped.startswith('let ')
+            or stripped.startswith('var ')
+            or stripped.startswith('await ')
+        ):
+            processed[first_index] = f'{indent}const result = {stripped}'
+        elif stripped.startswith('await '):
+            # Bare top-level await expression without prior setup.
+            processed[first_index] = f'{indent}const result = {stripped}'
 
     joined = '\n'.join(processed).rstrip()
     if joined and not joined.endswith(';'):

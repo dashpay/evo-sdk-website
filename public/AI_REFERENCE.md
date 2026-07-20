@@ -107,12 +107,12 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.identities.getKeys({
+const result = await sdk.identities.getKeys({
     identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
     request: { type: 'all' },
     limit: 10,
     offset: 0
-})
+});
 ```
 
 **Get Contract Keys for Identities** - `identities.contractKeys`
@@ -135,10 +135,10 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.identities.contractKeys({
+const result = await sdk.identities.contractKeys({
     identityIds: ['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'],
     contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec'
-})
+});
 ```
 
 **Get Identity Nonce** - `identities.nonce`
@@ -376,11 +376,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.contracts.getHistory({
+const result = await sdk.contracts.getHistory({
     dataContractId: 'HLY575cNazmc5824FxqaEMEBuzFeE4a98GDRNKbyJqCM',
     limit: 10,
     startAtMs: 0
-})
+});
 ```
 
 **Get Data Contracts** - `contracts.getMany`
@@ -397,10 +397,10 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.contracts.getMany([
+const result = await sdk.contracts.getMany([
     'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A'
-])
+]);
 ```
 
 #### Document Queries
@@ -434,13 +434,13 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.documents.query({
+const result = await sdk.documents.query({
     dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     where: [["normalizedParentDomainName", "==", "dash"]],
     orderBy: [["normalizedLabel", "asc"]],
     limit: 10
-})
+});
 ```
 
 **Get Document** - `documents.get`
@@ -463,11 +463,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.documents.get(
+const result = await sdk.documents.get(
     'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     'domain',
     '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r'
-)
+);
 ```
 
 #### DPNS Queries
@@ -634,14 +634,14 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.group.contestedResources({
+const result = await sdk.group.contestedResources({
     dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
     startAtValue: null,
     limit: 10,
     orderAscending: true
-})
+});
 ```
 
 **Get Contested Resource Vote State** - `voting.contestedResourceVoteState`
@@ -679,7 +679,7 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.voting.contestedResourceVoteState({
+const result = await sdk.voting.contestedResourceVoteState({
     dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
@@ -687,7 +687,7 @@ return await sdk.voting.contestedResourceVoteState({
     resultType: 'documents',
     limit: 10,
     orderAscending: true
-})
+});
 ```
 
 **Get Voters for Identity** - `group.contestedResourceVotersForIdentity`
@@ -723,7 +723,7 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.group.contestedResourceVotersForIdentity({
+const result = await sdk.group.contestedResourceVotersForIdentity({
     dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
     documentTypeName: 'domain',
     indexName: 'parentNameAndLabel',
@@ -731,7 +731,7 @@ return await sdk.group.contestedResourceVotersForIdentity({
     contestantId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
     limit: 10,
     orderAscending: true
-})
+});
 ```
 
 **Get Identity Votes** - `voting.contestedResourceIdentityVotes`
@@ -756,11 +756,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.voting.contestedResourceIdentityVotes({
+const result = await sdk.voting.contestedResourceIdentityVotes({
     identityId: '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
     limit: 10,
     orderAscending: true
-})
+});
 ```
 
 **Get Vote Polls by End Date** - `voting.votePollsByEndDate`
@@ -788,12 +788,12 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.voting.votePollsByEndDate({
+const result = await sdk.voting.votePollsByEndDate({
     startTimeMs: null,
     endTimeMs: null,
     limit: 10,
     orderAscending: true,
-})
+});
 ```
 
 #### Protocol & Version
@@ -851,11 +851,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.epoch.epochsInfo({
+const result = await sdk.epoch.epochsInfo({
     startEpoch: 8635,
     count: 5,
     ascending: true
-})
+});
 ```
 
 **Get Current Epoch** - `epoch.current`
@@ -890,11 +890,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.epoch.finalizedInfos({
+const result = await sdk.epoch.finalizedInfos({
     startEpoch: 8635,
     count: 5,
     ascending: true
-})
+});
 ```
 
 **Get Epoch Blocks by Evonode IDs** - `epoch.evonodesProposedBlocksByIds`
@@ -912,10 +912,10 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.epoch.evonodesProposedBlocksByIds(
+const result = await sdk.epoch.evonodesProposedBlocksByIds(
     8635,
     ['143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113']
-)
+);
 ```
 
 **Get Epoch Blocks by Range** - `epoch.evonodesProposedBlocksByRange`
@@ -937,11 +937,11 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.epoch.evonodesProposedBlocksByRange({
+const result = await sdk.epoch.evonodesProposedBlocksByRange({
     epoch: 8635,
     limit: 5,
     orderAscending: true
-})
+});
 ```
 
 #### Token Queries
@@ -979,10 +979,10 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.tokens.statuses([
+const result = await sdk.tokens.statuses([
     'Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv',
     'H7FRpZJqZK933r9CzZMsCuf1BM34NT5P2wSJyjDkprqy'
-])
+]);
 ```
 
 **Get Direct Purchase Prices** - `tokens.directPurchasePrices`
@@ -999,9 +999,9 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.tokens.directPurchasePrices([
+const result = await sdk.tokens.directPurchasePrices([
     'Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv'
-])
+]);
 ```
 
 **Get Token Contract Info** - `tokens.contractInfo`
@@ -1038,10 +1038,10 @@ Returns:
 
 Example:
 ```javascript
-return await sdk.tokens.perpetualDistributionLastClaim(
+const result = await sdk.tokens.perpetualDistributionLastClaim(
     '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk',
     'Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv'
-)
+);
 ```
 
 **Get Token Total Supply** - `tokens.totalSupply`
@@ -2583,14 +2583,14 @@ await sdk.voting.masternodeVote({
 *Transfer credits between Platform addresses*
 
 Parameters:
-- `Inputs` (array, required)
-  - Array of {address, nonce, amount (credits)} objects for sender addresses
+- `Inputs` (PlatformAddressInput[], required)
+  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
 
-- `Outputs` (array, required)
-  - Array of {address, amount (credits)} objects for recipient addresses
+- `Outputs` (PlatformAddressOutput[], required)
+  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
 
-- `Signer` (object, required)
-  - PlatformAddressSigner instance
+- `Signer` (PlatformAddressSigner, required)
+  - PlatformAddressSigner containing private keys for all input addresses.
 
 Returns:
 
@@ -2630,8 +2630,8 @@ Parameters:
 - `Identity` (Identity, required)
   - Fetched Identity object to top up (sdk.identities.fetch).
 
-- `Inputs` (array, required)
-  - Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects
+- `Inputs` (PlatformAddressInput[], required)
+  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
 
 - `Signer` (PlatformAddressSigner, required)
   - PlatformAddressSigner containing keys for the input addresses
@@ -2662,14 +2662,14 @@ const result = await sdk.addresses.topUpIdentity({
 *Withdraw Platform address credits to Dash Core*
 
 Parameters:
-- `Inputs` (array, required)
-  - Array of PlatformAddressInput (or {address, nonce, amount (credits)}) objects
+- `Inputs` (PlatformAddressInput[], required)
+  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
 
 - `Core Fee Per Byte` (number, required)
   - Core (L1) mining fee per byte for the withdrawal transaction
 
-- `Pooling` (Pooling, required)
-  - Pooling strategy (PoolingWasm.Never / IfAvailable / Standard)
+- `Pooling` (PoolingWasm, required)
+  - Pooling strategy (PoolingWasm.Never / IfAvailable / Standard).
 
 - `Output Script` (CoreScript, required)
   - Core L1 destination script (CoreScript.fromP2PKH / fromP2SH)
@@ -2724,8 +2724,8 @@ Parameters:
 - `Identity` (Identity, required)
   - Fetched Identity object to transfer from (sdk.identities.fetch).
 
-- `Outputs` (array, required)
-  - Array of PlatformAddressOutput (or {address, amount (credits)}) objects for recipient addresses
+- `Outputs` (PlatformAddressOutput[], required)
+  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
 
 - `Signer` (IdentitySigner, required)
   - IdentitySigner with the identity transfer key
@@ -2763,8 +2763,8 @@ Parameters:
 - `Asset Lock Private Key` (PrivateKey, required)
   - PrivateKey controlling the asset-lock output (PrivateKey.fromWIF).
 
-- `Outputs` (array, required)
-  - Array of PlatformAddressOutput (or {address, amount (credits)}) objects
+- `Outputs` (PlatformAddressOutput[], required)
+  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
 
 - `Signer` (PlatformAddressSigner, required)
   - PlatformAddressSigner containing keys for the funded output addresses
@@ -2804,17 +2804,17 @@ const result = await sdk.addresses.fundFromAssetLock({
 *Create a new identity funded from Platform addresses*
 
 Parameters:
-- `Identity` (object, required)
-  - Identity object with public keys
+- `Identity` (Identity, required)
+  - Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation).
 
-- `Inputs` (array, required)
-  - Array of {address, nonce, amount (credits)} objects
+- `Inputs` (PlatformAddressInput[], required)
+  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
 
-- `Identity Signer` (object, required)
-  - IdentitySigner for signing identity keys
+- `Identity Signer` (IdentitySigner, required)
+  - IdentitySigner holding private keys that prove ownership of the identity public keys being registered.
 
-- `Address Signer` (object, required)
-  - PlatformAddressSigner instance
+- `Address Signer` (PlatformAddressSigner, required)
+  - PlatformAddressSigner containing private keys for all input addresses.
 
 Returns:
 
