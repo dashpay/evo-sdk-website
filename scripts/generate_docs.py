@@ -2159,11 +2159,6 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '### Available State Transitions',
     ])
 
-    sdk_param_overrides = {
-        'identityCreate': {'assetLockProofPrivateKey': 'assetLockPrivateKeyWif'},
-        'identityTopUp': {'assetLockProofPrivateKey': 'assetLockPrivateKeyWif'},
-    }
-
     def append_transition_params(
         item_key: str,
         target: List[str],
@@ -2178,9 +2173,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         for param in params:
             name = param.get('name', 'unknown')
             label = param.get('label')
-            override_name = sdk_param_overrides.get(item_key, {}).get(name)
-            effective_name = override_name or name
-            display_name = label if label and label != name else effective_name
+            display_name = label if label and label != name else name
             param_type = param.get('type', 'text')
             required = 'required' if param.get('required') else 'optional'
             target.append(f"- `{display_name}` ({param_type}, {required})")
