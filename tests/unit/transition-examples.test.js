@@ -286,6 +286,47 @@ describe('v4 state transition documentation examples', () => {
     expect(generatedExamples.dpnsRegister).toMatch(/IdentitySigner/);
   });
 
+  it('selects credit transfer/withdrawal keys by purpose, never AUTHENTICATION fallback', () => {
+    const transfer = generatedExamples.identityCreditTransfer;
+    const withdrawal = generatedExamples.identityCreditWithdrawal;
+
+    // Credit transfer requires TRANSFER; withdrawal allows TRANSFER or OWNER.
+    // Prefer omitting signingKey so the SDK auto-selects a matching purpose key.
+    for (const [key, example] of [
+      ['identityCreditTransfer', transfer],
+      ['identityCreditWithdrawal', withdrawal],
+    ]) {
+      expect(example, key).not.toMatch(/getPublicKeyById\s*\(\s*3\s*\)/);
+      expect(example, key).not.toMatch(/purpose\s*===\s*['"]AUTHENTICATION['"]/);
+      expect(example, key).not.toMatch(/transfer\/auth/i);
+
+      const writeMethod = key === 'identityCreditTransfer'
+        ? 'identities.creditTransfer'
+        : 'identities.creditWithdrawal';
+      const writeCall = extractSdkCallSites(example).find((call) => call.method === writeMethod);
+      expect(writeCall, key).toBeTruthy();
+      const optionKeys = topLevelObjectKeys(writeCall.argsText);
+      expect(optionKeys, `${key} must not pass signingKey`).not.toContain('signingKey');
+      expect(optionKeys, key).toContain('signer');
+    }
+
+    expect(transfer).toMatch(/TRANSFER/);
+    expect(transfer).not.toMatch(/OWNER/);
+    expect(transfer).toMatch(/auto-selects an available TRANSFER key/i);
+
+    expect(withdrawal).toMatch(/TRANSFER/);
+    expect(withdrawal).toMatch(/OWNER/);
+    expect(withdrawal).toMatch(/auto-selects a matching TRANSFER or OWNER key/i);
+
+    // Generated docs must not reintroduce the invalid authentication fallback.
+    expect(docs).not.toMatch(
+      /identity\.getPublicKeyById\(3\)[\s\S]{0,120}purpose === ['"]AUTHENTICATION['"]/,
+    );
+    expect(aiReference).not.toMatch(
+      /identity\.getPublicKeyById\(3\)[\s\S]{0,120}purpose === ['"]AUTHENTICATION['"]/,
+    );
+  });
+
   it('passes only declared option properties on the final sdk write call', () => {
     const failures = [];
     for (const [key, item] of Object.entries(TRANSITION_BY_KEY)) {
