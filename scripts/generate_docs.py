@@ -1118,7 +1118,7 @@ def evo_example_for_transition(key: str):
             const signer = new PlatformAddressSigner();
             const senderAddr = signer.addKey(privateKey); // derives P2PKH platform address
 
-            const input = new PlatformAddressInput(senderAddr, 0n, 100000n);
+            const input = new PlatformAddressInput(senderAddr, 0, 100000n);
             const output = new PlatformAddressOutput(
               /* recipient PlatformAddress or bech32m */ '{platform_address}',
               90000n,
@@ -1137,10 +1137,10 @@ def evo_example_for_transition(key: str):
             const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
             const signer = new PlatformAddressSigner();
             const sourceAddr = signer.addKey(privateKey);
-            const input = new PlatformAddressInput(sourceAddr, 0n, 50000n);
+            const input = new PlatformAddressInput(sourceAddr, 0, 50000n);
 
             const result = await sdk.addresses.topUpIdentity({{
-              identityId: identity.id,
+              identity,
               inputs: [input],
               signer,
             }});
@@ -1151,7 +1151,7 @@ def evo_example_for_transition(key: str):
             const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
             const signer = new PlatformAddressSigner();
             const platformAddr = signer.addKey(privateKey);
-            const input = new PlatformAddressInput(platformAddr, 0n, 100000n);
+            const input = new PlatformAddressInput(platformAddr, 0, 100000n);
 
             // Provide a Core L1 output script (e.g. CoreScript.newP2PKH(...)).
             const result = await sdk.addresses.withdraw({{
@@ -1165,14 +1165,14 @@ def evo_example_for_transition(key: str):
         'addressTransferFromIdentity': example(f"""
             import {{ IdentitySigner, PlatformAddressOutput }} from '@dashevo/evo-sdk';
 
-            const identityId = '{identity}';
             // Uses IdentitySigner (identity transfer key), not PlatformAddressSigner.
+            const identity = await sdk.identities.fetch('{identity}');
             const signer = new IdentitySigner();
             signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
 
             const output = new PlatformAddressOutput('{platform_address}', 100000n);
             const result = await sdk.addresses.transferFromIdentity({{
-              identityId,
+              identity,
               outputs: [output],
               signer,
             }});
@@ -1206,8 +1206,8 @@ def evo_example_for_transition(key: str):
               Identity,
               IdentityPublicKeyInCreation,
               IdentitySigner,
-              Identifier,
               KeyType,
+              PlatformAddressInput,
               PlatformAddressSigner,
               PrivateKey,
               Purpose,
@@ -1217,14 +1217,14 @@ def evo_example_for_transition(key: str):
             const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
             const identityPrivateKey = PrivateKey.fromWIF('cIdentityKeyWif...');
 
-            const identity = new Identity(Identifier.random());
+            const identity = new Identity(/* 32-byte id */ new Uint8Array(32));
             identity.addPublicKey(
               new IdentityPublicKeyInCreation({{
                 keyId: 0,
                 purpose: Purpose.AUTHENTICATION,
                 securityLevel: SecurityLevel.MASTER,
                 keyType: KeyType.ECDSA_SECP256K1,
-                data: identityPrivateKey.getPublicKey().toBuffer(),
+                data: identityPrivateKey.getPublicKey().toBytes(),
               }}).toIdentityPublicKey(),
             );
 
@@ -1232,10 +1232,11 @@ def evo_example_for_transition(key: str):
             const sourceAddr = addressSigner.addKey(addressPrivateKey);
             const identitySigner = new IdentitySigner();
             identitySigner.addKey(identityPrivateKey);
+            const input = new PlatformAddressInput(sourceAddr, 0, 50_000_000_000n);
 
             const result = await sdk.addresses.createIdentity({{
               identity,
-              inputs: [{{ address: sourceAddr, amount: 50_000_000_000n }}],
+              inputs: [input],
               identitySigner,
               addressSigner,
             }});
