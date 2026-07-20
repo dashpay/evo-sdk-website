@@ -1430,26 +1430,25 @@ import {
   SecurityLevel,
 } from '@dashevo/evo-sdk';
 
-// Asset lock from Core (hex) + the private key that controls that output.
+// Asset-lock proof and the separate private key controlling its Core output.
 const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
 
 const assetLockPrivateKey = PrivateKey.fromWIF('cVExampleAssetLockKeyForIdentityFunding');
 
-// Build the identity shell and attach public keys that will be registered.
-const identity = new Identity('random-or-derived-identity-id');
+// Identity key registered on Platform and held by IdentitySigner for key proofs.
+const identityPrivateKey = PrivateKey.fromWIF('L1ExamplePrivateKeyWifGoesHere');
+const identity = new Identity(assetLockProof.createIdentityId());
 const masterKey = new IdentityPublicKeyInCreation({
   keyId: 0,
   purpose: Purpose.AUTHENTICATION,
   securityLevel: SecurityLevel.MASTER,
   keyType: KeyType.ECDSA_SECP256K1,
-  data: Uint8Array.from(atob('A5GzYHPIolbHkFrp5l+s9IvF2lWMuuuSu3oWZB8vWHNJ'), c => c.charCodeAt(0)),
+  data: identityPrivateKey.getPublicKey().toBytes(),
 }).toIdentityPublicKey();
 identity.addPublicKey(masterKey);
 
-// IdentitySigner holds private keys for proving ownership of identity keys.
-// Keep this separate from the asset-lock key.
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKey(identityPrivateKey);
 
 await sdk.identities.create({
   identity,

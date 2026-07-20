@@ -256,7 +256,12 @@ describe('v4 state transition documentation examples', () => {
     expect(generatedExamples.dataContractCreate).toMatch(/new DataContract\s*\(/);
     expect(generatedExamples.identityCreate).toMatch(/AssetLockProof/);
     expect(generatedExamples.identityCreate).toMatch(/assetLockPrivateKey/);
-    expect(generatedExamples.identityCreate).toMatch(/IdentitySigner/);
+    expect(generatedExamples.identityCreate).toMatch(/new Identity\(assetLockProof\.createIdentityId\(\)\)/);
+    expect(generatedExamples.identityCreate).toMatch(
+      /data:\s*identityPrivateKey\.getPublicKey\(\)\.toBytes\(\)/,
+    );
+    expect(generatedExamples.identityCreate).toMatch(/signer\.addKey\(identityPrivateKey\)/);
+    expect(generatedExamples.identityCreate).not.toMatch(/random-or-derived-identity-id|atob\(/);
     expect(generatedExamples.identityTopUp).toMatch(/assetLockPrivateKey/);
     // Top-up is asset-lock only — no IdentitySigner construction/import.
     expect(generatedExamples.identityTopUp).not.toMatch(/new IdentitySigner|import \{[^}]*IdentitySigner/);
