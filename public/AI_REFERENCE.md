@@ -2054,8 +2054,8 @@ const result = await sdk.addresses.transfer({ inputs, outputs, signer });
 *Top up an identity using Platform address credits*
 
 Parameters:
-- `Identity ID` (string, required)
-  - Base58 identity ID to top up
+- `Identity` (object, required)
+  - Identity object to top up
 
 - `Inputs` (array, required)
   - Array of {address, nonce, amount (credits)} objects
@@ -2106,8 +2106,8 @@ const result = await sdk.addresses.withdraw({ inputs, coreFeePerByte, pooling, o
 *Transfer credits from an identity to Platform addresses*
 
 Parameters:
-- `Identity ID` (string, required)
-  - Base58 identity ID to transfer from
+- `Identity` (object, required)
+  - Identity object to transfer from
 
 - `Outputs` (array, required)
   - Array of {address, amount (credits)} objects for recipient addresses

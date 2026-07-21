@@ -13,7 +13,7 @@ describe('generated state transition examples', () => {
   });
 
   it('does not pass WIF strings directly to transition methods', () => {
-    const legacyTransitionCall = /await sdk\.(?:identities|contracts|documents|tokens|dpns|voting|addresses)\.[^(]+\(\{[^}\n]*privateKeyWif/;
+    const legacyTransitionCall = /await sdk\.(?:identities|contracts|documents|tokens|dpns|voting|addresses)\.[^(]+\(\{[^{}]*\b(?:privateKeyWif|assetLockPrivateKeyWif|votingKeyWif)\b/;
 
     expect(aiReference).not.toMatch(legacyTransitionCall);
     expect(docs).not.toMatch(legacyTransitionCall);

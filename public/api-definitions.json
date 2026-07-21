@@ -2567,7 +2567,7 @@
             }
           ],
           "sdk_params": [
-            {"name": "identityId", "type": "string", "label": "Identity ID", "required": true, "description": "Base58 identity ID to top up"},
+            {"name": "identity", "type": "object", "label": "Identity", "required": true, "description": "Identity object to top up"},
             {"name": "inputs", "type": "array", "label": "Inputs", "required": true, "description": "Array of {address, nonce, amount (credits)} objects"},
             {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "PlatformAddressSigner instance"}
           ],
@@ -2642,7 +2642,7 @@
             }
           ],
           "sdk_params": [
-            {"name": "identityId", "type": "string", "label": "Identity ID", "required": true, "description": "Base58 identity ID to transfer from"},
+            {"name": "identity", "type": "object", "label": "Identity", "required": true, "description": "Identity object to transfer from"},
             {"name": "outputs", "type": "array", "label": "Outputs", "required": true, "description": "Array of {address, amount (credits)} objects for recipient addresses"},
             {"name": "signer", "type": "object", "label": "Signer", "required": true, "description": "IdentitySigner instance"}
           ],
