@@ -180,11 +180,13 @@ function validateInputMappings(entry, method) {
 function validateSdkExample(entry, method) {
   if (!entry.sdkExample) return;
   const source = ts.createSourceFile('example.ts', entry.sdkExample, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const expectedMethod = entry.sdkMethod.split('.')[1];
+  const [expectedNamespace, expectedMethod] = entry.sdkMethod.split('.');
   let matchingCalls = 0;
   function visit(node) {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
-      && node.expression.name.text === expectedMethod) {
+      && node.expression.name.text === expectedMethod
+      && ts.isPropertyAccessExpression(node.expression.expression)
+      && node.expression.expression.name.text === expectedNamespace) {
       matchingCalls += 1;
       const argument = node.arguments[0];
       const options = method.parameters[0];

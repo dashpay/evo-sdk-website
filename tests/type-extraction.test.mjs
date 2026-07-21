@@ -118,6 +118,15 @@ test('rejects unknown option keys in curated SDK examples', () => {
   assert.throws(() => extractTypes(fx), /sdk_example uses unknown SDK property missing/);
 });
 
+test('does not count the same method on a different namespace', () => {
+  const fx = fixture({
+    parameters: 'options: wasm.SampleOptions',
+    declarations: 'export interface SampleOptions { value: string; }',
+    input: { sdk_example: 'await sdk.other.sample({ value });' },
+  });
+  assert.throws(() => extractTypes(fx), /sdk_example must call example\.sample exactly once/);
+});
+
 test('fails for conflicting inherited properties', () => {
   const fx = fixture({
     parameters: 'options: wasm.SampleOptions',
