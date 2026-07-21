@@ -65,4 +65,11 @@ describe('generated return type documentation', () => {
     expect(docs).not.toContain('Generate New Seed');
     expect(aiReference).not.toContain('Seed Phrase` (textarea');
   });
+
+  it('keeps generated query examples consistent with async return types and declarations', () => {
+    expect(aiReference).toContain("const result = await sdk.dpns.convertToHomographSafe('ąlice');");
+    expect(aiReference).not.toContain("const result = sdk.dpns.convertToHomographSafe('ąlice');");
+    expect(aiReference).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
+    expect(docs).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
+  });
 });

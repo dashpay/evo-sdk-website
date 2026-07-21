@@ -643,7 +643,7 @@ Returns:
 
 Example:
 ```javascript
-const result = sdk.dpns.convertToHomographSafe('ąlice');
+const result = await sdk.dpns.convertToHomographSafe('ąlice');
 ```
 
 **Validate Username** - `dpns.isValidUsername`
@@ -1059,8 +1059,7 @@ Example:
 ```javascript
 const result = await sdk.epoch.evonodesProposedBlocksByRange({
     epoch: 8635,
-    limit: 5,
-    orderAscending: true
+    limit: 5
 });
 ```
 

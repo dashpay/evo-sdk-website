@@ -281,7 +281,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
             return await sdk.dpns.resolveName('alice.dash')
         """),
         'dpnsConvertToHomographSafe': example("""
-            return sdk.dpns.convertToHomographSafe('ąlice')
+            return await sdk.dpns.convertToHomographSafe('ąlice')
         """),
         'dpnsIsValidUsername': example("""
             return sdk.dpns.isValidUsername('alice')
@@ -368,8 +368,7 @@ def evo_example_for_query(key: str, inputs: List[dict]):
         'getEvonodesProposedEpochBlocksByRange': example(f"""
             return await sdk.epoch.evonodesProposedBlocksByRange({{
                 epoch: {data['epoch']},
-                limit: 5,
-                orderAscending: true
+                limit: 5
             }})
         """),
         'calculateTokenId': example(f"""
