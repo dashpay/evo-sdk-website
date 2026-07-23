@@ -505,6 +505,44 @@ async function executeStateTransitionWithCustomParams(evoSdkPage, parameterInjec
   return result;
 }
 
+async function queryPlatformAddress(evoSdkPage, address) {
+  await evoSdkPage.setupQuery('address', 'getPlatformAddress', { address });
+  const result = await evoSdkPage.executeQueryAndGetResult();
+  expect(result.success).toBe(true);
+  expect(result.hasError).toBe(false);
+  expect(result.result).not.toBe('null');
+  const payload = JSON.parse(result.result);
+  return payload.data ?? payload;
+}
+
+async function queryIdentity(evoSdkPage, identityId) {
+  await evoSdkPage.setupQuery('identity', 'getIdentity', { id: identityId });
+  const result = await evoSdkPage.executeQueryAndGetResult();
+  expect(result.success).toBe(true);
+  expect(result.hasError).toBe(false);
+  expect(result.result).not.toBe('null');
+  const payload = JSON.parse(result.result);
+  return payload.data ?? payload;
+}
+
+function validateFetchedIdentity(identity, expectedIdentityId) {
+  expect(identity).toBeTruthy();
+  expect(typeof identity).toBe('object');
+  expect(identity.id).toBe(expectedIdentityId);
+  expect(identity).toHaveProperty('publicKeys');
+  expect(Array.isArray(identity.publicKeys)).toBe(true);
+  expect(identity.publicKeys.length).toBeGreaterThan(0);
+  expect(identity).toHaveProperty('balance');
+  expect(identity).toHaveProperty('revision');
+}
+
+async function generateTestnetPrivateKeyWif() {
+  const { randomBytes } = require('node:crypto');
+  const { ensureInitialized, PrivateKey } = await import('@dashevo/evo-sdk');
+  await ensureInitialized();
+  return PrivateKey.fromBytes(randomBytes(32), 'testnet').toWIF();
+}
+
 // Skip all state transition tests if required environment variables are not set
 const hasRequiredEnvVars = process.env.TEST_PRIVATE_KEY_CONTRACT &&
                            process.env.TEST_PRIVATE_KEY_CONTRACT !== 'PLACEHOLDER_CONTRACT_KEY';
@@ -1270,83 +1308,130 @@ test.describe('Evo SDK State Transition Tests', () => {
     });
   });
 
-  test.describe('Platform Address State Transitions', () => {
-    // Skip: Requires platform address with balance
-    test.skip('should execute address transfer transition', async () => {
-      const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'platformAddress',
-        'addressTransfer',
-        'testnet'
-      );
+  test.describe.serial('Platform Address State Transitions', () => {
+    // Address transitions currently have substantial protocol fees. Seed enough
+    // credit for every later operation while keeping asserted transfer amounts
+    // small and readable.
+    const ADDRESS_SEED_AMOUNT = 100_000_000;
+    const ADDRESS_TRANSFER_AMOUNT = 30_000_000;
+    const IDENTITY_TOP_UP_AMOUNT = 500_000;
+    const ADDRESS_WITHDRAW_AMOUNT = 1_000_000;
+    const IDENTITY_CREATE_AMOUNT = 5_000_000;
+    const ASSET_LOCK_FUND_AMOUNT = 1_000_000;
+    const addressFixturesConfigured = Boolean(
+      process.env.TEST_PLATFORM_ADDRESS_A &&
+      process.env.TEST_PLATFORM_ADDRESS_KEY_A &&
+      process.env.TEST_PLATFORM_ADDRESS_B &&
+      process.env.TEST_PLATFORM_ADDRESS_KEY_B &&
+      process.env.TEST_PRIVATE_KEY_TRANSFER
+    );
+    const identityId = '7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC';
+    const addressA = process.env.TEST_PLATFORM_ADDRESS_A;
+    const addressB = process.env.TEST_PLATFORM_ADDRESS_B;
 
-      validateBasicStateTransitionResult(result);
+    test.beforeAll(() => {
+      if (!addressFixturesConfigured) return;
+      if (addressA === addressB) {
+        throw new Error('TEST_PLATFORM_ADDRESS_A and TEST_PLATFORM_ADDRESS_B must be different');
+      }
+      if (process.env.TEST_PLATFORM_ADDRESS_KEY_A === process.env.TEST_PLATFORM_ADDRESS_KEY_B) {
+        throw new Error('TEST_PLATFORM_ADDRESS_KEY_A and TEST_PLATFORM_ADDRESS_KEY_B must be different');
+      }
     });
 
-    // Skip: Requires platform address with balance
-    test.skip('should execute address top up identity transition', async () => {
+    test('should execute address transfer from identity transition', async () => {
+      test.skip(!addressFixturesConfigured, 'Platform Address keys and TEST_PRIVATE_KEY_TRANSFER are not configured');
       const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'platformAddress',
-        'addressTopUpIdentity',
-        'testnet'
+        evoSdkPage, parameterInjector, 'address', 'addressTransferFromIdentity', 'testnet',
+        { identityId, recipientAddress: addressA, amount: String(ADDRESS_SEED_AMOUNT), privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER }
       );
-
       validateBasicStateTransitionResult(result);
+      const info = await queryPlatformAddress(evoSdkPage, addressA);
+      expect(BigInt(info.balance)).toBeGreaterThan(0n);
     });
 
-    // Skip: Requires platform address with balance
-    test.skip('should execute address withdraw transition', async () => {
+    test('should execute address transfer transition', async () => {
+      test.skip(!addressFixturesConfigured, 'Platform Address keys and TEST_PRIVATE_KEY_TRANSFER are not configured');
+      const beforeA = await queryPlatformAddress(evoSdkPage, addressA);
       const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'platformAddress',
-        'addressWithdraw',
-        'testnet'
+        evoSdkPage, parameterInjector, 'address', 'addressTransfer', 'testnet',
+        { senderAddress: addressA, recipientAddress: addressB, amount: String(ADDRESS_TRANSFER_AMOUNT), privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A }
       );
-
       validateBasicStateTransitionResult(result);
+      const afterA = await queryPlatformAddress(evoSdkPage, addressA);
+      const afterB = await queryPlatformAddress(evoSdkPage, addressB);
+      expect(BigInt(afterA.nonce)).toBeGreaterThan(BigInt(beforeA.nonce));
+      expect(BigInt(afterB.balance)).toBeGreaterThan(0n);
     });
 
-    // Skip: Requires identity with balance
-    test.skip('should execute address transfer from identity transition', async () => {
+    test('should execute address top up identity transition', async () => {
+      test.skip(!addressFixturesConfigured, 'Platform Address keys and TEST_PRIVATE_KEY_TRANSFER are not configured');
+      const beforeB = await queryPlatformAddress(evoSdkPage, addressB);
       const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'identity',
-        'addressTransferFromIdentity',
-        'testnet'
+        evoSdkPage, parameterInjector, 'address', 'addressTopUpIdentity', 'testnet',
+        { identityId, senderAddress: addressB, amount: String(IDENTITY_TOP_UP_AMOUNT), privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_B }
       );
-
       validateBasicStateTransitionResult(result);
+      const afterB = await queryPlatformAddress(evoSdkPage, addressB);
+      expect(BigInt(afterB.nonce)).toBeGreaterThan(BigInt(beforeB.nonce));
     });
 
-    // Skip: Requires asset lock proof
-    test.skip('should execute address fund from asset lock transition', async () => {
+    test('should execute address withdraw transition', async () => {
+      test.skip(!addressFixturesConfigured, 'Platform Address keys and TEST_PRIVATE_KEY_TRANSFER are not configured');
+      const beforeA = await queryPlatformAddress(evoSdkPage, addressA);
       const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'platformAddress',
-        'addressFundFromAssetLock',
-        'testnet'
+        evoSdkPage, parameterInjector, 'address', 'addressWithdraw', 'testnet',
+        {
+          senderAddress: addressA,
+          amount: String(ADDRESS_WITHDRAW_AMOUNT),
+          toAddress: 'yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm',
+          coreFeePerByte: 1,
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A
+        }
       );
-
       validateBasicStateTransitionResult(result);
+      const afterA = await queryPlatformAddress(evoSdkPage, addressA);
+      expect(BigInt(afterA.nonce)).toBeGreaterThan(BigInt(beforeA.nonce));
     });
 
-    // Skip: Requires asset lock proof
-    test.skip('should execute address create identity transition', async () => {
+    test('should execute address create identity transition', async () => {
+      test.skip(!addressFixturesConfigured, 'Platform Address keys and TEST_PRIVATE_KEY_TRANSFER are not configured');
+      const identityPrivateKeyWif = await generateTestnetPrivateKeyWif();
       const result = await executeStateTransitionWithCustomParams(
-        evoSdkPage,
-        parameterInjector,
-        'platformAddress',
-        'addressCreateIdentity',
-        'testnet'
+        evoSdkPage, parameterInjector, 'address', 'addressCreateIdentity', 'testnet',
+        {
+          senderAddress: addressA,
+          amount: String(IDENTITY_CREATE_AMOUNT),
+          identityPrivateKeyWif,
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A
+        }
       );
-
       validateBasicStateTransitionResult(result);
+      const payload = JSON.parse(result.result);
+      expect(payload.identityId).toBeTruthy();
+      const identity = await queryIdentity(evoSdkPage, payload.identityId);
+      validateFetchedIdentity(identity, payload.identityId);
+    });
+
+    test('should execute address fund from asset lock transition', async () => {
+      const assetLockConfigured = addressFixturesConfigured &&
+        process.env.TEST_PLATFORM_ASSET_LOCK_PROOF &&
+        process.env.TEST_PLATFORM_ASSET_LOCK_PRIVATE_KEY;
+      test.skip(!assetLockConfigured, 'Unused asset-lock proof and key are not configured');
+
+      const result = await executeStateTransitionWithCustomParams(
+        evoSdkPage, parameterInjector, 'address', 'addressFundFromAssetLock', 'testnet',
+        {
+          recipientAddress: addressB,
+          addressPrivateKeyWif: process.env.TEST_PLATFORM_ADDRESS_KEY_B,
+          amount: String(ASSET_LOCK_FUND_AMOUNT),
+          assetLockProof: process.env.TEST_PLATFORM_ASSET_LOCK_PROOF,
+          privateKey: process.env.TEST_PLATFORM_ASSET_LOCK_PRIVATE_KEY
+        }
+      );
+      validateBasicStateTransitionResult(result);
+      const info = await queryPlatformAddress(evoSdkPage, addressB);
+      expect(BigInt(info.balance)).toBeGreaterThan(0n);
     });
   });
 

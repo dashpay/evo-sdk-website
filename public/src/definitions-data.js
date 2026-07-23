@@ -264,15 +264,15 @@ export const TRANSITION_AUTH_REQUIREMENTS = {
   // Platform Address transitions
   addressTransfer: {
     identity: { required: false },
-    privateKey: { required: true, targets: ['privateKeyWif'] },
+    privateKey: { required: true, targets: ['addressPrivateKeyWif'] },
   },
   addressTopUpIdentity: {
     identity: { required: false },
-    privateKey: { required: true, targets: ['privateKeyWif'] },
+    privateKey: { required: true, targets: ['addressPrivateKeyWif'] },
   },
   addressWithdraw: {
     identity: { required: false },
-    privateKey: { required: true, targets: ['privateKeyWif'] },
+    privateKey: { required: true, targets: ['addressPrivateKeyWif'] },
   },
   addressTransferFromIdentity: {
     identity: { required: true, targets: ['identityId'] },
@@ -280,11 +280,12 @@ export const TRANSITION_AUTH_REQUIREMENTS = {
   },
   addressFundFromAssetLock: {
     identity: { required: false },
+    assetLockProof: { required: true, target: 'assetLockProof' },
     privateKey: { required: true, targets: ['assetLockPrivateKeyWif'] },
   },
   addressCreateIdentity: {
     identity: { required: false },
-    privateKey: { required: true, targets: ['privateKeyWif'] },
+    privateKey: { required: true, targets: ['addressPrivateKeyWif'] },
   },
 };
 
