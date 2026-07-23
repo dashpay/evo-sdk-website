@@ -575,7 +575,7 @@
               "type": "text",
               "label": "Label",
               "required": true,
-              "placeholder": "ąlice"
+              "placeholder": "\u0105lice"
             }
           ],
           "sdk_method": "dpns.convertToHomographSafe"
@@ -1548,7 +1548,6 @@
               "help": "These keys will be added to your new identity"
             }
           ],
-          "sdk_example": "import { AssetLockProof, IdentitySigner, PrivateKey } from '@dashevo/evo-sdk';\n\n// Build `identity` with its public keys before submitting the transition.\nconst assetLockProof = AssetLockProof.fromHex(assetLockProofHex);\nconst assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);\nconst signer = new IdentitySigner();\nidentityPrivateKeyWifs.forEach((wif) => signer.addKeyFromWif(wif));\n\nconst result = await sdk.identities.create({ identity, assetLockProof, assetLockPrivateKey, signer });",
           "sdk_method": "identities.create"
         },
         "identityTopUp": {
@@ -1564,7 +1563,6 @@
               "help": "The identity ID that will receive the credits from the asset lock proof"
             }
           ],
-          "sdk_example": "import { AssetLockProof, PrivateKey } from '@dashevo/evo-sdk';\n\nconst identity = await sdk.identities.fetch(identityId);\nif (!identity) throw new Error('Identity not found');\nconst assetLockProof = AssetLockProof.fromHex(assetLockProofHex);\nconst assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);\n\nconst result = await sdk.identities.topUp({ identity, assetLockProof, assetLockPrivateKey });",
           "sdk_method": "identities.topUp"
         },
         "identityUpdate": {

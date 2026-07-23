@@ -74,6 +74,107 @@ def example(text: str) -> str:
     return textwrap.dedent(text).strip()
 
 
+EXAMPLE_IDENTITY_SIGNER_WIF = 'L1ExamplePrivateKeyWifGoesHere'
+EXAMPLE_VOTING_KEY_WIF = 'L1ExampleVotingKeyWifGoesHere'
+EXAMPLE_ASSET_LOCK_WIF = 'cVExampleAssetLockKeyForIdentityFunding'
+EXAMPLE_RECIPIENT_ID = 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL'
+AUTH_SECURITY_LEVELS_DOC = "['CRITICAL', 'HIGH', 'MEDIUM']"
+
+
+def identity_signer_setup(
+    wif: str = EXAMPLE_IDENTITY_SIGNER_WIF,
+    *,
+    comment: str | None = None,
+    comment_before_add_key: bool = False,
+    signer_name: str = 'signer',
+) -> str:
+    """Common IdentitySigner construction used by most write examples."""
+    lines: List[str] = []
+    if comment and not comment_before_add_key:
+        for part in comment.split('\n'):
+            lines.append(part if part.startswith('//') else f'// {part}')
+    lines.append(f'const {signer_name} = new IdentitySigner();')
+    if comment and comment_before_add_key:
+        for part in comment.split('\n'):
+            lines.append(part if part.startswith('//') else f'// {part}')
+    lines.append(f"{signer_name}.addKeyFromWif('{wif}');")
+    return '\n'.join(lines)
+
+
+def auth_identity_key_setup(
+    identity_var: str,
+    *,
+    security_levels: str = AUTH_SECURITY_LEVELS_DOC,
+    compact: bool = False,
+    critical_only: bool = False,
+) -> str:
+    """Fetch identity keys and select an AUTHENTICATION key for write options."""
+    if critical_only:
+        predicate = "k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL'"
+    else:
+        predicate = (
+            "k => k.purpose === 'AUTHENTICATION' && "
+            f"{security_levels}.includes(k.securityLevel)"
+        )
+
+    if compact:
+        if identity_var == 'identityId':
+            get_keys = "const keys = await sdk.identities.getKeys({ identityId, request: { type: 'all' } });"
+        else:
+            get_keys = (
+                f'const keys = await sdk.identities.getKeys('
+                f"{{ identityId: {identity_var}, request: {{ type: 'all' }} }});"
+            )
+        return f'{get_keys}\nconst identityKey = keys.find(\n  {predicate},\n);'
+
+    return (
+        'const keys = await sdk.identities.getKeys({\n'
+        f'  identityId: {identity_var},\n'
+        "  request: { type: 'all' },\n"
+        '});\n'
+        'const identityKey = keys.find(\n'
+        f'  {predicate},\n'
+        ');'
+    )
+
+
+def signer_and_auth_key_setup(
+    identity_var: str,
+    *,
+    compact: bool = False,
+    critical_only: bool = False,
+    blank_before_keys: bool = True,
+    wif: str = EXAMPLE_IDENTITY_SIGNER_WIF,
+    comment: str | None = None,
+) -> str:
+    parts = [identity_signer_setup(wif, comment=comment)]
+    if blank_before_keys:
+        parts.append('')
+    parts.append(
+        auth_identity_key_setup(
+            identity_var,
+            compact=compact,
+            critical_only=critical_only,
+        )
+    )
+    return '\n'.join(parts)
+
+
+def normalize_example_lines(code: str | None) -> List[str]:
+    formatted = (code or '').replace('\\n', '\n').strip()
+    if not formatted:
+        return []
+    return [re.sub(r'\bclient\b', 'sdk', line) for line in formatted.split('\n')]
+
+
+def code_line_indexes(lines: Iterable[str]) -> List[int]:
+    return [
+        index
+        for index, line in enumerate(lines)
+        if line.strip() and not line.strip().startswith('//')
+    ]
+
+
 def load_api_definitions(api_definitions_file: Path) -> tuple[dict, dict]:
     with open(api_definitions_file, 'r', encoding='utf-8') as f:
         api_data = json.load(f)
@@ -500,45 +601,791 @@ def evo_example_for_query(key: str, inputs: List[dict]):
     return examples.get(key)
 
 
+def compose_example(*sections: str) -> str:
+    """Join example fragments that may mix f-strings and shared helper snippets."""
+    chunks = [
+        textwrap.dedent(section).strip('\n')
+        for section in sections
+        if section and section.strip()
+    ]
+    return '\n\n'.join(chunks).strip()
+
+
 def evo_example_for_transition(key: str):
+    """Return practical v4 state-transition examples matching shipped Options interfaces.
+
+    Examples build typed payload objects, select identity keys, and construct
+    IdentitySigner / asset-lock PrivateKey instances rather than the pre-v4
+    privateKeyWif-in-call shape.
+    """
+    identity = TESTNET_TEST_DATA['identity_id']
+    contract = TESTNET_TEST_DATA['data_contract_id']
+    token_contract = TESTNET_TEST_DATA['token_contract_id']
+    document_id = TESTNET_TEST_DATA['document_id']
+    document_type = TESTNET_TEST_DATA['document_type']
+    pro_tx = TESTNET_TEST_DATA['pro_tx_hash']
+    platform_address = TESTNET_TEST_DATA['platform_address']
+    recipient = EXAMPLE_RECIPIENT_ID
+
+    signer_only = identity_signer_setup()
+    signer_master = identity_signer_setup(
+        comment='Master key is required to add/disable identity keys.',
+        comment_before_add_key=True,
+    )
+    # Credit transfer requires a TRANSFER key; withdrawal allows TRANSFER or OWNER.
+    # Examples omit signingKey so the SDK auto-selects a matching purpose key.
+    signer_transfer = identity_signer_setup(
+        comment='Add the private key for a TRANSFER purpose identity key.',
+        comment_before_add_key=True,
+    )
+    signer_transfer_or_owner = identity_signer_setup(
+        comment='Add the private key for a TRANSFER or OWNER purpose identity key.',
+        comment_before_add_key=True,
+    )
+    signer_voting = identity_signer_setup(EXAMPLE_VOTING_KEY_WIF)
+    signer_and_doc_key = signer_and_auth_key_setup('ownerId')
+    signer_and_buyer_key = signer_and_auth_key_setup('buyerId')
+    # Token examples keep signer + getKeys tightly packed (no blank line).
+    signer_and_identity_key = signer_and_auth_key_setup('identityId', compact=True, blank_before_keys=False)
+    signer_and_sender_key = signer_and_auth_key_setup('senderId', compact=True, blank_before_keys=False)
+    signer_and_authority_key = signer_and_auth_key_setup('authorityId', compact=True, blank_before_keys=False)
+    signer_and_contract_key = signer_and_auth_key_setup('ownerId', critical_only=True)
+
     m = {
         # Identities
-        # 'identityCreate' - example in api-definitions.json
-        # 'identityTopUp' - example in api-definitions.json
-        'identityCreditTransfer': "await client.identities.creditTransfer({ identity, recipientId, amount: BigInt(amount), signer, signingKey: identityKey })",
-        'identityCreditWithdrawal': "await client.identities.creditWithdrawal({ identity, amount: BigInt(amount), toAddress, coreFeePerByte, signer, signingKey: identityKey })",
-        'identityUpdate': "await client.identities.update({ identity, addPublicKeys, disablePublicKeys, signer })",
-        'dataContractCreate': "await client.contracts.publish({ dataContract, identityKey, signer })",
-        'dataContractUpdate': "await client.contracts.update({ dataContract, identityKey, signer })",
+        'identityCreate': compose_example(
+            """
+            import {
+              AssetLockProof,
+              Identity,
+              IdentityPublicKeyInCreation,
+              IdentitySigner,
+              KeyType,
+              PrivateKey,
+              Purpose,
+              SecurityLevel,
+            } from '@dashevo/evo-sdk';
+
+            // Asset-lock proof and the separate private key controlling its Core output.
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+            """,
+            f"const assetLockPrivateKey = PrivateKey.fromWIF('{EXAMPLE_ASSET_LOCK_WIF}');",
+            f"""
+            // Identity key registered on Platform and held by IdentitySigner for key proofs.
+            const identityPrivateKey = PrivateKey.fromWIF('{EXAMPLE_IDENTITY_SIGNER_WIF}');
+            const identity = new Identity(assetLockProof.createIdentityId());
+            const masterKey = new IdentityPublicKeyInCreation({{
+              keyId: 0,
+              purpose: Purpose.AUTHENTICATION,
+              securityLevel: SecurityLevel.MASTER,
+              keyType: KeyType.ECDSA_SECP256K1,
+              data: identityPrivateKey.getPublicKey().toBytes(),
+            }}).toIdentityPublicKey();
+            identity.addPublicKey(masterKey);
+
+            const signer = new IdentitySigner();
+            signer.addKey(identityPrivateKey);
+
+            await sdk.identities.create({{
+              identity,
+              assetLockProof,
+              assetLockPrivateKey,
+              signer,
+            }});
+            """,
+        ),
+        'identityTopUp': compose_example(
+            f"""
+            import {{ AssetLockProof, PrivateKey }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+            // Asset-lock signing only — top-up does not use IdentitySigner.
+            const assetLockPrivateKey = PrivateKey.fromWIF('{EXAMPLE_ASSET_LOCK_WIF}');
+
+            const newBalance = await sdk.identities.topUp({{
+              identity,
+              assetLockProof,
+              assetLockPrivateKey,
+            }});
+            """,
+        ),
+        'identityCreditTransfer': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            """,
+            signer_transfer,
+            f"""
+            // Omit signingKey so the SDK auto-selects an available TRANSFER key.
+            // Supplying a non-TRANSFER key (for example AUTHENTICATION) is invalid.
+            await sdk.identities.creditTransfer({{
+              identity,
+              recipientId: '{recipient}',
+              amount: 1000000n,
+              signer,
+            }});
+            """,
+        ),
+        'identityCreditWithdrawal': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            """,
+            signer_transfer_or_owner,
+            """
+            // Omit signingKey so the SDK auto-selects a matching TRANSFER or OWNER key.
+            // Supplying a non-matching key (for example AUTHENTICATION) is invalid.
+            const remainingBalance = await sdk.identities.creditWithdrawal({
+              identity,
+              amount: 1000000n,
+              toAddress: 'yT8DDY5NkX4Zt44Fy8QjmCekheJQH4EMkv',
+              coreFeePerByte: 1,
+              signer,
+            });
+            """,
+        ),
+        'identityUpdate': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            """,
+            signer_master,
+            """
+            await sdk.identities.update({
+              identity,
+              addPublicKeys: undefined, // optional IdentityPublicKeyInCreation[]
+              disablePublicKeys: [2],   // optional key ids to disable
+              signer,
+            });
+            """,
+        ),
+
+        # Data contracts
+        'dataContractCreate': compose_example(
+            f"""
+            import {{ DataContract, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            identity_signer_setup(),
+            """
+            const keys = await sdk.identities.getKeys({
+              identityId: ownerId,
+              request: { type: 'all' },
+            });
+            // Contract publish requires a CRITICAL authentication key.
+            const identityKey = keys.find(
+              k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL',
+            );
+            """,
+            """
+            const identityNonce = (await sdk.identities.nonce(ownerId)) ?? 0n;
+            const dataContract = new DataContract({
+              ownerId,
+              identityNonce: identityNonce + 1n,
+              schemas: {
+                note: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', maxLength: 200, position: 0 },
+                  },
+                  required: ['message'],
+                  additionalProperties: false,
+                },
+              },
+            });
+
+            const published = await sdk.contracts.publish({
+              dataContract,
+              identityKey,
+              signer,
+            });
+            """,
+        ),
+        'dataContractUpdate': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            const contractId = '{contract}';
+            const dataContract = await sdk.contracts.fetch(contractId);
+            dataContract.version = (dataContract.version || 1) + 1;
+            // Optionally merge additional document type schemas before update:
+            // dataContract.setSchemas(mergedSchemas, undefined, false, sdk.version());
+            """,
+            signer_and_contract_key,
+            """
+            await sdk.contracts.update({ dataContract, identityKey, signer });
+            """,
+        ),
+
         # Documents
-        'documentCreate': "await client.documents.create({ document, identityKey, signer })",
-        'documentReplace': "await client.documents.replace({ document, identityKey, signer })",
-        'documentDelete': "await client.documents.delete({ document, identityKey, signer })",
-        'documentTransfer': "await client.documents.transfer({ document, recipientId, identityKey, signer })",
-        'documentPurchase': "await client.documents.purchase({ document, buyerId, price: BigInt(price), identityKey, signer })",
-        'documentSetPrice': "await client.documents.setPrice({ document, price: BigInt(price), identityKey, signer })",
+        'documentCreate': compose_example(
+            f"""
+            import {{ Document, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            signer_and_doc_key,
+            f"""
+            const document = new Document({{
+              dataContractId: '{contract}',
+              documentTypeName: '{document_type}',
+              ownerId,
+              properties: {{ /* fields required by the document type schema */ }},
+            }});
+
+            await sdk.documents.create({{ document, identityKey, signer }});
+            """,
+        ),
+        'documentReplace': compose_example(
+            f"""
+            import {{ Document, IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            signer_and_doc_key,
+            f"""
+            // Fetch current document, then rebuild/replace with revision + 1.
+            const current = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            const document = new Document({{
+              dataContractId: '{contract}',
+              documentTypeName: '{document_type}',
+              ownerId,
+              id: '{document_id}',
+              revision: BigInt(current.revision) + 1n,
+              properties: {{ /* updated properties */ }},
+            }});
+
+            await sdk.documents.replace({{ document, identityKey, signer }});
+            """,
+        ),
+        'documentDelete': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            signer_and_doc_key,
+            f"""
+            await sdk.documents.delete({{
+              document: {{
+                id: '{document_id}',
+                ownerId,
+                dataContractId: '{contract}',
+                documentTypeName: '{document_type}',
+              }},
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'documentTransfer': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            signer_and_doc_key,
+            f"""
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.transfer({{
+              document,
+              recipientId: '{recipient}',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'documentPurchase': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const buyerId = '{identity}';
+            """,
+            signer_and_buyer_key,
+            f"""
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.purchase({{
+              document,
+              buyerId,
+              price: 1000n,
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'documentSetPrice': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const ownerId = '{identity}';
+            """,
+            signer_and_doc_key,
+            f"""
+            const document = await sdk.documents.get('{contract}', '{document_type}', '{document_id}');
+            document.revision = BigInt(document.revision) + 1n;
+
+            await sdk.documents.setPrice({{
+              document,
+              price: 1000n,
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+
         # Tokens
-        'tokenMint': "await client.tokens.mint({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, recipientId, publicNote, identityKey, signer })",
-        'tokenBurn': "await client.tokens.burn({ dataContractId, tokenPosition, amount: BigInt(amount), identityId, publicNote, identityKey, signer })",
-        'tokenTransfer': "await client.tokens.transfer({ dataContractId, tokenPosition, amount: BigInt(amount), senderId, recipientId, publicNote, identityKey, signer })",
-        'tokenFreeze': "await client.tokens.freeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
-        'tokenUnfreeze': "await client.tokens.unfreeze({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
-        'tokenDestroyFrozen': "await client.tokens.destroyFrozen({ dataContractId, tokenPosition, authorityId, frozenIdentityId, publicNote, identityKey, signer })",
-        'tokenSetPriceForDirectPurchase': "await client.tokens.setPrice({ dataContractId, tokenPosition, authorityId, price: BigInt(price), publicNote, identityKey, signer })",
-        'tokenDirectPurchase': "await client.tokens.directPurchase({ dataContractId, tokenPosition, buyerId, amount: BigInt(amount), maxTotalCost: BigInt(maxTotalCost), identityKey, signer })",
-        'tokenClaim': "await client.tokens.claim({ dataContractId, tokenPosition, distributionType, identityId, publicNote, identityKey, signer })",
-        'tokenEmergencyAction': "await client.tokens.emergencyAction({ dataContractId, tokenPosition, authorityId, action, publicNote, identityKey, signer })",
-        # Voting
-        'dpnsUsername': "await client.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer })",
-        'masternodeVote': "await client.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer })",
-        'dpnsRegister': "await client.dpns.registerName({ label, identity, identityKey, signer, preorderCallback })",
-        # Platform Addresses
-        'addressTransfer': "await client.addresses.transfer({ inputs, outputs, signer })",
-        'addressTopUpIdentity': "await client.addresses.topUpIdentity({ identity, inputs, signer })",
-        'addressWithdraw': "await client.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer })",
-        'addressTransferFromIdentity': "await client.addresses.transferFromIdentity({ identity, outputs, signer })",
-        'addressFundFromAssetLock': "await client.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer })",
-        'addressCreateIdentity': "await client.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner })",
+        'tokenMint': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            """,
+            signer_and_identity_key,
+            f"""
+            const result = await sdk.tokens.mint({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              amount: 100n,
+              identityId,
+              recipientId: identityId,
+              publicNote: 'mint',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenBurn': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            """,
+            signer_and_identity_key,
+            f"""
+            const result = await sdk.tokens.burn({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              amount: 10n,
+              identityId,
+              publicNote: 'burn',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenTransfer': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const senderId = '{identity}';
+            """,
+            signer_and_sender_key,
+            f"""
+            const result = await sdk.tokens.transfer({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              amount: 5n,
+              senderId,
+              recipientId: '{recipient}',
+              publicNote: 'transfer',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenFreeze': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            """,
+            signer_and_authority_key,
+            f"""
+            await sdk.tokens.freeze({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: '{recipient}',
+              publicNote: 'freeze',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenUnfreeze': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            """,
+            signer_and_authority_key,
+            f"""
+            await sdk.tokens.unfreeze({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: '{recipient}',
+              publicNote: 'unfreeze',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenDestroyFrozen': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            """,
+            signer_and_authority_key,
+            f"""
+            await sdk.tokens.destroyFrozen({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              authorityId,
+              frozenIdentityId: '{recipient}',
+              publicNote: 'destroy',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenSetPriceForDirectPurchase': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            """,
+            signer_and_authority_key,
+            f"""
+            await sdk.tokens.setPrice({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              authorityId,
+              price: 1000n, // or null to clear
+              publicNote: 'set price',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenDirectPurchase': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const buyerId = '{identity}';
+            """,
+            signer_and_auth_key_setup('buyerId', compact=True, blank_before_keys=False),
+            f"""
+            const result = await sdk.tokens.directPurchase({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              buyerId,
+              amount: 10n,
+              maxTotalCost: 10000n,
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenClaim': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            """,
+            signer_and_identity_key,
+            f"""
+            const result = await sdk.tokens.claim({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              identityId,
+              distributionType: 'perpetual', // or 'preProgrammed'
+              publicNote: 'claim',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+        'tokenEmergencyAction': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const authorityId = '{identity}';
+            """,
+            signer_and_authority_key,
+            f"""
+            await sdk.tokens.emergencyAction({{
+              dataContractId: '{token_contract}',
+              tokenPosition: 0,
+              authorityId,
+              action: 'pause', // or 'resume'
+              publicNote: 'pause trading',
+              identityKey,
+              signer,
+            }});
+            """,
+        ),
+
+        # DPNS / voting
+        'dpnsRegister': compose_example(
+            f"""
+            import {{ IdentitySigner }} from '@dashevo/evo-sdk';
+
+            const identityId = '{identity}';
+            const identity = await sdk.identities.fetch(identityId);
+            """,
+            signer_only,
+            """
+            // HIGH authentication key is typically used for DPNS registration.
+            const identityKey = identity.getPublicKeyById(1)
+              || identity.publicKeys.find(
+                k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'HIGH',
+              );
+
+            const result = await sdk.dpns.registerName({
+              label: 'alice',
+              identity,
+              identityKey,
+              signer,
+              preorderCallback: (preorderDocument) => {
+                console.log('preorder submitted', preorderDocument.id?.toString?.());
+              },
+            });
+            """,
+        ),
+        'dpnsUsername': compose_example(
+            f"""
+            import {{ IdentitySigner, ResourceVoteChoice, VotePoll }} from '@dashevo/evo-sdk';
+
+            const masternodeProTxHash = '{pro_tx}';
+            """,
+            signer_voting,
+            f"""
+            // Voting key must match the masternode voting public key on the identity.
+            const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
+              || votingIdentity.getPublicKeyById(0);
+
+            const votePoll = new VotePoll({{
+              contractId: '{contract}',
+              documentTypeName: 'domain',
+              indexName: 'parentNameAndLabel',
+              indexValues: ['dash', 'alice'],
+            }});
+
+            await sdk.voting.masternodeVote({{
+              masternodeProTxHash,
+              votePoll,
+              voteChoice: ResourceVoteChoice.TowardsIdentity('{identity}'),
+              votingKey,
+              signer,
+            }});
+            """,
+        ),
+        'masternodeVote': compose_example(
+            f"""
+            import {{ IdentitySigner, ResourceVoteChoice, VotePoll }} from '@dashevo/evo-sdk';
+
+            const masternodeProTxHash = '{pro_tx}';
+            """,
+            signer_voting,
+            f"""
+            const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
+              || votingIdentity.getPublicKeyById(0);
+
+            const votePoll = new VotePoll({{
+              contractId: '{contract}',
+              documentTypeName: 'domain',
+              indexName: 'parentNameAndLabel',
+              indexValues: ['dash', 'alice'],
+            }});
+
+            await sdk.voting.masternodeVote({{
+              masternodeProTxHash,
+              votePoll,
+              voteChoice: ResourceVoteChoice.TowardsIdentity('{identity}'),
+              votingKey,
+              signer,
+            }});
+            """,
+        ),
+
+        # Platform Addresses — keep address-signer vs identity-signer distinction
+        'addressTransfer': compose_example(
+            f"""
+            import {{
+              PlatformAddressInput,
+              PlatformAddressOutput,
+              PlatformAddressSigner,
+              PrivateKey,
+            }} from '@dashevo/evo-sdk';
+
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const senderAddr = signer.addKey(privateKey); // derives P2PKH platform address
+
+            const input = new PlatformAddressInput(senderAddr, 0, 100000n);
+            const output = new PlatformAddressOutput(
+              /* recipient PlatformAddress or bech32m */ '{platform_address}',
+              90000n,
+            );
+
+            const result = await sdk.addresses.transfer({{
+              inputs: [input],
+              outputs: [output],
+              signer,
+            }});
+            """,
+        ),
+        'addressTopUpIdentity': compose_example(
+            f"""
+            import {{ PlatformAddressInput, PlatformAddressSigner, PrivateKey }} from '@dashevo/evo-sdk';
+
+            const identity = await sdk.identities.fetch('{identity}');
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const sourceAddr = signer.addKey(privateKey);
+            const input = new PlatformAddressInput(sourceAddr, 0, 50000n);
+
+            const result = await sdk.addresses.topUpIdentity({{
+              identity,
+              inputs: [input],
+              signer,
+            }});
+            """,
+        ),
+        'addressWithdraw': compose_example(
+            """
+            import {
+              CoreScript,
+              PlatformAddressInput,
+              PlatformAddressSigner,
+              PoolingWasm,
+              PrivateKey,
+            } from '@dashevo/evo-sdk';
+
+            const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+            const signer = new PlatformAddressSigner();
+            const platformAddr = signer.addKey(privateKey);
+            const input = new PlatformAddressInput(platformAddr, 0, 100000n);
+
+            // Caller-supplied 20-byte public-key hash for the spendable Core L1 destination.
+            const corePubkeyHashHex = 'replace-with-40-hex-character-core-pubkey-hash';
+            if (!/^[0-9a-fA-F]{40}$/.test(corePubkeyHashHex)) {
+              throw new Error('Set corePubkeyHashHex to the 20-byte hash from your Core P2PKH address');
+            }
+            const corePubkeyHash = Uint8Array.from(
+              corePubkeyHashHex.match(/../g),
+              byte => Number.parseInt(byte, 16),
+            );
+            const outputScript = CoreScript.fromP2PKH(corePubkeyHash);
+
+            const result = await sdk.addresses.withdraw({
+              inputs: [input],
+              coreFeePerByte: 1,
+              pooling: PoolingWasm.Standard,
+              outputScript,
+              signer,
+            });
+            """,
+        ),
+        'addressTransferFromIdentity': compose_example(
+            f"""
+            import {{ IdentitySigner, PlatformAddressOutput }} from '@dashevo/evo-sdk';
+
+            // Uses IdentitySigner (identity transfer key), not PlatformAddressSigner.
+            const identity = await sdk.identities.fetch('{identity}');
+            """,
+            signer_only,
+            f"""
+            const output = new PlatformAddressOutput('{platform_address}', 100000n);
+            const result = await sdk.addresses.transferFromIdentity({{
+              identity,
+              outputs: [output],
+              signer,
+            }});
+            """,
+        ),
+        'addressFundFromAssetLock': compose_example(
+            """
+            import {
+              AssetLockProof,
+              PlatformAddressOutput,
+              PlatformAddressSigner,
+              PrivateKey,
+            } from '@dashevo/evo-sdk';
+
+            // Asset-lock key signs the L1 funding proof; address signer controls outputs.
+            const assetLockPrivateKey = PrivateKey.fromWIF('cAssetLockPrivateKeyWif...');
+            const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
+            const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
+
+            const signer = new PlatformAddressSigner();
+            const platformAddr = signer.addKey(addressPrivateKey);
+            const output = new PlatformAddressOutput(platformAddr, 100000n);
+
+            const result = await sdk.addresses.fundFromAssetLock({
+              assetLockProof,
+              assetLockPrivateKey,
+              outputs: [output],
+              signer,
+            });
+            """,
+        ),
+        'addressCreateIdentity': compose_example(
+            """
+            import {
+              Identity,
+              IdentityPublicKeyInCreation,
+              IdentitySigner,
+              KeyType,
+              PlatformAddressInput,
+              PlatformAddressSigner,
+              PrivateKey,
+              Purpose,
+              SecurityLevel,
+            } from '@dashevo/evo-sdk';
+
+            const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
+            const identityPrivateKey = PrivateKey.fromWIF('cIdentityKeyWif...');
+
+            const identity = new Identity(/* 32-byte id */ new Uint8Array(32));
+            identity.addPublicKey(
+              new IdentityPublicKeyInCreation({
+                keyId: 0,
+                purpose: Purpose.AUTHENTICATION,
+                securityLevel: SecurityLevel.MASTER,
+                keyType: KeyType.ECDSA_SECP256K1,
+                data: identityPrivateKey.getPublicKey().toBytes(),
+              }).toIdentityPublicKey(),
+            );
+
+            const addressSigner = new PlatformAddressSigner();
+            const sourceAddr = addressSigner.addKey(addressPrivateKey);
+            const identitySigner = new IdentitySigner();
+            identitySigner.addKey(identityPrivateKey);
+            const input = new PlatformAddressInput(sourceAddr, 0, 50_000_000_000n);
+
+            const result = await sdk.addresses.createIdentity({
+              identity,
+              inputs: [input],
+              identitySigner,
+              addressSigner,
+            });
+            """,
+        ),
     }
     return m.get(key)
 
@@ -624,23 +1471,20 @@ def render_method_signature_html(signature: str, params: List[dict], return_type
 
 
 def format_example(code: str, header: str, add_return: bool) -> str:
-    formatted = (code or '').replace('\\n', '\n').strip()
-    if not formatted:
+    body_lines = normalize_example_lines(code)
+    if not body_lines:
         return header
 
-    body_lines = formatted.split('\n')
-    if add_return and body_lines:
-        first_line = body_lines[0].lstrip()
-        if first_line and not first_line.startswith('return'):
-            body_lines[0] = f'return {first_line}'
+    if add_return:
+        indexes = code_line_indexes(body_lines)
+        if len(indexes) == 1:
+            index = indexes[0]
+            stripped = body_lines[index].lstrip()
+            indent = body_lines[index][: len(body_lines[index]) - len(stripped)]
+            if not stripped.startswith('return '):
+                body_lines[index] = f'{indent}return {stripped}'
 
-    def replace_client(line: str) -> str:
-        return line.replace('client', 'sdk')
-
-    processed = [replace_client(line) for line in body_lines]
-    lines = [header]
-    lines.extend(processed)
-    return '\n'.join(lines).rstrip()
+    return '\n'.join([header, *body_lines]).rstrip()
 
 
 def render_operation(
@@ -1334,42 +2178,57 @@ def generate_docs_html(query_defs: dict, transition_defs: dict, type_metadata: d
 
 
 def format_ai_example_block(code: str | None, item_key: str) -> str:
-    snippet = (code or '').replace('\\n', '\n').strip()
-    if not snippet:
+    """Format a snippet for AI_REFERENCE.md code fences.
+
+    Query examples are often a single expression that spans multiple lines and
+    begin with `return await ...`. Those must become valid top-level JS
+    (`const result = await ...`). Multi-statement transition examples already
+    include imports/setup and a final call — leave them intact.
+    """
+    processed = normalize_example_lines(code)
+    if not processed:
         return f"// Example currently unavailable for `{item_key}`"
 
-    raw_lines = snippet.split('\n')
-    processed = [line.replace('client', 'sdk') for line in raw_lines]
+    indexes = code_line_indexes(processed)
+    if not indexes:
+        return '\n'.join(processed).rstrip()
 
-    first_index = 0
-    while first_index < len(processed) and processed[first_index].strip().startswith('//'):
-        first_index += 1
+    def is_setup_line(line: str) -> bool:
+        stripped = line.lstrip()
+        return (
+            stripped.startswith('import ')
+            or stripped.startswith('const ')
+            or stripped.startswith('let ')
+            or stripped.startswith('var ')
+            or stripped.startswith('function ')
+            or stripped.startswith('class ')
+            or stripped.startswith('if ')
+            or stripped.startswith('throw ')
+        )
 
-    if first_index >= len(processed):
-        result_only = '\n'.join(processed).rstrip()
-        if not result_only.endswith(';'):
-            result_only += ';'
-        return result_only
+    # Pure multi-line expressions (no imports/bindings) still need wrapping.
+    has_setup = any(is_setup_line(processed[i]) for i in indexes)
 
-    first_line = processed[first_index]
-    stripped = first_line.lstrip()
-    indent = first_line[: len(first_line) - len(stripped)]
-
-    # Check if the example already contains variable declarations or const result
-    already_has_declaration = (
-        stripped.startswith('const ') or
-        stripped.startswith('let ') or
-        stripped.startswith('var ') or
-        'const result' in snippet
-    )
-
-    if not already_has_declaration:
+    if not has_setup:
+        first_index = indexes[0]
+        first_line = processed[first_index]
+        stripped = first_line.lstrip()
+        indent = first_line[: len(first_line) - len(stripped)]
         if stripped.startswith('return '):
             stripped = stripped[len('return ') :].lstrip()
-        processed[first_index] = f"{indent}const result = {stripped}"
+        if not (
+            stripped.startswith('const ')
+            or stripped.startswith('let ')
+            or stripped.startswith('var ')
+            or stripped.startswith('await ')
+        ):
+            processed[first_index] = f'{indent}const result = {stripped}'
+        elif stripped.startswith('await '):
+            # Bare top-level await expression without prior setup.
+            processed[first_index] = f'{indent}const result = {stripped}'
 
     joined = '\n'.join(processed).rstrip()
-    if not joined.endswith(';'):
+    if joined and not joined.endswith(';'):
         joined += ';'
     return joined
 

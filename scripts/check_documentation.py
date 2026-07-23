@@ -120,7 +120,42 @@ def main():
                 if missing_anchors:
                     errors.append(f"ERROR: Missing HTML return type anchors: {', '.join(missing_anchors)}")
 
+    # Guard against pre-v4 privateKeyWif-in-call examples (issue #63).
+    if not errors:
+        classic_patterns = [
+            (
+                r'documents\.create\(\{\s*contractId,\s*type:\s*documentType,\s*ownerId,\s*data,\s*entropyHex,\s*privateKeyWif\s*\}',
+                'pre-v4 documents.create(... privateKeyWif) example',
+            ),
+            (
+                r'identities\.topUp\(\{\s*identityId,\s*assetLockProof,\s*assetLockPrivateKeyWif\s*\}',
+                'pre-v4 identities.topUp(... assetLockPrivateKeyWif) example',
+            ),
+            (
+                r'identities\.create\(\{\s*assetLockProof,\s*assetLockPrivateKeyWif,\s*publicKeys\s*\}',
+                'pre-v4 identities.create(... assetLockPrivateKeyWif, publicKeys) example',
+            ),
+            (
+                r'sdk\.<namespace>\.<transition>\(\{\s*\.\.\.params,\s*privateKeyWif\s*\}',
+                'pre-v4 state-transition pattern with privateKeyWif in call',
+            ),
+            (
+                r'\bprivateKeyWif\s*:',
+                'privateKeyWif object property; use IdentitySigner.addKeyFromWif / PrivateKey.fromWIF',
+            ),
+        ]
+        for label, file_path in (('docs.html', docs_file), ('AI_REFERENCE.md', ai_file)):
+            if not file_path.exists():
+                continue
+            content = file_path.read_text(encoding='utf-8')
+            for pattern, description in classic_patterns:
+                if re.search(pattern, content):
+                    errors.append(f'ERROR: {label} still contains {description}')
+            if 'IdentitySigner' not in content:
+                errors.append(f'ERROR: {label} is missing IdentitySigner usage expected for v4 write examples')
+
     # Compose report
+
     lines = [
         '=' * 80,
         'Evo SDK Documentation Check',
@@ -145,7 +180,17 @@ def main():
 
     report = '\n'.join(lines)
     print(report)
-    (PUBLIC_DIR / 'documentation-check-report.txt').write_text(report, encoding='utf-8')
+
+    # Avoid timestamp-only churn in git: keep the previous report when the
+    # status body is unchanged, rewriting only when warnings/errors change.
+    report_path = PUBLIC_DIR / 'documentation-check-report.txt'
+    previous = report_path.read_text(encoding='utf-8') if report_path.exists() else ''
+
+    def body_without_timestamp(text: str) -> str:
+        return re.sub(r'^Timestamp:.*$', 'Timestamp:', text, count=1, flags=re.M)
+
+    if body_without_timestamp(previous) != body_without_timestamp(report):
+        report_path.write_text(report, encoding='utf-8')
 
     sys.exit(1 if errors else 0)
 
