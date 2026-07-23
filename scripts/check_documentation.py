@@ -10,6 +10,7 @@ import sys
 import json
 import re
 import subprocess
+import hashlib
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = REPO_ROOT / 'public'
@@ -23,6 +24,7 @@ def main():
     type_reference_file = PUBLIC_DIR / 'TYPE_REFERENCE.md'
     type_reference_html_file = PUBLIC_DIR / 'TYPE_REFERENCE.html'
     manifest_file = PUBLIC_DIR / 'docs_manifest.json'
+    catalog_file = PUBLIC_DIR / 'sdk-operation-catalog.json'
 
     errors = []
     warnings = []
@@ -30,7 +32,7 @@ def main():
     if not api_file.exists():
         errors.append(f"ERROR: api-definitions.json not found at {api_file}")
 
-    for f in (docs_file, ai_file, type_reference_file, type_reference_html_file, manifest_file):
+    for f in (docs_file, ai_file, type_reference_file, type_reference_html_file, catalog_file, manifest_file):
         if not f.exists():
             errors.append(f"ERROR: Missing {f.name}. Run: python3 scripts/generate_docs.py")
 
@@ -66,6 +68,14 @@ def main():
                 metadata = json.loads(extracted.stdout)
 
             if metadata is not None:
+                try:
+                    catalog = json.loads(catalog_file.read_text(encoding='utf-8'))
+                except Exception as e:
+                    errors.append(f'ERROR: Invalid sdk-operation-catalog.json: {e}')
+                else:
+                    if catalog != metadata:
+                        errors.append('ERROR: SDK operation catalog differs from installed declarations; run yarn generate')
+
                 expected_operations = len(metadata.get('operations', []))
                 expected_methods = len(metadata.get('methods', {}))
                 if manifest.get('documented_operations') != expected_operations:
@@ -83,6 +93,14 @@ def main():
                     errors.append(
                         f'ERROR: AI_REFERENCE.md must contain return blocks for all {expected_operations} operations'
                     )
+
+            for name, expected_hash in manifest.get('content_sha256', {}).items():
+                artifact = PUBLIC_DIR / name
+                if not artifact.exists():
+                    continue
+                actual_hash = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                if actual_hash != expected_hash:
+                    errors.append(f'ERROR: {name} differs from the generated manifest; run yarn generate')
 
             if ai_file.exists() and type_reference_file.exists():
                 ai_text = ai_file.read_text(encoding='utf-8')

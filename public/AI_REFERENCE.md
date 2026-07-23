@@ -7,7 +7,7 @@ The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. 
 
 ## Quick Setup
 ```javascript
-import { EvoSDK } from '@dashevo/evo-sdk';
+import { EvoSDK, IdentitySigner } from '@dashevo/evo-sdk';
 
 // Create a trusted testnet client and connect
 const sdk = EvoSDK.testnetTrusted();
@@ -18,21 +18,19 @@ await sdk.connect();
 ```
 
 ## Authentication
-State transitions authenticate with typed objects, not a `privateKeyWif` field on the call:
-- Identity writes: fetch/build the payload, select an `IdentityPublicKey`, and sign with `IdentitySigner`.
-- Asset-lock writes (identity create/top-up, fund-from-asset-lock): use `AssetLockProof` + `PrivateKey` for the L1 lock; identity create also needs a separate `IdentitySigner` for key proofs.
-- Platform address writes: use `PlatformAddressSigner` for address inputs/outputs; identity-funded address ops use `IdentitySigner`.
-Keep credentials secure and never embed production keys in source control:
+Evo SDK v4 state transitions accept typed payload objects and signer objects. Fetch the identity, select the public key that matches your private key, and keep production keys out of source control:
 ```javascript
-import { IdentitySigner, PrivateKey } from '@dashevo/evo-sdk';
-
 const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
 const privateKeyWif = 'L1ExamplePrivateKeyWifGoesHere';
-const assetLockPrivateKeyWif = 'cVExampleAssetLockKeyForIdentityFunding';
+const keyId = 2;
+
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
+if (!identityKey) throw new Error('Identity key not found');
 
 const signer = new IdentitySigner();
 signer.addKeyFromWif(privateKeyWif);
-const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
 ```
 
 ## Query Operations
@@ -49,9 +47,11 @@ const result = await sdk.<namespace>.<method>(params);
 **Get Identity** - `identities.fetch`
 *Fetch an identity by its identifier.*
 
+Signature: `fetch(identityId: wasm.IdentifierLike): Promise<wasm.Identity | undefined>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -66,9 +66,11 @@ const result = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi
 **Get Identity (Unproved)** - `identities.fetchUnproved`
 *Fetch an identity without requesting cryptographic proofs.*
 
+Signature: `fetchUnproved(identityId: wasm.IdentifierLike): Promise<wasm.Identity>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -83,22 +85,21 @@ const result = await sdk.identities.fetchUnproved('5DbLwAxGBzUzo81VewMUwn4b5P4bp
 **Get Identity Keys** - `identities.getKeys`
 *Retrieve public keys for an identity, including support for specific key IDs or purpose searches.*
 
+Signature: `getKeys(query: wasm.IdentityKeysQuery): Promise<wasm.IdentityPublicKey[]>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
-
-- `Key Request Type` (select, required)
-  - Options: `all` (All Keys), `specific` (Specific Key IDs), `search` (Search by Purpose Map)
-
-- `Specific Key IDs` (array, optional)
-  - Example: `[0,1,2]`
-
-- `Search Purpose Map` (json, optional)
-  - Example: `{"0": {"0": "current"}, "1": {"0": "all"}}`
-
-- `Limit` (number, optional)
-
-- `Offset` (number, optional)
+- `query`: `wasm.IdentityKeysQuery` (required)
+  - Type declarations: [`wasm.IdentityKeysQuery`](TYPE_REFERENCE.md#type-identitykeysquery)
+  - `identityId`: `IdentifierLike` (required)
+    - Identity identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `request`: `IdentityKeysRequest` (required)
+    - Requested key selection strategy.
+  - Type declarations: [`IdentityKeysRequest`](TYPE_REFERENCE.md#type-identitykeysrequest)
+  - `limit`: `number` (optional)
+    - Maximum number of keys to return after applying request filters.
+  - `offset`: `number` (optional)
+    - Number of keys to skip from the beginning of the result set.
 
 Returns:
 
@@ -118,15 +119,21 @@ const result = await sdk.identities.getKeys({
 **Get Contract Keys for Identities** - `identities.contractKeys`
 *Fetch contract-specific keys for one or more identities.*
 
+**Disabled:** Requires fix for upstream issue: https://github.com/dashpay/platform/issues/3028
+
+Signature: `contractKeys(query: wasm.IdentitiesContractKeysQuery): Promise<wasm.IdentityContractKeys[]>`
+
 Parameters:
-- `Identity IDs` (array, required)
-  - Example: `["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]`
-
-- `Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
-
-- `Key Purposes` (multiselect, optional)
-  - Options: `0` (Authentication (0)), `1` (Encryption (1)), `2` (Decryption (2)), `3` (Transfer (3)), `5` (Voting (5))
+- `query`: `wasm.IdentitiesContractKeysQuery` (required)
+  - Type declarations: [`wasm.IdentitiesContractKeysQuery`](TYPE_REFERENCE.md#type-identitiescontractkeysquery)
+  - `identityIds`: `Array<IdentifierLike>` (required)
+    - Identity identifiers to fetch keys for.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `contractId`: `IdentifierLike` (required)
+    - Data contract identifier (reserved for future filtering).
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `purposes`: `number[]` (optional)
+    - Optional list of purposes to include.
 
 Returns:
 
@@ -144,9 +151,11 @@ const result = await sdk.identities.contractKeys({
 **Get Identity Nonce** - `identities.nonce`
 *Retrieve the global nonce associated with an identity.*
 
+Signature: `nonce(identityId: wasm.IdentifierLike): Promise<bigint | undefined>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -160,12 +169,14 @@ const result = await sdk.identities.nonce('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi
 **Get Identity Contract Nonce** - `identities.contractNonce`
 *Retrieve the per-contract nonce for an identity.*
 
-Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Signature: `contractNonce(identityId: wasm.IdentifierLike, contractId: wasm.IdentifierLike): Promise<bigint | undefined>`
 
-- `Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
+Parameters:
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -179,9 +190,11 @@ const result = await sdk.identities.contractNonce('5DbLwAxGBzUzo81VewMUwn4b5P4bp
 **Get Identity Balance** - `identities.balance`
 *Fetch the credit balance for an identity.*
 
+Signature: `balance(identityId: wasm.IdentifierLike): Promise<bigint | undefined>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -195,9 +208,11 @@ const result = await sdk.identities.balance('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFy
 **Get Multiple Identity Balances** - `identities.balances`
 *Fetch balances for multiple identities in a single request.*
 
+Signature: `balances(identityIds: wasm.IdentifierLikeArray): Promise<Map<string, bigint | undefined>>`
+
 Parameters:
-- `Identity IDs` (array, required)
-  - Example: `["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]`
+- `identityIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -211,9 +226,11 @@ const result = await sdk.identities.balances(['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FN
 **Get Identity Balance & Revision** - `identities.balanceAndRevision`
 *Retrieve both the balance and revision number for an identity.*
 
+Signature: `balanceAndRevision(identityId: wasm.IdentifierLike): Promise<wasm.IdentityBalanceAndRevision | undefined>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -228,9 +245,11 @@ const result = await sdk.identities.balanceAndRevision('5DbLwAxGBzUzo81VewMUwn4b
 **Get Identity by Unique Public Key Hash** - `identities.byPublicKeyHash`
 *Lookup an identity via its unique public key hash.*
 
+Signature: `byPublicKeyHash(publicKeyHash: wasm.PublicKeyHashLike): Promise<wasm.Identity | undefined>`
+
 Parameters:
-- `Public Key Hash` (text, required)
-  - Example: `b7e904ce25ed97594e72f7af0e66f298031c1754`
+- `publicKeyHash`: `wasm.PublicKeyHashLike` (required)
+  - Type declarations: [`wasm.PublicKeyHashLike`](TYPE_REFERENCE.md#type-publickeyhashlike)
 
 Returns:
 
@@ -245,11 +264,14 @@ const result = await sdk.identities.byPublicKeyHash('b7e904ce25ed97594e72f7af0e6
 **Get Identity by Non-Unique Public Key Hash** - `identities.byNonUniquePublicKeyHash`
 *Lookup identities that match a non-unique public key hash.*
 
-Parameters:
-- `Public Key Hash` (text, required)
-  - Example: `518038dc858461bcee90478fd994bba8057b7531`
+Signature: `byNonUniquePublicKeyHash(publicKeyHash: wasm.PublicKeyHashLike, startAfter?: wasm.IdentifierLike): Promise<wasm.Identity[]>`
 
-- `Start After (Key ID)` (text, optional)
+Parameters:
+- `publicKeyHash`: `wasm.PublicKeyHashLike` (required)
+  - Type declarations: [`wasm.PublicKeyHashLike`](TYPE_REFERENCE.md#type-publickeyhashlike)
+
+- `startAfter`: `wasm.IdentifierLike` (optional)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -264,12 +286,14 @@ const result = await sdk.identities.byNonUniquePublicKeyHash('518038dc858461bcee
 **Get Identity Token Balances** - `identities.tokenBalances`
 *Retrieve balances for a set of token IDs held by an identity.*
 
-Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Signature: `tokenBalances(identityId: wasm.IdentifierLike, tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, bigint>>`
 
-- `Token IDs` (array, required)
-  - Example: `["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]`
+Parameters:
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -283,12 +307,14 @@ const result = await sdk.identities.tokenBalances('5DbLwAxGBzUzo81VewMUwn4b5P4bp
 **Get Token Balances for Identities** - `tokens.balances`
 *Fetch balances for multiple identities for a single token.*
 
-Parameters:
-- `Identity IDs` (array, required)
-  - Example: `["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]`
+Signature: `balances(identityIds: wasm.IdentifierLikeArray, tokenId: wasm.IdentifierLike): Promise<Map<string, bigint>>`
 
-- `Token ID` (text, required)
-  - Example: `Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv`
+Parameters:
+- `identityIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
+
+- `tokenId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -302,12 +328,14 @@ const result = await sdk.tokens.balances(['5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi
 **Get Identity Token Info** - `tokens.identityTokenInfos`
 *Retrieve token metadata and balances for an identity.*
 
-Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Signature: `identityTokenInfos(identityId: wasm.IdentifierLike, tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, wasm.IdentityTokenInfo>>`
 
-- `Token IDs (optional)` (array, optional)
-  - Example: `["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]`
+Parameters:
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -322,12 +350,14 @@ const result = await sdk.tokens.identityTokenInfos('5DbLwAxGBzUzo81VewMUwn4b5P4b
 **Get Token Info for Identities** - `tokens.identitiesTokenInfos`
 *Retrieve token metadata for multiple identities for a single token.*
 
-Parameters:
-- `Identity IDs` (array, required)
-  - Example: `["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]`
+Signature: `identitiesTokenInfos(identityIds: wasm.IdentifierLikeArray, tokenId: wasm.IdentifierLike): Promise<Map<string, wasm.IdentityTokenInfo>>`
 
-- `Token ID` (text, required)
-  - Example: `Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv`
+Parameters:
+- `identityIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
+
+- `tokenId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -344,9 +374,11 @@ const result = await sdk.tokens.identitiesTokenInfos(['5DbLwAxGBzUzo81VewMUwn4b5
 **Get Data Contract** - `contracts.fetch`
 *Fetch a data contract by its identifier.*
 
+Signature: `fetch(contractId: wasm.IdentifierLike): Promise<wasm.DataContract | undefined>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -361,13 +393,18 @@ const result = await sdk.contracts.fetch('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB
 **Get Data Contract History** - `contracts.getHistory`
 *Retrieve the version history for a data contract.*
 
+Signature: `getHistory(query: wasm.DataContractHistoryQuery): Promise<Map<bigint, wasm.DataContract>>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `HLY575cNazmc5824FxqaEMEBuzFeE4a98GDRNKbyJqCM`
-
-- `Limit` (number, optional)
-
-- `Start Timestamp (ms)` (number, optional)
+- `query`: `wasm.DataContractHistoryQuery` (required)
+  - Type declarations: [`wasm.DataContractHistoryQuery`](TYPE_REFERENCE.md#type-datacontracthistoryquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `limit`: `number` (optional)
+    - Maximum number of entries to return.
+  - `startAtMs`: `number` (optional)
+    - Millisecond timestamp (inclusive) to start from.
 
 Returns:
 
@@ -386,9 +423,11 @@ const result = await sdk.contracts.getHistory({
 **Get Data Contracts** - `contracts.getMany`
 *Fetch multiple data contracts by their identifiers.*
 
+Signature: `getMany(contractIds: wasm.IdentifierLikeArray): Promise<Map<string, wasm.DataContract | undefined>>`
+
 Parameters:
-- `Data Contract IDs` (array, required)
-  - Example: `["GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec","ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A"]`
+- `contractIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -408,24 +447,48 @@ const result = await sdk.contracts.getMany([
 **Get Documents** - `documents.query`
 *Query documents from a data contract using optional filters.*
 
+Signature: `query(query: wasm.DocumentsQuery): Promise<Map<string, wasm.Document | undefined>>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
+- `query`: `wasm.DocumentsQuery` (required)
+  - Type declarations: [`wasm.DocumentsQuery`](TYPE_REFERENCE.md#type-documentsquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type name.
+  - `where`: `DocumentWhereClause[]` (optional)
+    - Optional filter clauses expressed as [field, operator, value].
+  - Type declarations: [`DocumentWhereClause`](TYPE_REFERENCE.md#type-documentwhereclause)
+  - `orderBy`: `DocumentOrderByClause[]` (optional)
+    - Optional sorting clauses expressed as [field, direction].
+  - Type declarations: [`DocumentOrderByClause`](TYPE_REFERENCE.md#type-documentorderbyclause)
+  - `limit`: `number` (optional)
+    - Maximum number of documents to return.
+  - `startAfter`: `IdentifierLike` (optional)
+    - Exclusive document ID to resume from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAt`: `IdentifierLike` (optional)
+    - Inclusive document ID to start from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupBy`: `string[]` (optional)
+    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored
+by the regular document-fetch path.
 
-- `Document Type` (text, required)
-  - Example: `domain`
+- `[]` or omitted → aggregate count (a single row).
+- `["<in_field>"]` where `<in_field>` matches an `In`
+  constraint → per-`In`-value entries (PerInValue).
+- `["<range_field>"]` where `<range_field>` matches a range
+  constraint → per-distinct-value entries within the range
+  (RangeDistinct).
+- `["<in_field>", "<range_field>"]` for compound `In + range`
+  queries → compound distinct entries.
 
-- `Where Clause (JSON)` (json, optional)
-  - Example: `[["normalizedParentDomainName", "==", "dash"], ["normalizedLabel", "==", "therea1s11mshaddy5"]]`
-
-- `Order By (JSON)` (json, optional)
-  - Example: `[["$createdAt","desc"]]`
-
-- `Limit` (number, optional)
-
-- `Start After` (text, optional)
-
-- `Start At` (text, optional)
+Entry direction comes from the first `orderBy` clause's
+direction (which also drives walk order on the materialize +
+prove path); set `orderBy: [["<range_field>", "asc"|"desc"]]`
+alongside `groupBy: ["<range_field>"]` to control sort.
 
 Returns:
 
@@ -446,15 +509,16 @@ const result = await sdk.documents.query({
 **Get Document** - `documents.get`
 *Fetch a specific document by ID.*
 
+Signature: `get(contractId: wasm.IdentifierLike, type: string, documentId: wasm.IdentifierLike): Promise<wasm.Document | undefined>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
-- `Document Type` (text, required)
-  - Example: `domain`
+- `type`: `string` (required)
 
-- `Document ID` (text, required)
-  - Example: `7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r`
+- `documentId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -475,9 +539,11 @@ const result = await sdk.documents.get(
 **Get Primary Username** - `dpns.username`
 *Fetch the primary DPNS username for an identity.*
 
+Signature: `username(identityId: wasm.IdentifierLike): Promise<string | undefined>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -491,11 +557,16 @@ const result = await sdk.dpns.username('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25X
 **List Usernames for Identity** - `dpns.usernames`
 *Fetch all DPNS usernames owned by an identity.*
 
-Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Signature: `usernames(query: wasm.DpnsUsernamesQuery): Promise<string[]>`
 
-- `Limit` (number, optional)
+Parameters:
+- `query`: `wasm.DpnsUsernamesQuery` (required)
+  - Type declarations: [`wasm.DpnsUsernamesQuery`](TYPE_REFERENCE.md#type-dpnsusernamesquery)
+  - `identityId`: `IdentifierLike` (required)
+    - Identity to fetch usernames for.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `limit`: `number` (optional)
+    - Maximum number of usernames to return. Use 0 for default.
 
 Returns:
 
@@ -509,9 +580,10 @@ const result = await sdk.dpns.usernames({ identityId: '5DbLwAxGBzUzo81VewMUwn4b5
 **Get Username by Name** - `dpns.getUsernameByName`
 *Fetch DPNS username details by full name.*
 
+Signature: `getUsernameByName(username: string): Promise<wasm.DpnsUsernameInfo | undefined>`
+
 Parameters:
-- `Username` (text, required)
-  - Example: `alice.dash`
+- `username`: `string` (required)
 
 Returns:
 
@@ -526,9 +598,10 @@ const result = await sdk.dpns.getUsernameByName('alice.dash');
 **Resolve DPNS Name** - `dpns.resolveName`
 *Resolve a DPNS name to its identity information.*
 
+Signature: `resolveName(name: string): Promise<string | undefined>`
+
 Parameters:
-- `DPNS Name` (text, required)
-  - Example: `alice.dash`
+- `name`: `string` (required)
 
 Returns:
 
@@ -542,9 +615,10 @@ const result = await sdk.dpns.resolveName('alice.dash');
 **Check DPNS Availability** - `dpns.isNameAvailable`
 *Check if a DPNS label is available for registration.*
 
+Signature: `isNameAvailable(label: string): Promise<boolean>`
+
 Parameters:
-- `Label (Username)` (text, required)
-  - Example: `alice`
+- `label`: `string` (required)
 
 Returns:
 
@@ -558,9 +632,10 @@ const result = await sdk.dpns.isNameAvailable('alice');
 **Convert to Homograph Safe** - `dpns.convertToHomographSafe`
 *Convert a label to its homograph-safe representation.*
 
+Signature: `convertToHomographSafe(input: string): Promise<string>`
+
 Parameters:
-- `Label` (text, required)
-  - Example: `ąlice`
+- `input`: `string` (required)
 
 Returns:
 
@@ -568,15 +643,16 @@ Returns:
 
 Example:
 ```javascript
-const result = sdk.dpns.convertToHomographSafe('ąlice');
+const result = await sdk.dpns.convertToHomographSafe('ąlice');
 ```
 
 **Validate Username** - `dpns.isValidUsername`
 *Validate whether a label conforms to DPNS username rules.*
 
+Signature: `isValidUsername(label: string): Promise<boolean>`
+
 Parameters:
-- `Label` (text, required)
-  - Example: `alice`
+- `label`: `string` (required)
 
 Returns:
 
@@ -590,9 +666,10 @@ const result = sdk.dpns.isValidUsername('alice');
 **Is Contested Username** - `dpns.isContestedUsername`
 *Check if a label is currently part of a contested DPNS registration.*
 
+Signature: `isContestedUsername(label: string): Promise<boolean>`
+
 Parameters:
-- `Label` (text, required)
-  - Example: `alice`
+- `label`: `string` (required)
 
 Returns:
 
@@ -608,25 +685,31 @@ const result = sdk.dpns.isContestedUsername('alice');
 **Get Contested Resources** - `group.contestedResources`
 *List contested resources for a document type and index.*
 
+Signature: `contestedResources(query: wasm.VotePollsByDocumentTypeQuery): Promise<any[]>`
+
 Parameters:
-- `Document Type` (text, required)
-  - Example: `domain`
-
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
-
-- `Index Name` (text, required)
-
-- `Start Index Values` (json, optional)
-  - Example: `["dash","alice"]`
-
-- `End Index Values` (json, optional)
-
-- `Start At Value` (text, optional)
-
-- `Limit` (number, optional)
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `wasm.VotePollsByDocumentTypeQuery` (required)
+  - Type declarations: [`wasm.VotePollsByDocumentTypeQuery`](TYPE_REFERENCE.md#type-votepollsbydocumenttypequery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type to query.
+  - `indexName`: `string` (required)
+    - Index name to query.
+  - `startIndexValues`: `unknown[]` (optional)
+    - Optional lower bound for index range, commonly an array of composite values.
+  - `endIndexValues`: `unknown[]` (optional)
+    - Optional upper bound for index range, commonly an array of composite values.
+  - `startAtValue`: `unknown` (optional)
+    - Cursor value to resume iteration from.
+Provide a JS value matching the index schema (e.g., string, number, array).
+  - `startAtValueIncluded`: `boolean` (optional)
+    - Whether to include `startAtValue` in the result set.
+  - `limit`: `number` (optional)
+    - Maximum number of records to return.
+  - `orderAscending`: `boolean` (optional)
+    - Sort order. When omitted, the query defaults to ascending order.
 
 Returns:
 
@@ -647,30 +730,31 @@ const result = await sdk.group.contestedResources({
 **Get Contested Resource Vote State** - `voting.contestedResourceVoteState`
 *Retrieve vote tallies for a contested resource.*
 
+Signature: `contestedResourceVoteState(query: wasm.ContestedResourceVoteStateQuery): Promise<wasm.ContestedResourceVoteState>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
-
-- `Document Type` (text, required)
-  - Example: `domain`
-
-- `Index Name` (text, required)
-
-- `Index Values` (array, required)
-  - Example: `["dash","alice"]`
-
-- `Result Type` (text, required)
-  - Example: `documents`
-
-- `Include Locked & Abstaining Tallies` (checkbox, optional)
-
-- `Start At Contender ID` (text, optional)
-
-- `Include Start Contender` (checkbox, optional)
-
-- `Count` (number, optional)
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `wasm.ContestedResourceVoteStateQuery` (required)
+  - Type declarations: [`wasm.ContestedResourceVoteStateQuery`](TYPE_REFERENCE.md#type-contestedresourcevotestatequery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Contested document type name.
+  - `indexName`: `string` (required)
+    - Index name to query.
+  - `indexValues`: `unknown[]` (optional)
+    - Optional index values used as query parameters.
+  - `resultType`: `'documents' | 'voteTally' | 'documentsAndVoteTally'` (optional)
+    - Result projection type.
+  - `limit`: `number` (optional)
+    - Maximum number of records to return.
+  - `startAtContenderId`: `IdentifierLike` (optional)
+    - Contender identifier to resume from (exclusive by default).
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAtIncluded`: `boolean` (optional)
+    - Include the start contender when true.
+  - `includeLockedAndAbstaining`: `boolean` (optional)
+    - Include locked and abstaining tallies when true.
 
 Returns:
 
@@ -693,28 +777,32 @@ const result = await sdk.voting.contestedResourceVoteState({
 **Get Voters for Identity** - `group.contestedResourceVotersForIdentity`
 *List voters that voted for a specific identity in a contested resource.*
 
+Signature: `contestedResourceVotersForIdentity(query: wasm.ContestedResourceVotersForIdentityQuery): Promise<wasm.Identifier[]>`
+
 Parameters:
-- `Data Contract ID` (text, required)
-  - Example: `GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec`
-
-- `Document Type` (text, required)
-  - Example: `domain`
-
-- `Index Name` (text, required)
-
-- `Index Values` (array, required)
-  - Example: `["dash","alice"]`
-
-- `Contestant Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
-
-- `Start At Voter ID` (text, optional)
-
-- `Include Start Voter` (checkbox, optional)
-
-- `Limit` (number, optional)
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `wasm.ContestedResourceVotersForIdentityQuery` (required)
+  - Type declarations: [`wasm.ContestedResourceVotersForIdentityQuery`](TYPE_REFERENCE.md#type-contestedresourcevotersforidentityquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Contested document type name.
+  - `indexName`: `string` (required)
+    - Index name used to locate the contested resource.
+  - `indexValues`: `unknown[]` (optional)
+    - Optional index values used as query arguments.
+  - `contestantId`: `IdentifierLike` (required)
+    - Contested identity identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `limit`: `number` (optional)
+    - Maximum number of voters to return.
+  - `startAtVoterId`: `IdentifierLike` (optional)
+    - Voter identifier to resume from (exclusive by default).
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAtIncluded`: `boolean` (optional)
+    - Include the `startAtVoterId` when true.
+  - `orderAscending`: `boolean` (optional)
+    - Sort order. When omitted, defaults to ascending.
 
 Returns:
 
@@ -737,17 +825,23 @@ const result = await sdk.group.contestedResourceVotersForIdentity({
 **Get Identity Votes** - `voting.contestedResourceIdentityVotes`
 *Fetch contested resource votes submitted by a particular identity.*
 
+Signature: `contestedResourceIdentityVotes(query: wasm.ContestedResourceIdentityVotesQuery): Promise<Map<string, wasm.ResourceVote>>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
-
-- `Limit` (number, optional)
-
-- `Start At Vote ID` (text, optional)
-
-- `Include Start Vote` (checkbox, optional)
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `wasm.ContestedResourceIdentityVotesQuery` (required)
+  - Type declarations: [`wasm.ContestedResourceIdentityVotesQuery`](TYPE_REFERENCE.md#type-contestedresourceidentityvotesquery)
+  - `identityId`: `IdentifierLike` (required)
+    - Identity identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `limit`: `number` (optional)
+    - Maximum number of votes to return.
+  - `startAtVoteId`: `IdentifierLike` (optional)
+    - Vote identifier to resume from (exclusive by default).
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAtIncluded`: `boolean` (optional)
+    - Include the `startAtVoteId` when true.
+  - `orderAscending`: `boolean` (optional)
+    - Sort order. When omitted, defaults to ascending.
 
 Returns:
 
@@ -766,20 +860,25 @@ const result = await sdk.voting.contestedResourceIdentityVotes({
 **Get Vote Polls by End Date** - `voting.votePollsByEndDate`
 *Fetch vote polls filtered by end time using millisecond timestamps.*
 
+Signature: `votePollsByEndDate(query?: wasm.VotePollsByEndDateQuery): Promise<wasm.VotePollsByEndDateEntry[]>`
+
 Parameters:
-- `Start Time (ms)` (number, optional)
-
-- `Include Start Time` (checkbox, optional)
-
-- `End Time (ms)` (number, optional)
-
-- `Include End Time` (checkbox, optional)
-
-- `Limit` (number, optional)
-
-- `Offset` (number, optional)
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `wasm.VotePollsByEndDateQuery` (optional)
+  - Type declarations: [`wasm.VotePollsByEndDateQuery`](TYPE_REFERENCE.md#type-votepollsbyenddatequery)
+  - `startTimeMs`: `number` (optional)
+    - Starting timestamp (milliseconds) to filter polls.
+  - `startTimeIncluded`: `boolean` (optional)
+    - Include the `startTimeMs` boundary when true.
+  - `endTimeMs`: `number` (optional)
+    - Ending timestamp (milliseconds) to filter polls.
+  - `endTimeIncluded`: `boolean` (optional)
+    - Include the `endTimeMs` boundary when true.
+  - `limit`: `number` (optional)
+    - Maximum number of buckets to return.
+  - `offset`: `number` (optional)
+    - Offset into the paginated result set.
+  - `orderAscending`: `boolean` (optional)
+    - Sort order for timestamps; ascending by default.
 
 Returns:
 
@@ -801,6 +900,8 @@ const result = await sdk.voting.votePollsByEndDate({
 **Get Protocol Version Upgrade State** - `protocol.versionUpgradeState`
 *Retrieve protocol upgrade vote tallies.*
 
+Signature: `versionUpgradeState(): Promise<wasm.ProtocolVersionUpgradeState>`
+
 No parameters required.
 
 Returns:
@@ -816,11 +917,13 @@ const result = await sdk.protocol.versionUpgradeState();
 **Get Protocol Version Vote Status** - `protocol.versionUpgradeVoteStatus`
 *Fetch voting status for masternodes on protocol upgrades.*
 
-Parameters:
-- `Start ProTxHash` (text, optional)
-  - Example: `143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113`
+Signature: `versionUpgradeVoteStatus(startProTxHash: wasm.ProTxHashLike | undefined, count: number): Promise<Map<string, wasm.ProtocolVersionUpgradeVoteStatus>>`
 
-- `Count` (number, optional)
+Parameters:
+- `startProTxHash`: `wasm.ProTxHashLike | undefined` (required)
+  - Type declarations: [`wasm.ProTxHashLike`](TYPE_REFERENCE.md#type-protxhashlike)
+
+- `count`: `number` (required)
 
 Returns:
 
@@ -837,12 +940,17 @@ const result = await sdk.protocol.versionUpgradeVoteStatus('143dcd6a6b7684fde01e
 **Get Epochs Info** - `epoch.epochsInfo`
 *Retrieve summary information for one or more epochs.*
 
+Signature: `epochsInfo(query?: EpochsQuery): Promise<Map<number, wasm.ExtendedEpochInfo | undefined>>`
+
 Parameters:
-- `Start Epoch` (number, optional)
-
-- `Count` (number, optional)
-
-- `Ascending Order` (checkbox, optional)
+- `query`: `EpochsQuery` (optional)
+  - Type declarations: [`EpochsQuery`](TYPE_REFERENCE.md#type-epochsquery)
+  - `startEpoch`: `number` (optional)
+    - Starting epoch index.
+  - `count`: `number` (optional)
+    - Maximum number of epochs to return.
+  - `ascending`: `boolean` (optional)
+    - Sort order for returned epochs.
 
 Returns:
 
@@ -861,6 +969,8 @@ const result = await sdk.epoch.epochsInfo({
 **Get Current Epoch** - `epoch.current`
 *Fetch the current platform epoch.*
 
+Signature: `current(): Promise<wasm.ExtendedEpochInfo>`
+
 No parameters required.
 
 Returns:
@@ -876,12 +986,17 @@ const result = await sdk.epoch.current();
 **Get Finalized Epoch Infos** - `epoch.finalizedInfos`
 *Retrieve finalized epoch information for a range.*
 
+Signature: `finalizedInfos(query: FinalizedEpochsQuery): Promise<Map<number, wasm.FinalizedEpochInfo | undefined>>`
+
 Parameters:
-- `Start Epoch` (number, optional)
-
-- `Count` (number, optional)
-
-- `Ascending Order` (checkbox, optional)
+- `query`: `FinalizedEpochsQuery` (required)
+  - Type declarations: [`FinalizedEpochsQuery`](TYPE_REFERENCE.md#type-finalizedepochsquery)
+  - `startEpoch`: `number` (required)
+    - Starting epoch index (required).
+  - `count`: `number` (optional)
+    - Maximum number of epochs to return.
+  - `ascending`: `boolean` (optional)
+    - Sort order for returned epochs.
 
 Returns:
 
@@ -900,11 +1015,13 @@ const result = await sdk.epoch.finalizedInfos({
 **Get Epoch Blocks by Evonode IDs** - `epoch.evonodesProposedBlocksByIds`
 *Fetch proposed blocks for specific evonode ProTx hashes.*
 
-Parameters:
-- `Epoch` (number, required)
+Signature: `evonodesProposedBlocksByIds(epoch: number, ids: wasm.ProTxHashLikeArray): Promise<Map<string, bigint>>`
 
-- `Evonode ProTx Hashes` (array, required)
-  - Example: `["143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113"]`
+Parameters:
+- `epoch`: `number` (required)
+
+- `ids`: `wasm.ProTxHashLikeArray` (required)
+  - Type declarations: [`wasm.ProTxHashLikeArray`](TYPE_REFERENCE.md#type-protxhashlikearray)
 
 Returns:
 
@@ -921,15 +1038,18 @@ const result = await sdk.epoch.evonodesProposedBlocksByIds(
 **Get Epoch Blocks by Range** - `epoch.evonodesProposedBlocksByRange`
 *Fetch proposed blocks in range order.*
 
+Signature: `evonodesProposedBlocksByRange(query: EvonodeProposedBlocksRangeQuery): Promise<Map<string, bigint>>`
+
 Parameters:
-- `Epoch` (number, required)
-
-- `Limit` (number, optional)
-
-- `Start After (ProTxHash)` (text, optional)
-  - Example: `143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113`
-
-- `Order Ascending` (checkbox, optional)
+- `query`: `EvonodeProposedBlocksRangeQuery` (required)
+  - Type declarations: [`EvonodeProposedBlocksRangeQuery`](TYPE_REFERENCE.md#type-evonodeproposedblocksrangequery)
+  - `epoch`: `number` (required)
+    - Epoch index to query.
+  - `limit`: `number` (optional)
+    - Maximum number of items to return.
+  - `startAfter`: `ProTxHashLike` (optional)
+    - ProTxHash to resume from (exclusive by default).
+  - Type declarations: [`ProTxHashLike`](TYPE_REFERENCE.md#type-protxhashlike)
 
 Returns:
 
@@ -939,8 +1059,7 @@ Example:
 ```javascript
 const result = await sdk.epoch.evonodesProposedBlocksByRange({
     epoch: 8635,
-    limit: 5,
-    orderAscending: true
+    limit: 5
 });
 ```
 
@@ -949,12 +1068,13 @@ const result = await sdk.epoch.evonodesProposedBlocksByRange({
 **Calculate Token ID** - `tokens.calculateId`
 *Calculate a token ID from a contract ID and token position. This is a utility method that does not require network connection.*
 
-Parameters:
-- `Contract ID` (text, required)
-  - Example: `ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A`
+Signature: `calculateId(contractId: wasm.IdentifierLike, tokenPosition: number): Promise<string>`
 
-- `Token Position` (number, required)
-  - Example: `0`
+Parameters:
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenPosition`: `number` (required)
 
 Returns:
 
@@ -968,9 +1088,11 @@ const result = await sdk.tokens.calculateId('ALybvzfcCwMs7sinDwmtumw17NneuW7RgFt
 **Get Token Statuses** - `tokens.statuses`
 *Retrieve status information for one or more tokens.*
 
+Signature: `statuses(tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, wasm.TokenStatus>>`
+
 Parameters:
-- `Token IDs` (array, required)
-  - Example: `["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]`
+- `tokenIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -988,9 +1110,11 @@ const result = await sdk.tokens.statuses([
 **Get Direct Purchase Prices** - `tokens.directPurchasePrices`
 *Fetch direct purchase prices for tokens.*
 
+Signature: `directPurchasePrices(tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, wasm.TokenPriceInfo>>`
+
 Parameters:
-- `Token IDs` (array, required)
-  - Example: `["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]`
+- `tokenIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -1007,9 +1131,11 @@ const result = await sdk.tokens.directPurchasePrices([
 **Get Token Contract Info** - `tokens.contractInfo`
 *Retrieve metadata for a token contract.*
 
+Signature: `contractInfo(tokenId: wasm.IdentifierLike): Promise<wasm.TokenContractInfo | undefined>`
+
 Parameters:
-- `Token Contract ID` (text, required)
-  - Example: `ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A`
+- `tokenId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -1024,12 +1150,14 @@ const result = await sdk.tokens.contractInfo('ALybvzfcCwMs7sinDwmtumw17NneuW7RgF
 **Get Token Distribution Last Claim** - `tokens.perpetualDistributionLastClaim`
 *Fetch the last perpetual distribution claim for an identity and token.*
 
-Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
+Signature: `perpetualDistributionLastClaim(identityId: wasm.IdentifierLike, tokenId: wasm.IdentifierLike): Promise<wasm.RewardDistributionMoment | undefined>`
 
-- `Token ID` (text, required)
-  - Example: `Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv`
+Parameters:
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -1047,9 +1175,11 @@ const result = await sdk.tokens.perpetualDistributionLastClaim(
 **Get Token Total Supply** - `tokens.totalSupply`
 *Fetch the total supply for a token.*
 
+Signature: `totalSupply(tokenId: wasm.IdentifierLike): Promise<wasm.TokenTotalSupply | undefined>`
+
 Parameters:
-- `Token ID` (text, required)
-  - Example: `Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv`
+- `tokenId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -1064,12 +1194,13 @@ const result = await sdk.tokens.totalSupply('Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4
 **Get Token Price by Contract** - `tokens.priceByContract`
 *Retrieve the price details for a token indexed by contract position.*
 
-Parameters:
-- `Token Contract ID` (text, required)
-  - Example: `ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A`
+Signature: `priceByContract(contractId: wasm.IdentifierLike, tokenPosition: number): Promise<wasm.TokenPriceInfo>`
 
-- `Token Position` (number, required)
-  - Example: `0`
+Parameters:
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenPosition`: `number` (required)
 
 Returns:
 
@@ -1086,12 +1217,13 @@ const result = await sdk.tokens.priceByContract('ALybvzfcCwMs7sinDwmtumw17NneuW7
 **Get Group Info** - `group.info`
 *Fetch metadata for a specific group contract position.*
 
-Parameters:
-- `Group Contract ID` (text, required)
-  - Example: `49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N`
+Signature: `info(contractId: wasm.IdentifierLike, groupContractPosition: number): Promise<wasm.Group | undefined>`
 
-- `Group Position` (number, required)
-  - Example: `0`
+Parameters:
+- `contractId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `groupContractPosition`: `number` (required)
 
 Returns:
 
@@ -1106,13 +1238,19 @@ const result = await sdk.group.info('49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5
 **List Group Infos** - `group.infos`
 *List group information entries for a contract.*
 
+Signature: `infos(query: wasm.GroupInfosQuery): Promise<Map<number, wasm.Group | undefined>>`
+
 Parameters:
-- `Group Contract ID` (text, required)
-  - Example: `49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N`
-
-- `Start At Info` (text, optional)
-
-- `Count` (number, optional)
+- `query`: `wasm.GroupInfosQuery` (required)
+  - Type declarations: [`wasm.GroupInfosQuery`](TYPE_REFERENCE.md#type-groupinfosquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAt`: `GroupInfosStartAt` (optional)
+    - Cursor describing where to resume from.
+  - Type declarations: [`GroupInfosStartAt`](TYPE_REFERENCE.md#type-groupinfosstartat)
+  - `limit`: `number` (optional)
+    - Maximum number of groups to return.
 
 Returns:
 
@@ -1127,18 +1265,24 @@ const result = await sdk.group.infos({ dataContractId: '49PJEnNx7ReCitzkLdkDNr4s
 **Get Group Members** - `group.members`
 *Retrieve member entries for a group.*
 
+Signature: `members(query: wasm.GroupMembersQuery): Promise<Map<string, bigint>>`
+
 Parameters:
-- `Group Contract ID` (text, required)
-  - Example: `49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N`
-
-- `Group Position` (number, required)
-  - Example: `0`
-
-- `Member Identity IDs` (array, optional)
-
-- `Start At Member Info` (text, optional)
-
-- `Limit` (number, optional)
+- `query`: `wasm.GroupMembersQuery` (required)
+  - Type declarations: [`wasm.GroupMembersQuery`](TYPE_REFERENCE.md#type-groupmembersquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupContractPosition`: `number` (required)
+    - Group position inside the contract.
+  - `memberIds`: `Array<Identifier | Uint8Array | string>` (optional)
+    - Optional list of member IDs to retrieve. When provided, pagination options are ignored.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `startAtMemberId`: `IdentifierLike` (optional)
+    - Member identifier to resume from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `limit`: `number` (optional)
+    - Maximum number of members to return when not requesting specific IDs.
 
 Returns:
 
@@ -1152,19 +1296,24 @@ const result = await sdk.group.members({ dataContractId: '49PJEnNx7ReCitzkLdkDNr
 **Get Group Actions** - `group.actions`
 *Fetch actions associated with a group.*
 
+Signature: `actions(query: wasm.GroupActionsQuery): Promise<Map<string, wasm.GroupAction | undefined>>`
+
 Parameters:
-- `Group Contract ID` (text, required)
-  - Example: `49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N`
-
-- `Group Position` (number, required)
-  - Example: `0`
-
-- `Action Status` (select, required)
-  - Options: `PENDING`, `ACTIVE`, `EXECUTED`, `CANCELLED`
-
-- `Start At Action Info` (text, optional)
-
-- `Count` (number, optional)
+- `query`: `wasm.GroupActionsQuery` (required)
+  - Type declarations: [`wasm.GroupActionsQuery`](TYPE_REFERENCE.md#type-groupactionsquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupContractPosition`: `number` (required)
+    - Position of the group within the contract.
+  - `status`: `GroupActionStatusFilter` (required)
+    - Filter actions by status.
+  - Type declarations: [`GroupActionStatusFilter`](TYPE_REFERENCE.md#type-groupactionstatusfilter)
+  - `startAt`: `GroupActionsStartAt` (optional)
+    - Cursor describing where to resume from.
+  - Type declarations: [`GroupActionsStartAt`](TYPE_REFERENCE.md#type-groupactionsstartat)
+  - `limit`: `number` (optional)
+    - Maximum number of actions to return.
 
 Returns:
 
@@ -1179,17 +1328,22 @@ const result = await sdk.group.actions({ dataContractId: '49PJEnNx7ReCitzkLdkDNr
 **Get Group Action Signers** - `group.actionSigners`
 *List signers for a specific group action.*
 
+Signature: `actionSigners(query: wasm.GroupActionSignersQuery): Promise<Map<string, bigint>>`
+
 Parameters:
-- `Group Contract ID` (text, required)
-  - Example: `49PJEnNx7ReCitzkLdkDNr4s6RScGsnNexcdSZJ1ph5N`
-
-- `Group Position` (number, required)
-  - Example: `0`
-
-- `Action Status` (select, required)
-  - Options: `PENDING`, `ACTIVE`, `EXECUTED`, `CANCELLED`
-
-- `Action ID` (text, required)
+- `query`: `wasm.GroupActionSignersQuery` (required)
+  - Type declarations: [`wasm.GroupActionSignersQuery`](TYPE_REFERENCE.md#type-groupactionsignersquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupContractPosition`: `number` (required)
+    - Position of the group within the contract.
+  - `status`: `GroupActionStatusFilter` (required)
+    - Action status filter.
+  - Type declarations: [`GroupActionStatusFilter`](TYPE_REFERENCE.md#type-groupactionstatusfilter)
+  - `actionId`: `IdentifierLike` (required)
+    - Group action identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -1203,15 +1357,25 @@ const result = await sdk.group.actionSigners({ dataContractId: '49PJEnNx7ReCitzk
 **Get Identity Groups** - `group.identityGroups`
 *Fetch group memberships for an identity.*
 
+Signature: `identityGroups(query: wasm.IdentityGroupsQuery): Promise<wasm.IdentityGroupInfo[]>`
+
 Parameters:
-- `Identity ID` (text, required)
-  - Example: `5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk`
-
-- `Member Data Contracts` (array, optional)
-
-- `Owner Data Contracts` (array, optional)
-
-- `Moderator Data Contracts` (array, optional)
+- `query`: `wasm.IdentityGroupsQuery` (required)
+  - Type declarations: [`wasm.IdentityGroupsQuery`](TYPE_REFERENCE.md#type-identitygroupsquery)
+  - `identityId`: `IdentifierLike` (required)
+    - Identity identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `memberDataContracts`: `Array<Identifier | Uint8Array | string>` (optional)
+    - Data contracts where the identity participates as a member.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `ownerDataContracts`: `Array<Identifier | Uint8Array | string>` (optional)
+    - Data contracts where the identity participates as an owner.
+(Currently not implemented server-side.)
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `moderatorDataContracts`: `Array<Identifier | Uint8Array | string>` (optional)
+    - Data contracts where the identity participates as a moderator.
+(Currently not implemented server-side.)
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
 
 Returns:
 
@@ -1226,9 +1390,11 @@ const result = await sdk.group.identityGroups({ identityId: '5DbLwAxGBzUzo81VewM
 **Get Groups Data Contracts** - `group.groupsDataContracts`
 *Fetch group configuration documents for the supplied data contracts.*
 
+Signature: `groupsDataContracts(dataContractIds: wasm.IdentifierLikeArray): Promise<Map<string, Map<number, wasm.Group | undefined>>>`
+
 Parameters:
-- `Data Contract IDs` (array, required)
-  - Example: `["GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec"]`
+- `dataContractIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
 
 Returns:
 
@@ -1245,6 +1411,8 @@ const result = await sdk.group.groupsDataContracts(['GWRSAVFMjXx8HpQFaNJMqBV7MBg
 **Get Platform Status** - `system.status`
 *Retrieve basic platform status information.*
 
+Signature: `status(): Promise<wasm.StatusResponse>`
+
 No parameters required.
 
 Returns:
@@ -1259,6 +1427,8 @@ const result = await sdk.system.status();
 
 **Get Current Quorums Info** - `system.currentQuorumsInfo`
 *Fetch details about currently active quorums.*
+
+Signature: `currentQuorumsInfo(): Promise<wasm.CurrentQuorumsInfo>`
 
 No parameters required.
 
@@ -1275,9 +1445,11 @@ const result = await sdk.system.currentQuorumsInfo();
 **Get Prefunded Specialized Balance** - `system.prefundedSpecializedBalance`
 *Retrieve a prefunded specialized balance entry.*
 
+Signature: `prefundedSpecializedBalance(identityId: wasm.IdentifierLike): Promise<wasm.PrefundedSpecializedBalance>`
+
 Parameters:
-- `Specialized Balance ID` (text, required)
-  - Example: `AzaU7zqCT7X1kxh8yWxkT9PxAgNqWDu4Gz13emwcRyAT`
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
 
 Returns:
 
@@ -1291,6 +1463,8 @@ const result = await sdk.system.prefundedSpecializedBalance('AzaU7zqCT7X1kxh8yWx
 
 **Get Total Credits in Platform** - `system.totalCreditsInPlatform`
 *Fetch the total credit balance stored in the platform.*
+
+Signature: `totalCreditsInPlatform(): Promise<bigint>`
 
 No parameters required.
 
@@ -1306,12 +1480,14 @@ const result = await sdk.system.totalCreditsInPlatform();
 **Get Path Elements** - `system.pathElements`
 *Access items in the GroveDB state tree by specifying a path and keys.*
 
-Parameters:
-- `Path Segments` (array, required)
-  - Example: `["32"]`
+Signature: `pathElements(path: wasm.GrovePathSegment[], keys: wasm.GrovePathSegment[]): Promise<wasm.PathElement[]>`
 
-- `Keys` (array, required)
-  - Example: `["5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"]`
+Parameters:
+- `path`: `wasm.GrovePathSegment[]` (required)
+  - Type declarations: [`wasm.GrovePathSegment`](TYPE_REFERENCE.md#type-grovepathsegment)
+
+- `keys`: `wasm.GrovePathSegment[]` (required)
+  - Type declarations: [`wasm.GrovePathSegment`](TYPE_REFERENCE.md#type-grovepathsegment)
 
 Returns:
 
@@ -1326,9 +1502,10 @@ const result = await sdk.system.pathElements(['96'], ['5DbLwAxGBzUzo81VewMUwn4b5
 **Wait for State Transition Result** - `stateTransitions.waitForStateTransitionResult`
 *Wait for a state transition to be processed and return the result.*
 
+Signature: `waitForStateTransitionResult(stateTransitionHash: string): Promise<wasm.StateTransitionResult>`
+
 Parameters:
-- `State Transition Hash` (text, required)
-  - Example: `0000000000000000000000000000000000000000000000000000000000000000`
+- `stateTransitionHash`: `string` (required)
 
 Returns:
 
@@ -1345,9 +1522,12 @@ const result = await sdk.stateTransitions.waitForStateTransitionResult('00000000
 **Get Platform Address** - `addresses.get`
 *Fetch information about a Platform address including its nonce and balance.*
 
+Signature: `get(address: wasm.PlatformAddressLike): Promise<wasm.PlatformAddressInfo | undefined>`
+
 Parameters:
-- `Platform Address` (text, required)
-  - Example: `tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf`
+- `address`: `wasm.PlatformAddressLike` (required)
+  - - The platform address to query (PlatformAddress, Uint8Array, or bech32m string)
+  - Type declarations: [`wasm.PlatformAddressLike`](TYPE_REFERENCE.md#type-platformaddresslike)
 
 Returns:
 
@@ -1362,9 +1542,12 @@ const result = await sdk.addresses.get('tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncs
 **Get Multiple Platform Addresses** - `addresses.getMany`
 *Fetch information about multiple Platform addresses.*
 
+Signature: `getMany(addresses: wasm.PlatformAddressLikeArray): Promise<Map<string, wasm.PlatformAddressInfo | undefined>>`
+
 Parameters:
-- `Platform Addresses` (array, required)
-  - Example: `["tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"]`
+- `addresses`: `wasm.PlatformAddressLikeArray` (required)
+  - - Array of platform addresses to query
+  - Type declarations: [`wasm.PlatformAddressLikeArray`](TYPE_REFERENCE.md#type-platformaddresslikearray)
 
 Returns:
 
@@ -1379,20 +1562,10 @@ const result = await sdk.addresses.getMany(['tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5
 ## State Transition Operations
 
 ### Pattern
-State transitions take a typed options object. Typical identity-signed writes look like:
+State transition signatures and option objects below are generated from the installed SDK declarations. Example variables such as identities, keys, signers, and contracts are prerequisites prepared by the caller:
 ```javascript
-const identity = await sdk.identities.fetch(identityId);
-const signer = new IdentitySigner();
-signer.addKeyFromWif(privateKeyWif);
-const identityKey = identity.getPublicKeyById(keyId);
-
-const result = await sdk.<namespace>.<transition>({
-  /* payload fields: identity / document / dataContract / ... */
-  identityKey, // when required by the method
-  signer,
-});
+const result = await sdk.<namespace>.<transition>(options);
 ```
-Asset-lock methods take `assetLockProof` + `assetLockPrivateKey` instead of (or in addition to) an `IdentitySigner`. See each operation example below.
 
 ### Available State Transitions
 #### Identity Transitions
@@ -1400,18 +1573,31 @@ Asset-lock methods take `assetLockProof` + `assetLockPrivateKey` instead of (or 
 **Identity Create** - `identities.create`
 *Create a new identity with initial credits*
 
+Signature: `create(options: wasm.IdentityCreateOptions): Promise<void>`
+
 Parameters:
-- `Identity` (Identity, required)
-  - Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation).
-
-- `Asset Lock Proof` (AssetLockProof, required)
-  - AssetLockProof from Core (AssetLockProof.fromHex / createInstantAssetLockProof / createChainAssetLockProof).
-
-- `Asset Lock Private Key` (PrivateKey, required)
-  - PrivateKey controlling the asset-lock output (PrivateKey.fromWIF). Separate from the IdentitySigner.
-
-- `Identity Signer` (IdentitySigner, required)
-  - IdentitySigner holding private keys that prove ownership of the identity public keys being registered.
+- `options`: `wasm.IdentityCreateOptions` (required)
+  - Type declarations: [`wasm.IdentityCreateOptions`](TYPE_REFERENCE.md#type-identitycreateoptions)
+  - `identity`: `Identity` (required)
+    - The identity to create (with public keys set up).
+Use Identity.create() to build the identity structure first.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `assetLockProof`: `AssetLockProof` (required)
+    - Asset lock proof from the Core chain.
+Use AssetLockProof.createInstantAssetLockProof() or AssetLockProof.createChainAssetLockProof().
+  - Type declarations: [`AssetLockProof`](TYPE_REFERENCE.md#type-assetlockproof)
+  - `assetLockPrivateKey`: `PrivateKey` (required)
+    - Private key for signing the asset lock proof.
+This is the private key that controls the asset lock output.
+  - Type declarations: [`PrivateKey`](TYPE_REFERENCE.md#type-privatekey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing private keys for the identity's public keys.
+Use IdentitySigner to add keys for signing identity key proofs.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1461,15 +1647,26 @@ await sdk.identities.create({
 **Identity Top Up** - `identities.topUp`
 *Add credits to an existing identity*
 
+Signature: `topUp(options: wasm.IdentityTopUpOptions): Promise<bigint>`
+
 Parameters:
-- `Identity` (Identity, required)
-  - Fetched Identity object to top up (sdk.identities.fetch).
-
-- `Asset Lock Proof` (AssetLockProof, required)
-  - AssetLockProof from Core funding the top-up.
-
-- `Asset Lock Private Key` (PrivateKey, required)
-  - PrivateKey for the asset-lock output. Top-up does not use IdentitySigner.
+- `options`: `wasm.IdentityTopUpOptions` (required)
+  - Type declarations: [`wasm.IdentityTopUpOptions`](TYPE_REFERENCE.md#type-identitytopupoptions)
+  - `identity`: `Identity` (required)
+    - The identity to top up.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `assetLockProof`: `AssetLockProof` (required)
+    - Asset lock proof from the Core chain.
+Use AssetLockProof.createInstantAssetLockProof() or AssetLockProof.createChainAssetLockProof().
+  - Type declarations: [`AssetLockProof`](TYPE_REFERENCE.md#type-assetlockproof)
+  - `assetLockPrivateKey`: `PrivateKey` (required)
+    - Private key for signing the asset lock proof.
+This is the private key that controls the asset lock output.
+  - Type declarations: [`PrivateKey`](TYPE_REFERENCE.md#type-privatekey)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1494,12 +1691,29 @@ const newBalance = await sdk.identities.topUp({
 **Identity Update** - `identities.update`
 *Update identity keys (add or disable)*
 
-Parameters (payload fields):
-- `Keys to Add (JSON array)` (textarea, optional)
-  - Example: `[{"keyType":"ECDSA_HASH160","purpose":"AUTHENTICATION","data":"base64_key_data"}]`
+Signature: `update(options: wasm.IdentityUpdateOptions): Promise<void>`
 
-- `Key IDs to Disable (comma-separated)` (text, optional)
-  - Example: `2,3,5`
+Parameters:
+- `options`: `wasm.IdentityUpdateOptions` (required)
+  - Type declarations: [`wasm.IdentityUpdateOptions`](TYPE_REFERENCE.md#type-identityupdateoptions)
+  - `identity`: `Identity` (required)
+    - The identity to update.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `addPublicKeys`: `IdentityPublicKeyInCreation[]` (optional)
+    - Array of public keys to add to the identity.
+Use IdentityPublicKeyInCreation to create new keys.
+  - Type declarations: [`IdentityPublicKeyInCreation`](TYPE_REFERENCE.md#type-identitypublickeyincreation)
+  - `disablePublicKeys`: `number[]` (optional)
+    - Array of key IDs to disable.
+Cannot disable master, critical auth, or transfer keys.
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the identity's master key.
+Use IdentitySigner to add the master key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1526,10 +1740,31 @@ await sdk.identities.update({
 **Identity Credit Transfer** - `identities.creditTransfer`
 *Transfer credits between identities*
 
-Parameters (payload fields):
-- `Recipient Identity ID` (text, required)
+Signature: `creditTransfer(options: wasm.IdentityCreditTransferOptions): Promise<wasm.IdentityCreditTransferResult>`
 
-- `Amount (credits)` (number, required)
+Parameters:
+- `options`: `wasm.IdentityCreditTransferOptions` (required)
+  - Type declarations: [`wasm.IdentityCreditTransferOptions`](TYPE_REFERENCE.md#type-identitycredittransferoptions)
+  - `identity`: `Identity` (required)
+    - The sender identity.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `recipientId`: `IdentifierLike` (required)
+    - The identity ID of the recipient.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `amount`: `bigint` (required)
+    - The amount of credits to transfer.
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the sender's transfer key.
+Use IdentitySigner to add the transfer key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `signingKey`: `IdentityPublicKey` (optional)
+    - Optional identity public key to use for signing.
+If not provided, auto-selects an available transfer key.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1559,12 +1794,33 @@ await sdk.identities.creditTransfer({
 **Identity Credit Withdrawal** - `identities.creditWithdrawal`
 *Withdraw credits from identity to Dash address*
 
-Parameters (payload fields):
-- `Dash Address` (text, required)
+Signature: `creditWithdrawal(options: wasm.IdentityCreditWithdrawalOptions): Promise<bigint>`
 
-- `Amount (credits)` (number, required)
-
-- `Core Fee Per Byte (optional)` (number, optional)
+Parameters:
+- `options`: `wasm.IdentityCreditWithdrawalOptions` (required)
+  - Type declarations: [`wasm.IdentityCreditWithdrawalOptions`](TYPE_REFERENCE.md#type-identitycreditwithdrawaloptions)
+  - `identity`: `Identity` (required)
+    - The identity to withdraw from.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `amount`: `bigint` (required)
+    - The amount of credits to withdraw.
+  - `toAddress`: `string` (optional)
+    - Optional Dash address to send the withdrawn credits to.
+  - `coreFeePerByte`: `number` (optional)
+    - Core (L1) fee per byte for the withdrawal transaction.
+This determines the mining fee for the Core blockchain transaction.
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the identity's transfer/owner key.
+Use IdentitySigner to add the key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `signingKey`: `IdentityPublicKey` (optional)
+    - Optional identity public key to use for signing.
+If not provided, auto-selects a matching transfer or owner key.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1596,48 +1852,27 @@ const remainingBalance = await sdk.identities.creditWithdrawal({
 **Data Contract Create** - `contracts.publish`
 *Create a new data contract*
 
-Parameters (payload fields):
-- `Can Be Deleted` (checkbox, optional)
+Signature: `publish(options: wasm.ContractPublishOptions): Promise<wasm.DataContract>`
 
-- `Read Only` (checkbox, optional)
-
-- `Keeps History` (checkbox, optional)
-
-- `Documents Keep History (Default)` (checkbox, optional)
-
-- `Documents Mutable (Default)` (checkbox, optional)
-
-- `Documents Can Be Deleted (Default)` (checkbox, optional)
-
-- `Requires Identity Encryption Key (optional)` (text, optional)
-
-- `Requires Identity Decryption Key (optional)` (text, optional)
-
-- `Document Schemas JSON` (json, required)
-  - Example: `{
-  "note": {
-    "type": "object",
-    "properties": {
-      "message": {
-        "type": "string",
-        "maxLength": 100,
-        "position": 0
-      }
-    },
-    "required": ["message"],
-    "additionalProperties": false
-  }
-}`
-
-- `Groups (optional)` (json, optional)
-  - Example: `{}`
-
-- `Tokens (optional)` (json, optional)
-  - Example: `{}`
-
-- `Keywords (comma separated, optional)` (text, optional)
-
-- `Description (optional)` (text, optional)
+Parameters:
+- `options`: `wasm.ContractPublishOptions` (required)
+  - Type declarations: [`wasm.ContractPublishOptions`](TYPE_REFERENCE.md#type-contractpublishoptions)
+  - `dataContract`: `DataContract` (required)
+    - The data contract to create.
+Use `new DataContract(...)` or `DataContract.fromJSON(...)` to construct it.
+  - Type declarations: [`DataContract`](TYPE_REFERENCE.md#type-datacontract)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1688,30 +1923,28 @@ const published = await sdk.contracts.publish({
 **Data Contract Update** - `contracts.update`
 *Add document types, groups, or tokens to an existing data contract*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `update(options: wasm.ContractUpdateOptions): Promise<void>`
 
-- `New Document Schemas to Add (optional)` (json, optional)
-  - Example: `{
-  "newType": {
-    "type": "object",
-    "properties": {
-      "field": {
-        "type": "string",
-        "maxLength": 100,
-        "position": 0
-      }
-    },
-    "required": ["field"],
-    "additionalProperties": false
-  }
-}`
-
-- `New Groups to Add (optional)` (json, optional)
-  - Example: `{}`
-
-- `New Tokens to Add (optional)` (json, optional)
-  - Example: `{}`
+Parameters:
+- `options`: `wasm.ContractUpdateOptions` (required)
+  - Type declarations: [`wasm.ContractUpdateOptions`](TYPE_REFERENCE.md#type-contractupdateoptions)
+  - `dataContract`: `DataContract` (required)
+    - The updated data contract.
+Use the existing contract and modify it, or create a new one with
+`DataContract.fromJSON(...)`. Version must be incremented.
+  - Type declarations: [`DataContract`](TYPE_REFERENCE.md#type-datacontract)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1747,14 +1980,31 @@ await sdk.contracts.update({ dataContract, identityKey, signer });
 **Document Create** - `documents.create`
 *Create a new document*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `create(options: wasm.DocumentCreateOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Fetch Schema` (button, optional)
-
-- `Document Fields` (dynamic, optional)
+Parameters:
+- `options`: `wasm.DocumentCreateOptions` (required)
+  - Type declarations: [`wasm.DocumentCreateOptions`](TYPE_REFERENCE.md#type-documentcreateoptions)
+  - `document`: `Document` (required)
+    - The document to create.
+Use `new Document(...)` or `Document.fromJSON(...)` to construct it.
+Must include dataContractId, documentTypeName, ownerId, and entropy.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.create.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1790,16 +2040,31 @@ await sdk.documents.create({ document, identityKey, signer });
 **Document Replace** - `documents.replace`
 *Replace an existing document*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `replace(options: wasm.DocumentReplaceOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Document ID` (text, required)
-
-- `Load Document` (button, optional)
-
-- `Document Fields` (dynamic, optional)
+Parameters:
+- `options`: `wasm.DocumentReplaceOptions` (required)
+  - Type declarations: [`wasm.DocumentReplaceOptions`](TYPE_REFERENCE.md#type-documentreplaceoptions)
+  - `document`: `Document` (required)
+    - The document with updated data.
+Must have the same ID as the existing document.
+Revision should be set to current revision + 1.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.replace.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1839,12 +2104,29 @@ await sdk.documents.replace({ document, identityKey, signer });
 **Document Delete** - `documents.delete`
 *Delete an existing document*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `delete(options: wasm.DocumentDeleteOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Document ID` (text, required)
+Parameters:
+- `options`: `wasm.DocumentDeleteOptions` (required)
+  - Type declarations: [`wasm.DocumentDeleteOptions`](TYPE_REFERENCE.md#type-documentdeleteoptions)
+  - `document`: `Document | { id: IdentifierLike; ownerId: IdentifierLike; dataContractId: IdentifierLike; documentTypeName: string; }` (required)
+    - The document to delete - either a Document instance or an object with identifiers.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document), [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.delete.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1882,14 +2164,33 @@ await sdk.documents.delete({
 **Document Transfer** - `documents.transfer`
 *Transfer document ownership*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `transfer(options: wasm.DocumentTransferOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Document ID` (text, required)
-
-- `Recipient Identity ID` (text, required)
+Parameters:
+- `options`: `wasm.DocumentTransferOptions` (required)
+  - Type declarations: [`wasm.DocumentTransferOptions`](TYPE_REFERENCE.md#type-documenttransferoptions)
+  - `document`: `Document` (required)
+    - The document to transfer.
+Must include id, ownerId, dataContractId, documentTypeName, and revision.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `recipientId`: `Identifier` (required)
+    - The new owner's identity ID.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.transfer.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1926,14 +2227,36 @@ await sdk.documents.transfer({
 **Document Purchase** - `documents.purchase`
 *Purchase a document*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `purchase(options: wasm.DocumentPurchaseOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Document ID` (text, required)
-
-- `Price (credits)` (number, required)
+Parameters:
+- `options`: `wasm.DocumentPurchaseOptions` (required)
+  - Type declarations: [`wasm.DocumentPurchaseOptions`](TYPE_REFERENCE.md#type-documentpurchaseoptions)
+  - `document`: `Document` (required)
+    - The document to purchase.
+Must include id, ownerId, dataContractId, documentTypeName, and revision.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `buyerId`: `Identifier` (required)
+    - The buyer's identity ID.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `price`: `bigint` (required)
+    - The purchase price in credits.
+Must match the document's listed price.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The public key to use for signing the transition.
+Get this from the buyer identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.purchase.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -1971,14 +2294,33 @@ await sdk.documents.purchase({
 **Document Set Price** - `documents.setPrice`
 *Set or update document price*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `setPrice(options: wasm.DocumentSetPriceOptions): Promise<void>`
 
-- `Document Type` (text, required)
-
-- `Document ID` (text, required)
-
-- `Price (credits, 0 to remove)` (number, required)
+Parameters:
+- `options`: `wasm.DocumentSetPriceOptions` (required)
+  - Type declarations: [`wasm.DocumentSetPriceOptions`](TYPE_REFERENCE.md#type-documentsetpriceoptions)
+  - `document`: `Document` (required)
+    - The document to set a price on.
+Must include id, ownerId, dataContractId, documentTypeName, and revision.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `price`: `bigint` (required)
+    - The price in credits.
+Set to 0 to remove the price and make the document not for sale.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the owner identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
+    - Optional token payment agreement for document types with tokenCost.update_price.
+  - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2015,9 +2357,30 @@ await sdk.documents.setPrice({
 **DPNS Register Name** - `dpns.registerName`
 *Register a new DPNS username*
 
-Parameters (payload fields):
-- `Username` (text, required)
-  - Example: `Enter username (e.g., alice)`
+Signature: `registerName(options: wasm.DpnsRegisterNameOptions): Promise<wasm.RegisterDpnsNameResult>`
+
+Parameters:
+- `options`: `wasm.DpnsRegisterNameOptions` (required)
+  - Type declarations: [`wasm.DpnsRegisterNameOptions`](TYPE_REFERENCE.md#type-dpnsregisternameoptions)
+  - `label`: `string` (required)
+    - The username label to register (without the .dash suffix).
+Must be a valid DPNS username (3-63 characters, alphanumeric and hyphens).
+  - `identity`: `Identity` (required)
+    - The identity that will own the username.
+Fetch the identity first using `getIdentity()`.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `preorderCallback`: `(preorderDocument: Document) => void` (optional)
+    - Optional callback called after the preorder document is submitted.
+Receives the preorder Document object.
+  - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
 
 Returns:
 
@@ -2056,14 +2419,39 @@ const result = await sdk.dpns.registerName({
 **Token Burn** - `tokens.burn`
 *Burn tokens*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `burn(options: wasm.TokenBurnOptions): Promise<wasm.TokenBurnResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Amount to Burn` (text, required)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenBurnOptions` (required)
+  - Type declarations: [`wasm.TokenBurnOptions`](TYPE_REFERENCE.md#type-tokenburnoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `amount`: `bigint` (required)
+    - The amount of tokens to burn.
+  - `identityId`: `Identifier` (required)
+    - The identity ID of the token holder burning tokens.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the burn operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed token burning.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2097,16 +2485,44 @@ const result = await sdk.tokens.burn({
 **Token Mint** - `tokens.mint`
 *Mint new tokens*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `mint(options: wasm.TokenMintOptions): Promise<wasm.TokenMintResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Amount to Mint` (text, required)
-
-- `Issue To Identity ID` (text, optional)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenMintOptions` (required)
+  - Type declarations: [`wasm.TokenMintOptions`](TYPE_REFERENCE.md#type-tokenmintoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `amount`: `bigint` (required)
+    - The amount of tokens to mint.
+  - `identityId`: `Identifier` (required)
+    - The identity ID of the minter.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `recipientId`: `Identifier` (optional)
+    - Optional recipient identity ID.
+If not provided, mints to the minter's identity.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the mint operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+Get this from the minter identity's public keys.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed token minting.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2141,15 +2557,34 @@ const result = await sdk.tokens.mint({
 **Token Claim** - `tokens.claim`
 *Claim tokens from a distribution*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `claim(options: wasm.TokenClaimOptions): Promise<wasm.TokenClaimResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Distribution Type` (select, required)
-  - Options: `perpetual` (Perpetual), `preprogrammed` (Pre-programmed)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenClaimOptions` (required)
+  - Type declarations: [`wasm.TokenClaimOptions`](TYPE_REFERENCE.md#type-tokenclaimoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `identityId`: `Identifier` (required)
+    - The identity ID claiming the tokens.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `distributionType`: `"preProgrammed" | "perpetual"` (required)
+    - The type of distribution to claim from: "preProgrammed" or "perpetual".
+  - `publicNote`: `string` (optional)
+    - Optional public note for the claim operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key that corresponds to the identity key.
+Use IdentitySigner to add the private key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2183,18 +2618,40 @@ const result = await sdk.tokens.claim({
 **Token Set Price** - `tokens.setPrice`
 *Set or update the price for direct token purchases*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `setPrice(options: wasm.TokenSetPriceOptions): Promise<wasm.TokenSetPriceResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Price Type` (select, required)
-  - Options: `single` (Single Price), `tiered` (Tiered Pricing)
-
-- `Price Data (single price or JSON map)` (text, optional)
-  - Example: `Leave empty to remove pricing`
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenSetPriceOptions` (required)
+  - Type declarations: [`wasm.TokenSetPriceOptions`](TYPE_REFERENCE.md#type-tokensetpriceoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `authorityId`: `Identifier` (required)
+    - The identity ID of the token authority setting the price.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `price`: `bigint | null` (required)
+    - The price in credits for one token.
+Set to null to disable direct purchases.
+  - `publicNote`: `string` (optional)
+    - Optional public note for the price change.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the authority's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed price changes.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2228,14 +2685,35 @@ await sdk.tokens.setPrice({
 **Token Direct Purchase** - `tokens.directPurchase`
 *Purchase tokens directly at the configured price*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `directPurchase(options: wasm.TokenDirectPurchaseOptions): Promise<wasm.TokenDirectPurchaseResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Amount to Purchase` (text, required)
-
-- `Total Agreed Price (in credits) - Optional, fetches from pricing schedule if not provided` (text, optional)
+Parameters:
+- `options`: `wasm.TokenDirectPurchaseOptions` (required)
+  - Type declarations: [`wasm.TokenDirectPurchaseOptions`](TYPE_REFERENCE.md#type-tokendirectpurchaseoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `buyerId`: `Identifier` (required)
+    - The identity ID purchasing the tokens.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `amount`: `bigint` (required)
+    - The amount of tokens to purchase.
+  - `maxTotalCost`: `bigint` (required)
+    - The maximum total credits the buyer is willing to pay.
+The actual cost may be less if the token price is lower.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the buyer's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2269,15 +2747,39 @@ const result = await sdk.tokens.directPurchase({
 **Token Emergency Action** - `tokens.emergencyAction`
 *Perform an emergency action on a token*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `emergencyAction(options: wasm.TokenEmergencyActionOptions): Promise<wasm.TokenEmergencyActionResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Action Type` (select, required)
-  - Options: `pause` (Pause), `resume` (Resume)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenEmergencyActionOptions` (required)
+  - Type declarations: [`wasm.TokenEmergencyActionOptions`](TYPE_REFERENCE.md#type-tokenemergencyactionoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `authorityId`: `Identifier` (required)
+    - The identity ID of the token authority performing the action.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `action`: `"pause" | "resume"` (required)
+    - The emergency action to perform: "pause" or "resume".
+  - `publicNote`: `string` (optional)
+    - Optional public note for the emergency action.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the authority's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed emergency actions.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2311,16 +2813,37 @@ await sdk.tokens.emergencyAction({
 **Token Transfer** - `tokens.transfer`
 *Transfer tokens between identities*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `transfer(options: wasm.TokenTransferOptions): Promise<wasm.TokenTransferResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Amount to Transfer` (text, required)
-
-- `Recipient Identity ID` (text, required)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenTransferOptions` (required)
+  - Type declarations: [`wasm.TokenTransferOptions`](TYPE_REFERENCE.md#type-tokentransferoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `amount`: `bigint` (required)
+    - The amount of tokens to transfer.
+  - `senderId`: `Identifier` (required)
+    - The sender's identity ID.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `recipientId`: `Identifier` (required)
+    - The recipient's identity ID.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the transfer.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the sender's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2355,14 +2878,40 @@ const result = await sdk.tokens.transfer({
 **Token Freeze** - `tokens.freeze`
 *Freeze tokens for a specific identity*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `freeze(options: wasm.TokenFreezeOptions): Promise<wasm.TokenFreezeResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Identity ID to Freeze` (text, required)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenFreezeOptions` (required)
+  - Type declarations: [`wasm.TokenFreezeOptions`](TYPE_REFERENCE.md#type-tokenfreezeoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `authorityId`: `Identifier` (required)
+    - The identity ID of the token authority performing the freeze.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `frozenIdentityId`: `Identifier` (required)
+    - The identity ID to freeze.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the freeze operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the authority's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed token freezing.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2396,14 +2945,40 @@ await sdk.tokens.freeze({
 **Token Unfreeze** - `tokens.unfreeze`
 *Unfreeze tokens for a specific identity*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `unfreeze(options: wasm.TokenUnfreezeOptions): Promise<wasm.TokenUnfreezeResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Identity ID to Unfreeze` (text, required)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenUnfreezeOptions` (required)
+  - Type declarations: [`wasm.TokenUnfreezeOptions`](TYPE_REFERENCE.md#type-tokenunfreezeoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `authorityId`: `Identifier` (required)
+    - The identity ID of the token authority performing the unfreeze.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `frozenIdentityId`: `Identifier` (required)
+    - The identity ID to unfreeze.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the unfreeze operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the authority's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed token unfreezing.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2437,14 +3012,40 @@ await sdk.tokens.unfreeze({
 **Token Destroy Frozen** - `tokens.destroyFrozen`
 *Destroy frozen tokens*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
+Signature: `destroyFrozen(options: wasm.TokenDestroyFrozenOptions): Promise<wasm.TokenDestroyFrozenResult>`
 
-- `Token Contract Position` (number, required)
-
-- `Identity ID whose frozen tokens to destroy` (text, required)
-
-- `Public Note` (text, optional)
+Parameters:
+- `options`: `wasm.TokenDestroyFrozenOptions` (required)
+  - Type declarations: [`wasm.TokenDestroyFrozenOptions`](TYPE_REFERENCE.md#type-tokendestroyfrozenoptions)
+  - `dataContractId`: `Identifier` (required)
+    - The ID of the data contract containing the token.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `tokenPosition`: `number` (required)
+    - The position of the token in the contract (0-indexed).
+  - `authorityId`: `Identifier` (required)
+    - The identity ID of the token authority performing the destruction.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `frozenIdentityId`: `Identifier` (required)
+    - The frozen identity ID whose tokens will be destroyed.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `publicNote`: `string` (optional)
+    - Optional public note for the destruction operation.
+  - `identityKey`: `IdentityPublicKey` (required)
+    - The identity public key to use for signing the transition.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the authority's authentication key.
+Use IdentitySigner to add the authentication key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `groupInfo`: `GroupStateTransitionInfoStatus` (optional)
+    - Optional group action info for group-managed token destruction.
+Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,
+or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.
+  - Type declarations: [`GroupStateTransitionInfoStatus`](TYPE_REFERENCE.md#type-groupstatetransitioninfostatus)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2480,15 +3081,34 @@ await sdk.tokens.destroyFrozen({
 **DPNS Username** - `voting.masternodeVote`
 *Cast a vote for a contested DPNS username*
 
-Parameters (payload fields):
-- `Contested Username` (text, required)
-  - Example: `Enter the contested username (e.g., 'myusername')`
+Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
 
-- `Vote Choice` (select, required)
-  - Options: `abstain` (Abstain), `lock` (Lock (Give to no one)), `towardsIdentity` (Vote for Identity)
-
-- `Target Identity ID (if voting for identity)` (text, optional)
-  - Example: `Identity ID to vote for`
+Parameters:
+- `options`: `wasm.MasternodeVoteOptions` (required)
+  - Type declarations: [`wasm.MasternodeVoteOptions`](TYPE_REFERENCE.md#type-masternodevoteoptions)
+  - `masternodeProTxHash`: `Identifier` (required)
+    - The ProTxHash of the masternode.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `votePoll`: `VotePoll` (required)
+    - The vote poll to vote on.
+Use VotePoll.createContestedDocumentResourceVotePoll() to create.
+  - Type declarations: [`VotePoll`](TYPE_REFERENCE.md#type-votepoll)
+  - `voteChoice`: `ResourceVoteChoice` (required)
+    - The vote choice.
+Use ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or ResourceVoteChoice.lock().
+  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice)
+  - `votingKey`: `IdentityPublicKey` (required)
+    - The masternode's voting public key.
+This should be the voting key associated with the masternode.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the masternode's voting key.
+Use IdentitySigner to add the voting key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2527,19 +3147,34 @@ await sdk.voting.masternodeVote({
 **Contested Resource** - `voting.masternodeVote`
 *Cast a vote for contested resources as a masternode*
 
-Parameters (payload fields):
-- `Data Contract ID` (text, required)
-  - Example: `Contract ID containing the contested resource`
+Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
 
-- `Get Contested Resources` (button, optional)
-
-- `Contested Resources` (dynamic, optional)
-
-- `Vote Choice` (select, required)
-  - Options: `abstain` (Abstain), `lock` (Lock (Give to no one)), `towardsIdentity` (Vote for Identity)
-
-- `Target Identity ID (if voting for identity)` (text, optional)
-  - Example: `Identity ID to vote for`
+Parameters:
+- `options`: `wasm.MasternodeVoteOptions` (required)
+  - Type declarations: [`wasm.MasternodeVoteOptions`](TYPE_REFERENCE.md#type-masternodevoteoptions)
+  - `masternodeProTxHash`: `Identifier` (required)
+    - The ProTxHash of the masternode.
+  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `votePoll`: `VotePoll` (required)
+    - The vote poll to vote on.
+Use VotePoll.createContestedDocumentResourceVotePoll() to create.
+  - Type declarations: [`VotePoll`](TYPE_REFERENCE.md#type-votepoll)
+  - `voteChoice`: `ResourceVoteChoice` (required)
+    - The vote choice.
+Use ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or ResourceVoteChoice.lock().
+  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice)
+  - `votingKey`: `IdentityPublicKey` (required)
+    - The masternode's voting public key.
+This should be the voting key associated with the masternode.
+  - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key for the masternode's voting key.
+Use IdentitySigner to add the voting key before calling.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2579,15 +3214,34 @@ await sdk.voting.masternodeVote({
 **Address Transfer** - `addresses.transfer`
 *Transfer credits between Platform addresses*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `transfer(options: wasm.AddressFundsTransferOptions): Promise<Map<string, wasm.PlatformAddressInfo>>`
+
 Parameters:
-- `Inputs` (PlatformAddressInput[], required)
-  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
-
-- `Outputs` (PlatformAddressOutput[], required)
-  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
-
-- `Signer` (PlatformAddressSigner, required)
-  - PlatformAddressSigner containing private keys for all input addresses.
+- `options`: `wasm.AddressFundsTransferOptions` (required)
+  - - Transfer options including inputs, outputs, and signer
+  - Type declarations: [`wasm.AddressFundsTransferOptions`](TYPE_REFERENCE.md#type-addressfundstransferoptions)
+  - `inputs`: `PlatformAddressInput[]` (required)
+    - Array of input addresses with amounts to spend.
+Use PlatformAddressInput for typed inputs (nonces fetched automatically).
+  - Type declarations: [`PlatformAddressInput`](TYPE_REFERENCE.md#type-platformaddressinput)
+  - `outputs`: `PlatformAddressOutput[]` (required)
+    - Array of output addresses with amounts to receive.
+Use PlatformAddressOutput for typed outputs.
+  - Type declarations: [`PlatformAddressOutput`](TYPE_REFERENCE.md#type-platformaddressoutput)
+  - `signer`: `PlatformAddressSigner` (required)
+    - Signer containing private keys for all input addresses.
+Use PlatformAddressSigner to add keys before calling transfer.
+  - Type declarations: [`PlatformAddressSigner`](TYPE_REFERENCE.md#type-platformaddresssigner)
+  - `feeStrategy`: `FeeStrategyStep[]` (optional)
+    - Fee strategy defining how transaction fees are paid.
+Array of FeeStrategyStep, each specifying to deduct from an input or reduce an output.
+  - Type declarations: [`FeeStrategyStep`](TYPE_REFERENCE.md#type-feestrategystep)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2623,15 +3277,29 @@ const result = await sdk.addresses.transfer({
 **Top Up Identity from Address** - `addresses.topUpIdentity`
 *Top up an identity using Platform address credits*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `topUpIdentity(options: wasm.IdentityTopUpFromAddressesOptions): Promise<wasm.IdentityTopUpFromAddressesResult>`
+
 Parameters:
-- `Identity` (Identity, required)
-  - Fetched Identity object to top up (sdk.identities.fetch).
-
-- `Inputs` (PlatformAddressInput[], required)
-  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
-
-- `Signer` (PlatformAddressSigner, required)
-  - PlatformAddressSigner containing keys for the input addresses
+- `options`: `wasm.IdentityTopUpFromAddressesOptions` (required)
+  - - Top up options including identity ID, inputs, and signer
+  - Type declarations: [`wasm.IdentityTopUpFromAddressesOptions`](TYPE_REFERENCE.md#type-identitytopupfromaddressesoptions)
+  - `identity`: `Identity` (required)
+    - The identity to top up.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `inputs`: `PlatformAddressInput[]` (required)
+    - Array of input addresses with amounts to use for top up.
+Use PlatformAddressInput for typed inputs (nonces fetched automatically).
+  - Type declarations: [`PlatformAddressInput`](TYPE_REFERENCE.md#type-platformaddressinput)
+  - `signer`: `PlatformAddressSigner` (required)
+    - Signer containing private keys for all input addresses.
+Use PlatformAddressSigner to add keys before calling top up.
+  - Type declarations: [`PlatformAddressSigner`](TYPE_REFERENCE.md#type-platformaddresssigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2658,21 +3326,47 @@ const result = await sdk.addresses.topUpIdentity({
 **Withdraw to Core** - `addresses.withdraw`
 *Withdraw Platform address credits to Dash Core*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `withdraw(options: wasm.AddressFundsWithdrawOptions): Promise<Map<string, wasm.PlatformAddressInfo>>`
+
 Parameters:
-- `Inputs` (PlatformAddressInput[], required)
-  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
-
-- `Core Fee Per Byte` (number, required)
-  - Core (L1) mining fee per byte for the withdrawal transaction
-
-- `Pooling` (PoolingWasm, required)
-  - Pooling strategy (PoolingWasm.Never / IfAvailable / Standard).
-
-- `Output Script` (CoreScript, required)
-  - Core L1 destination script (CoreScript.fromP2PKH / fromP2SH)
-
-- `Signer` (PlatformAddressSigner, required)
-  - PlatformAddressSigner containing keys for the input addresses
+- `options`: `wasm.AddressFundsWithdrawOptions` (required)
+  - - Withdrawal options including inputs, output script, pooling, and signer
+  - Type declarations: [`wasm.AddressFundsWithdrawOptions`](TYPE_REFERENCE.md#type-addressfundswithdrawoptions)
+  - `inputs`: `PlatformAddressInput[]` (required)
+    - Array of input addresses with amounts to withdraw.
+Use PlatformAddressInput for typed inputs (nonces fetched automatically).
+  - Type declarations: [`PlatformAddressInput`](TYPE_REFERENCE.md#type-platformaddressinput)
+  - `changeOutput`: `PlatformAddressOutput` (optional)
+    - Optional change output address and amount.
+If provided, specifies where to send any change from the withdrawal.
+  - Type declarations: [`PlatformAddressOutput`](TYPE_REFERENCE.md#type-platformaddressoutput)
+  - `feeStrategy`: `FeeStrategyStep[]` (optional)
+    - Fee strategy defining how transaction fees are paid.
+Array of FeeStrategyStep, each specifying to deduct from an input or reduce an output.
+  - Type declarations: [`FeeStrategyStep`](TYPE_REFERENCE.md#type-feestrategystep)
+  - `coreFeePerByte`: `number` (required)
+    - Core (L1) fee per byte for the withdrawal transaction.
+This determines the mining fee for the Core blockchain transaction.
+  - `pooling`: `Pooling` (required)
+    - Pooling strategy for the withdrawal.
+- Pooling.Never: Create individual withdrawal transaction
+- Pooling.IfAvailable: Join pool if available, otherwise individual
+- Pooling.Standard: Wait to join pool (may take longer)
+  - Type declarations: [`Pooling`](TYPE_REFERENCE.md#type-pooling)
+  - `outputScript`: `CoreScript` (required)
+    - Core output script specifying the L1 destination address.
+Use CoreScript.newP2PKH() or CoreScript.newP2SH() to create.
+  - Type declarations: [`CoreScript`](TYPE_REFERENCE.md#type-corescript)
+  - `signer`: `PlatformAddressSigner` (required)
+    - Signer containing private keys for all input addresses.
+Use PlatformAddressSigner to add keys before calling withdraw.
+  - Type declarations: [`PlatformAddressSigner`](TYPE_REFERENCE.md#type-platformaddresssigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2717,15 +3411,32 @@ const result = await sdk.addresses.withdraw({
 **Transfer from Identity to Address** - `addresses.transferFromIdentity`
 *Transfer credits from an identity to Platform addresses*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `transferFromIdentity(options: wasm.IdentityTransferToAddressesOptions): Promise<wasm.IdentityTransferToAddressesResult>`
+
 Parameters:
-- `Identity` (Identity, required)
-  - Fetched Identity object to transfer from (sdk.identities.fetch).
-
-- `Outputs` (PlatformAddressOutput[], required)
-  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
-
-- `Signer` (IdentitySigner, required)
-  - IdentitySigner with the identity transfer key
+- `options`: `wasm.IdentityTransferToAddressesOptions` (required)
+  - - Transfer options including identity ID, outputs, and signer
+  - Type declarations: [`wasm.IdentityTransferToAddressesOptions`](TYPE_REFERENCE.md#type-identitytransfertoaddressesoptions)
+  - `identity`: `Identity` (required)
+    - The identity to transfer credits from.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `outputs`: `PlatformAddressOutput[]` (required)
+    - Array of output addresses with amounts to receive.
+Use PlatformAddressOutput for typed outputs.
+  - Type declarations: [`PlatformAddressOutput`](TYPE_REFERENCE.md#type-platformaddressoutput)
+  - `signer`: `IdentitySigner` (required)
+    - Signer containing the private key(s) for signing with identity transfer key(s).
+Use IdentitySigner to add keys before calling transfer.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `signingTransferKeyId`: `number` (optional)
+    - Optional key ID to use for signing.
+If not specified, will auto-select a matching transfer key.
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2753,18 +3464,38 @@ const result = await sdk.addresses.transferFromIdentity({
 **Fund Address from Asset Lock** - `addresses.fundFromAssetLock`
 *Fund Platform addresses from an asset lock*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `fundFromAssetLock(options: wasm.AddressFundingFromAssetLockOptions): Promise<Map<string, wasm.PlatformAddressInfo>>`
+
 Parameters:
-- `Asset Lock Proof` (AssetLockProof, required)
-  - AssetLockProof from Core (AssetLockProof.fromHex / createInstantAssetLockProof / createChainAssetLockProof).
-
-- `Asset Lock Private Key` (PrivateKey, required)
-  - PrivateKey controlling the asset-lock output (PrivateKey.fromWIF).
-
-- `Outputs` (PlatformAddressOutput[], required)
-  - PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount).
-
-- `Signer` (PlatformAddressSigner, required)
-  - PlatformAddressSigner containing keys for the funded output addresses
+- `options`: `wasm.AddressFundingFromAssetLockOptions` (required)
+  - - Funding options including asset lock proof, outputs, and signer
+  - Type declarations: [`wasm.AddressFundingFromAssetLockOptions`](TYPE_REFERENCE.md#type-addressfundingfromassetlockoptions)
+  - `assetLockProof`: `AssetLockProof` (required)
+    - Asset lock proof from the Core chain.
+Use AssetLockProof.createInstantAssetLockProof() or AssetLockProof.createChainAssetLockProof().
+  - Type declarations: [`AssetLockProof`](TYPE_REFERENCE.md#type-assetlockproof)
+  - `assetLockPrivateKey`: `PrivateKey` (required)
+    - Private key for signing the asset lock proof.
+This is the private key that controls the asset lock output.
+  - Type declarations: [`PrivateKey`](TYPE_REFERENCE.md#type-privatekey)
+  - `outputs`: `PlatformAddressOutput[]` (required)
+    - Array of output addresses with amounts to fund.
+Use PlatformAddressOutput for typed outputs.
+  - Type declarations: [`PlatformAddressOutput`](TYPE_REFERENCE.md#type-platformaddressoutput)
+  - `signer`: `PlatformAddressSigner` (required)
+    - Signer containing private keys for all output addresses.
+Use PlatformAddressSigner to add keys before calling fund.
+  - Type declarations: [`PlatformAddressSigner`](TYPE_REFERENCE.md#type-platformaddresssigner)
+  - `feeStrategy`: `FeeStrategyStep[]` (optional)
+    - Fee strategy defining how transaction fees are paid.
+Array of FeeStrategyStep, each specifying to deduct from an input or reduce an output.
+  - Type declarations: [`FeeStrategyStep`](TYPE_REFERENCE.md#type-feestrategystep)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 
@@ -2800,18 +3531,38 @@ const result = await sdk.addresses.fundFromAssetLock({
 **Create Identity from Address** - `addresses.createIdentity`
 *Create a new identity funded from Platform addresses*
 
+**Disabled:** Platform addresses not fully implemented in SDK
+
+Signature: `createIdentity(options: wasm.IdentityCreateFromAddressesOptions): Promise<wasm.IdentityCreateFromAddressesResult>`
+
 Parameters:
-- `Identity` (Identity, required)
-  - Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation).
-
-- `Inputs` (PlatformAddressInput[], required)
-  - PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount).
-
-- `Identity Signer` (IdentitySigner, required)
-  - IdentitySigner holding private keys that prove ownership of the identity public keys being registered.
-
-- `Address Signer` (PlatformAddressSigner, required)
-  - PlatformAddressSigner containing private keys for all input addresses.
+- `options`: `wasm.IdentityCreateFromAddressesOptions` (required)
+  - - Creation options including identity, inputs, and signers
+  - Type declarations: [`wasm.IdentityCreateFromAddressesOptions`](TYPE_REFERENCE.md#type-identitycreatefromaddressesoptions)
+  - `identity`: `Identity` (required)
+    - The identity to create (with public keys set up).
+Use Identity.create() to build the identity structure first.
+  - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
+  - `inputs`: `PlatformAddressInput[]` (required)
+    - Array of input addresses with amounts to use for funding.
+Use PlatformAddressInput for typed inputs (nonces fetched automatically).
+  - Type declarations: [`PlatformAddressInput`](TYPE_REFERENCE.md#type-platformaddressinput)
+  - `changeOutput`: `PlatformAddressOutput` (optional)
+    - Optional change output address and amount.
+If provided, remaining credits will be sent to this address.
+  - Type declarations: [`PlatformAddressOutput`](TYPE_REFERENCE.md#type-platformaddressoutput)
+  - `identitySigner`: `IdentitySigner` (required)
+    - Signer containing private keys for the identity's public keys.
+Use IdentitySigner to add keys for signing identity key proofs.
+  - Type declarations: [`IdentitySigner`](TYPE_REFERENCE.md#type-identitysigner)
+  - `addressSigner`: `PlatformAddressSigner` (required)
+    - Signer containing private keys for all input addresses.
+Use PlatformAddressSigner to add keys for signing address inputs.
+  - Type declarations: [`PlatformAddressSigner`](TYPE_REFERENCE.md#type-platformaddresssigner)
+  - `settings`: `PutSettings` (optional)
+    - Optional settings for the broadcast operation.
+Includes retries, timeouts, userFeeIncrease, etc.
+  - Type declarations: [`PutSettings`](TYPE_REFERENCE.md#type-putsettings)
 
 Returns:
 

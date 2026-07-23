@@ -2,7 +2,7 @@
 
 An interactive documentation and testing website for the [Dash Platform Evo JS SDK](https://github.com/dashpay/platform/tree/master/packages/js-evo-sdk).
 
-**Live site:** https://dashpay.github.io/evo-sdk-website/
+**Live site:** <https://dashpay.github.io/evo-sdk-website/>
 
 ## Related Repositories
 
@@ -12,30 +12,54 @@ An interactive documentation and testing website for the [Dash Platform Evo JS S
 ## Local Development
 
 ### Serve the website locally
+
 ```bash
 yarn serve
 open http://localhost:8081/index.html
 ```
 
 ### Generate documentation
+
 ```bash
 yarn generate
 ```
-This regenerates `public/docs.html`, the human-facing `public/TYPE_REFERENCE.html`, `public/AI_REFERENCE.md`, `public/TYPE_REFERENCE.md`, and copies the latest installed SDK bundle to `public/dist`. Return types are extracted from the declarations shipped by `@dashevo/evo-sdk`.
+
+This regenerates `public/sdk-operation-catalog.json`, `public/docs.html`, the human-facing `public/TYPE_REFERENCE.html`, `public/AI_REFERENCE.md`, `public/TYPE_REFERENCE.md`, and copies the latest installed SDK bundle to `public/dist`. Operation metadata — method signatures, parameters, return types, and the recursively resolved input/output types they reference — is extracted from the declarations shipped by `@dashevo/evo-sdk`.
 
 ### Check documentation status
+
 ```bash
 yarn check
+```
+
+## Testing
+
+```bash
+yarn test               # Full suite: unit tests then Playwright E2E
+yarn test:unit          # Vitest unit tests + type-extraction tests
+```
+
+Playwright E2E:
+
+```bash
+yarn test:smoke         # Quick UI validation tests
+yarn test:queries       # Query execution tests (parallel)
+yarn test:playground    # Playground example tests
+yarn test:transitions   # State transition tests (sequential, slow)
 ```
 
 ## Project Structure
 
 - `public/index.html` — Main interactive SDK testing interface
+- `public/playground.html` — Code playground for writing and running SDK snippets
 - `public/docs.html` — Human-friendly documentation with examples
 - `public/AI_REFERENCE.md` — Compact reference for AI assistants
-- `public/TYPE_REFERENCE.md` — Generated declarations for named return types
+- `public/TYPE_REFERENCE.html` — Human-facing reference for named input/output types reachable from documented methods
+- `public/TYPE_REFERENCE.md` — Generated declarations for named input/output types reachable from documented methods
+- `public/sdk-operation-catalog.json` — Versioned catalog of declaration-derived operation metadata (signatures, parameters, return types, referenced types)
 - `public/api-definitions.json` — API definitions used by the generator
 - `scripts/generate_docs.py` — Documentation generator script
+- `scripts/extract_sdk_types.mjs` — Extracts operation metadata and recursively resolves referenced input/output types from the installed SDK declarations
 
 ## Notes
 

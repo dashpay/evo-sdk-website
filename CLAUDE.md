@@ -18,13 +18,23 @@ yarn generate           # Regenerate docs from api-definitions.json
 yarn check              # Validate documentation is current
 ```
 
-### Testing (Playwright E2E)
+### Testing
 
 ```bash
-yarn test               # Run all tests
-yarn test:smoke         # Quick UI validation tests (27 tests)
-yarn test:queries       # Query execution tests (109 tests, parallel)
-yarn test:transitions   # State transition tests (26 tests, sequential, slow)
+yarn test               # Full suite: unit tests then Playwright E2E
+yarn test:unit          # Vitest unit tests + type-extraction tests
+yarn test:types         # Type-extraction tests (node --test)
+yarn test:unit:watch    # Vitest in watch mode
+yarn test:unit:coverage # Vitest with coverage
+```
+
+Playwright E2E:
+
+```bash
+yarn test:smoke         # Quick UI validation tests
+yarn test:queries       # Query execution tests (parallel)
+yarn test:playground    # Playground example tests
+yarn test:transitions   # State transition tests (sequential, slow)
 yarn test:ui            # Interactive Playwright UI
 yarn test:report        # View HTML report
 ```
@@ -46,10 +56,14 @@ PLAYWRIGHT_BASE_URL=https://dashpay.github.io/evo-sdk-website/ yarn test:smoke
 ### Core Files
 
 - `public/app.js` — One-line entrypoint shim (`import './src/main.js'`); the service worker caches this path
-- `public/src/` — Application logic, split into focused ES modules: `operations.js` (the `callEvo()` dispatcher), `sdk-client.js` (SDK client lifecycle), `main.js` (entrypoint/wiring), plus form, auth, and rendering modules
+- `public/playground.html` — Code playground for writing and running SDK snippets directly; linked from the main nav and driven by `public/src/playground.js`
+- `public/src/` — Application logic, split into focused ES modules: `operations.js` (the `callEvo()` dispatcher), `sdk-client.js` (SDK client lifecycle), `main.js` (entrypoint/wiring), `playground.js` (playground page), plus form, auth, and rendering modules
 - `public/api-definitions.json` — Single source of truth for all API operations (~2700 lines)
+- `public/sdk-operation-catalog.json` — Versioned operation catalog generated from the installed declarations: per-operation signatures, parameters, return types, and a recursive map of referenced SDK input/output types. Consumed by the docs generator and checked for drift by `yarn check`
 - `public/dist/evo-sdk.module.js` — Bundled SDK, copied from `node_modules/@dashevo/evo-sdk/dist` by `yarn generate` (not generated here)
 - `scripts/generate_docs.py` — Generates `docs.html` and `AI_REFERENCE.md` from api-definitions.json; also refreshes `public/dist` from the installed SDK package
+- `scripts/extract_sdk_types.mjs` — Extracts typed operation metadata (signatures, parameters, return types) and recursively resolves referenced SDK input/output types from the installed TypeScript declarations, emitting `sdk-operation-catalog.json`
+- `scripts/check_documentation.py` — Validates that generated documentation is current (`yarn check`)
 
 ### SDK Integration Pattern
 

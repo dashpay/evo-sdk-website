@@ -9,6 +9,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const docs = fs.readFileSync(path.join(ROOT, 'public/docs.html'), 'utf8');
 const aiReference = fs.readFileSync(path.join(ROOT, 'public/AI_REFERENCE.md'), 'utf8');
 const apiDefinitions = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/api-definitions.json'), 'utf8'));
+const sdkOperationCatalog = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'public/sdk-operation-catalog.json'), 'utf8'),
+);
 const wasmSdkDts = fs.readFileSync(path.join(ROOT, 'node_modules/@dashevo/wasm-sdk/dist/sdk.d.ts'), 'utf8');
 
 const TRANSITION_ENTRIES = Object.values(apiDefinitions.transitions).flatMap((category) =>
@@ -16,6 +19,9 @@ const TRANSITION_ENTRIES = Object.values(apiDefinitions.transitions).flatMap((ca
 );
 const TRANSITION_KEYS = TRANSITION_ENTRIES.map(([key]) => key);
 const TRANSITION_BY_KEY = Object.fromEntries(TRANSITION_ENTRIES);
+const OPERATION_BY_KEY = Object.fromEntries(
+  sdkOperationCatalog.operations.map((operation) => [operation.key, operation]),
+);
 const TOKEN_TRANSITION_KEYS = [
   'tokenMint',
   'tokenBurn',
@@ -162,8 +168,10 @@ function interfaceRequiredProperties(_sourceText, interfaceName) {
 }
 
 function sdkParamByName(transitionKey, paramName) {
-  const params = TRANSITION_BY_KEY[transitionKey]?.sdk_params || [];
-  return params.find((p) => p.name === paramName);
+  const parameters = OPERATION_BY_KEY[transitionKey]?.parameters || [];
+  const properties = parameters.flatMap((parameter) => parameter.properties || []);
+  const property = properties.find((candidate) => candidate.name === paramName);
+  return property ? { ...property, required: !property.optional } : undefined;
 }
 
 function extractSdkCallSites(example) {
@@ -382,7 +390,7 @@ describe('v4 state transition documentation examples', () => {
     expect(docs).toContain('identityKey');
     expect(docs).toContain('assetLockPrivateKey');
     expect(aiReference).toContain('new Document({');
-    expect(aiReference).toContain('typed options object');
+    expect(aiReference).toContain('new Identity(assetLockProof.createIdentityId())');
     expect(aiReference).not.toContain('{ ...params, privateKeyWif }');
   });
 
@@ -458,7 +466,7 @@ describe('v4 state transition documentation examples', () => {
       required: true,
     });
     expect(sdkParamByName('addressWithdraw', 'pooling')).toMatchObject({
-      type: 'PoolingWasm',
+      type: 'Pooling',
       required: true,
     });
     expect(sdkParamByName('addressWithdraw', 'outputScript')).toMatchObject({
@@ -528,6 +536,8 @@ describe('v4 state transition documentation examples', () => {
   });
 
   it('formats multiline query examples as valid top-level const result assignments', () => {
+    expect(docs).not.toMatch(/\breturn\s+(?:const|let|var|\/\/)/);
+
     const querySection = aiReference.split('## State Transition Operations')[0] || '';
     const queryBlocks = [...querySection.matchAll(/```javascript\n([\s\S]*?)```/g)].map((m) => m[1]);
 

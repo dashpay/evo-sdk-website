@@ -6,6 +6,7 @@ const aiReference = fs.readFileSync(new URL('../../public/AI_REFERENCE.md', impo
 const typeReference = fs.readFileSync(new URL('../../public/TYPE_REFERENCE.md', import.meta.url), 'utf8');
 const typeReferenceHtml = fs.readFileSync(new URL('../../public/TYPE_REFERENCE.html', import.meta.url), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(new URL('../../public/docs_manifest.json', import.meta.url), 'utf8'));
+const catalog = JSON.parse(fs.readFileSync(new URL('../../public/sdk-operation-catalog.json', import.meta.url), 'utf8'));
 const apiDefinitions = JSON.parse(fs.readFileSync(new URL('../../public/api-definitions.json', import.meta.url), 'utf8'));
 const documentedMethods = ['queries', 'transitions'].flatMap((group) =>
   Object.values(apiDefinitions[group]).flatMap((category) =>
@@ -41,5 +42,34 @@ describe('generated return type documentation', () => {
   it('records the declaration source version', () => {
     expect(manifest.sdk_types).toMatchObject({ name: '@dashevo/evo-sdk', version: '4.0.0', declarationRoot: 'dist' });
     expect(aiReference).toContain('`@dashevo/evo-sdk@4.0.0`');
+  });
+
+  it('publishes declaration-derived signatures and option properties', () => {
+    expect(catalog.schemaVersion).toBe(1);
+    expect(catalog.methods['identities.fetch'].signature).toBe(
+      'fetch(identityId: wasm.IdentifierLike): Promise<wasm.Identity | undefined>',
+    );
+    const createOptions = catalog.methods['documents.create'].parameters[0];
+    expect(createOptions.type).toBe('wasm.DocumentCreateOptions');
+    expect(createOptions.properties).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'document', type: 'Document', optional: false }),
+      expect.objectContaining({ name: 'settings', type: 'PutSettings', optional: true }),
+    ]));
+    expect(aiReference).toContain('Signature: `create(options: wasm.DocumentCreateOptions): Promise<void>`');
+    expect(docs).toContain('create(options: wasm.DocumentCreateOptions): Promise&lt;void&gt;');
+  });
+
+  it('keeps playground construction fields out of SDK documentation', () => {
+    expect(aiReference).not.toContain('Parameters (payload fields)');
+    expect(aiReference).not.toContain('Generate New Seed');
+    expect(docs).not.toContain('Generate New Seed');
+    expect(aiReference).not.toContain('Seed Phrase` (textarea');
+  });
+
+  it('keeps generated query examples consistent with async return types and declarations', () => {
+    expect(aiReference).toContain("const result = await sdk.dpns.convertToHomographSafe('ąlice');");
+    expect(aiReference).not.toContain("const result = sdk.dpns.convertToHomographSafe('ąlice');");
+    expect(aiReference).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
+    expect(docs).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
   });
 });

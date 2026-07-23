@@ -1548,36 +1548,6 @@
               "help": "These keys will be added to your new identity"
             }
           ],
-          "sdk_params": [
-            {
-              "name": "identity",
-              "type": "Identity",
-              "label": "Identity",
-              "required": true,
-              "description": "Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation)."
-            },
-            {
-              "name": "assetLockProof",
-              "type": "AssetLockProof",
-              "label": "Asset Lock Proof",
-              "required": true,
-              "description": "AssetLockProof from Core (AssetLockProof.fromHex / createInstantAssetLockProof / createChainAssetLockProof)."
-            },
-            {
-              "name": "assetLockPrivateKey",
-              "type": "PrivateKey",
-              "label": "Asset Lock Private Key",
-              "required": true,
-              "description": "PrivateKey controlling the asset-lock output (PrivateKey.fromWIF). Separate from the IdentitySigner."
-            },
-            {
-              "name": "signer",
-              "type": "IdentitySigner",
-              "label": "Identity Signer",
-              "required": true,
-              "description": "IdentitySigner holding private keys that prove ownership of the identity public keys being registered."
-            }
-          ],
           "sdk_method": "identities.create"
         },
         "identityTopUp": {
@@ -1591,29 +1561,6 @@
               "required": true,
               "placeholder": "Enter the identity ID to top up (base58)",
               "help": "The identity ID that will receive the credits from the asset lock proof"
-            }
-          ],
-          "sdk_params": [
-            {
-              "name": "identity",
-              "type": "Identity",
-              "label": "Identity",
-              "required": true,
-              "description": "Fetched Identity object to top up (sdk.identities.fetch)."
-            },
-            {
-              "name": "assetLockProof",
-              "type": "AssetLockProof",
-              "label": "Asset Lock Proof",
-              "required": true,
-              "description": "AssetLockProof from Core funding the top-up."
-            },
-            {
-              "name": "assetLockPrivateKey",
-              "type": "PrivateKey",
-              "label": "Asset Lock Private Key",
-              "required": true,
-              "description": "PrivateKey for the asset-lock output. Top-up does not use IdentitySigner."
             }
           ],
           "sdk_method": "identities.topUp"
@@ -2524,29 +2471,6 @@
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             }
           ],
-          "sdk_params": [
-            {
-              "name": "inputs",
-              "type": "PlatformAddressInput[]",
-              "label": "Inputs",
-              "required": true,
-              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
-            },
-            {
-              "name": "outputs",
-              "type": "PlatformAddressOutput[]",
-              "label": "Outputs",
-              "required": true,
-              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
-            },
-            {
-              "name": "signer",
-              "type": "PlatformAddressSigner",
-              "label": "Signer",
-              "required": true,
-              "description": "PlatformAddressSigner containing private keys for all input addresses."
-            }
-          ],
           "sdk_method": "addresses.transfer"
         },
         "addressTopUpIdentity": {
@@ -2580,29 +2504,6 @@
               "type": "text",
               "label": "Amount (credits)",
               "required": true
-            }
-          ],
-          "sdk_params": [
-            {
-              "name": "identity",
-              "type": "Identity",
-              "label": "Identity",
-              "required": true,
-              "description": "Fetched Identity object to top up (sdk.identities.fetch)."
-            },
-            {
-              "name": "inputs",
-              "type": "PlatformAddressInput[]",
-              "label": "Inputs",
-              "required": true,
-              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
-            },
-            {
-              "name": "signer",
-              "type": "PlatformAddressSigner",
-              "label": "Signer",
-              "required": true,
-              "description": "PlatformAddressSigner containing keys for the input addresses"
             }
           ],
           "sdk_method": "addresses.topUpIdentity"
@@ -2643,45 +2544,8 @@
               "name": "coreFeePerByte",
               "type": "number",
               "label": "Core Fee Per Byte",
-              "required": true,
+              "required": false,
               "placeholder": "1"
-            }
-          ],
-          "sdk_params": [
-            {
-              "name": "inputs",
-              "type": "PlatformAddressInput[]",
-              "label": "Inputs",
-              "required": true,
-              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
-            },
-            {
-              "name": "coreFeePerByte",
-              "type": "number",
-              "label": "Core Fee Per Byte",
-              "required": true,
-              "description": "Core (L1) mining fee per byte for the withdrawal transaction"
-            },
-            {
-              "name": "pooling",
-              "type": "PoolingWasm",
-              "label": "Pooling",
-              "required": true,
-              "description": "Pooling strategy (PoolingWasm.Never / IfAvailable / Standard)."
-            },
-            {
-              "name": "outputScript",
-              "type": "CoreScript",
-              "label": "Output Script",
-              "required": true,
-              "description": "Core L1 destination script (CoreScript.fromP2PKH / fromP2SH)"
-            },
-            {
-              "name": "signer",
-              "type": "PlatformAddressSigner",
-              "label": "Signer",
-              "required": true,
-              "description": "PlatformAddressSigner containing keys for the input addresses"
             }
           ],
           "sdk_method": "addresses.withdraw"
@@ -2705,29 +2569,6 @@
               "required": true
             }
           ],
-          "sdk_params": [
-            {
-              "name": "identity",
-              "type": "Identity",
-              "label": "Identity",
-              "required": true,
-              "description": "Fetched Identity object to transfer from (sdk.identities.fetch)."
-            },
-            {
-              "name": "outputs",
-              "type": "PlatformAddressOutput[]",
-              "label": "Outputs",
-              "required": true,
-              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
-            },
-            {
-              "name": "signer",
-              "type": "IdentitySigner",
-              "label": "Signer",
-              "required": true,
-              "description": "IdentitySigner with the identity transfer key"
-            }
-          ],
           "sdk_method": "addresses.transferFromIdentity"
         },
         "addressFundFromAssetLock": {
@@ -2747,36 +2588,6 @@
               "type": "text",
               "label": "Amount (credits)",
               "required": true
-            }
-          ],
-          "sdk_params": [
-            {
-              "name": "assetLockProof",
-              "type": "AssetLockProof",
-              "label": "Asset Lock Proof",
-              "required": true,
-              "description": "AssetLockProof from Core (AssetLockProof.fromHex / createInstantAssetLockProof / createChainAssetLockProof)."
-            },
-            {
-              "name": "assetLockPrivateKey",
-              "type": "PrivateKey",
-              "label": "Asset Lock Private Key",
-              "required": true,
-              "description": "PrivateKey controlling the asset-lock output (PrivateKey.fromWIF)."
-            },
-            {
-              "name": "outputs",
-              "type": "PlatformAddressOutput[]",
-              "label": "Outputs",
-              "required": true,
-              "description": "PlatformAddressOutput[] - construct with new PlatformAddressOutput(address, amount)."
-            },
-            {
-              "name": "signer",
-              "type": "PlatformAddressSigner",
-              "label": "Signer",
-              "required": true,
-              "description": "PlatformAddressSigner containing keys for the funded output addresses"
             }
           ],
           "sdk_method": "addresses.fundFromAssetLock"
@@ -2812,36 +2623,6 @@
               "label": "Public Keys (JSON)",
               "required": true,
               "placeholder": "[{\"id\":0,\"type\":0,\"purpose\":0,\"securityLevel\":0,\"data\":\"...\"}]"
-            }
-          ],
-          "sdk_params": [
-            {
-              "name": "identity",
-              "type": "Identity",
-              "label": "Identity",
-              "required": true,
-              "description": "Identity object with public keys attached (new Identity(...) + addPublicKey / IdentityPublicKeyInCreation)."
-            },
-            {
-              "name": "inputs",
-              "type": "PlatformAddressInput[]",
-              "label": "Inputs",
-              "required": true,
-              "description": "PlatformAddressInput[] - construct with new PlatformAddressInput(address, nonce, amount)."
-            },
-            {
-              "name": "identitySigner",
-              "type": "IdentitySigner",
-              "label": "Identity Signer",
-              "required": true,
-              "description": "IdentitySigner holding private keys that prove ownership of the identity public keys being registered."
-            },
-            {
-              "name": "addressSigner",
-              "type": "PlatformAddressSigner",
-              "label": "Address Signer",
-              "required": true,
-              "description": "PlatformAddressSigner containing private keys for all input addresses."
             }
           ],
           "sdk_method": "addresses.createIdentity"
