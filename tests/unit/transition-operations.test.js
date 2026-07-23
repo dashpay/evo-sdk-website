@@ -59,9 +59,9 @@ describe('document transition operation registry', () => {
     expect(documentTransitionOperations.documentCreate.renderCode({})).toContain('new Document');
     expect(tokenTransitionOperations.tokenTransfer.renderCode({})).toContain('Identifier.fromBase58');
     expect(tokenTransitionOperations.tokenTransfer.renderCode({})).toContain('BigInt(amount)');
-    expect(transitionOperations.addressTransfer.renderCode({})).toContain('new PlatformAddressInput');
+    expect(transitionOperations.addressTransfer.renderCode({})).toContain('const input = { address:');
     const addressCreateCode = transitionOperations.addressCreateIdentity.renderCode({});
-    expect(addressCreateCode).toContain('const identity = new Identity(Identifier.random())');
+    expect(addressCreateCode).toContain('const identity = new Identity(Identifier.fromBytes(');
     expect(addressCreateCode.indexOf('const identity =')).toBeLessThan(addressCreateCode.indexOf('sdk.addresses.createIdentity'));
   });
   it('registers every document write against its declared SDK method', () => {

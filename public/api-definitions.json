@@ -2385,7 +2385,6 @@
         "addressTransfer": {
           "label": "Address Transfer",
           "description": "Transfer credits between Platform addresses",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",
@@ -2393,13 +2392,6 @@
               "label": "Sender Platform Address",
               "required": true,
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
-            },
-            {
-              "name": "senderNonce",
-              "type": "number",
-              "label": "Sender Nonce",
-              "required": true,
-              "placeholder": "0"
             },
             {
               "name": "amount",
@@ -2420,7 +2412,6 @@
         "addressTopUpIdentity": {
           "label": "Top Up Identity from Address",
           "description": "Top up an identity using Platform address credits",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "identityId",
@@ -2437,13 +2428,6 @@
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
-              "name": "senderNonce",
-              "type": "number",
-              "label": "Sender Nonce",
-              "required": true,
-              "placeholder": "0"
-            },
-            {
               "name": "amount",
               "type": "text",
               "label": "Amount (credits)",
@@ -2455,7 +2439,6 @@
         "addressWithdraw": {
           "label": "Withdraw to Core",
           "description": "Withdraw Platform address credits to Dash Core",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",
@@ -2463,13 +2446,6 @@
               "label": "Sender Platform Address",
               "required": true,
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
-            },
-            {
-              "name": "senderNonce",
-              "type": "number",
-              "label": "Sender Nonce",
-              "required": true,
-              "placeholder": "0"
             },
             {
               "name": "amount",
@@ -2497,7 +2473,6 @@
         "addressTransferFromIdentity": {
           "label": "Transfer from Identity to Address",
           "description": "Transfer credits from an identity to Platform addresses",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "recipientAddress",
@@ -2518,8 +2493,13 @@
         "addressFundFromAssetLock": {
           "label": "Fund Address from Asset Lock",
           "description": "Fund Platform addresses from an asset lock",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
+            {
+              "name": "addressPrivateKeyWif",
+              "type": "password",
+              "label": "Recipient Platform Address Private Key (WIF)",
+              "required": true
+            },
             {
               "name": "recipientAddress",
               "type": "text",
@@ -2539,7 +2519,6 @@
         "addressCreateIdentity": {
           "label": "Create Identity from Address",
           "description": "Create a new identity funded from Platform addresses",
-          "disabled": "Platform addresses not fully implemented in SDK",
           "inputs": [
             {
               "name": "senderAddress",
@@ -2549,24 +2528,17 @@
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
             },
             {
-              "name": "senderNonce",
-              "type": "number",
-              "label": "Sender Nonce",
-              "required": true,
-              "placeholder": "0"
-            },
-            {
               "name": "amount",
               "type": "text",
               "label": "Amount (credits)",
               "required": true
             },
             {
-              "name": "publicKeys",
-              "type": "json",
-              "label": "Public Keys (JSON)",
+              "name": "identityPrivateKeyWif",
+              "type": "password",
+              "label": "New Identity Private Key (WIF)",
               "required": true,
-              "placeholder": "[{\"id\":0,\"type\":0,\"purpose\":0,\"securityLevel\":0,\"data\":\"...\"}]"
+              "placeholder": "c..."
             }
           ],
           "sdk_method": "addresses.createIdentity"

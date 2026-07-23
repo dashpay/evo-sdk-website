@@ -260,7 +260,7 @@ function validateIdentityResult(resultStr) {
   // Identity must have data - empty {} is not acceptable
   expect(Object.keys(identityData).length).toBeGreaterThan(0);
   // Check identity structure
-  expect(identityData.id || identityData.$id).toBeDefined();
+  expect(identityData.id).toBeDefined();
   expect(identityData).toHaveProperty('publicKeys');
   expect(identityData).toHaveProperty('balance');
   expect(identityData).toHaveProperty('revision');

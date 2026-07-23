@@ -926,6 +926,58 @@ const testData = {
           }
         ]
       },
+    },
+    address: {
+      addressTransfer: {
+        testnet: [{
+          senderAddress: process.env.TEST_PLATFORM_ADDRESS_A || 'PLACEHOLDER_PLATFORM_ADDRESS_A',
+          recipientAddress: process.env.TEST_PLATFORM_ADDRESS_B || 'PLACEHOLDER_PLATFORM_ADDRESS_B',
+          amount: '30000000',
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_A'
+        }]
+      },
+      addressTopUpIdentity: {
+        testnet: [{
+          identityId: '7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC',
+          senderAddress: process.env.TEST_PLATFORM_ADDRESS_B || 'PLACEHOLDER_PLATFORM_ADDRESS_B',
+          amount: '500000',
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_B || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_B'
+        }]
+      },
+      addressWithdraw: {
+        testnet: [{
+          senderAddress: process.env.TEST_PLATFORM_ADDRESS_A || 'PLACEHOLDER_PLATFORM_ADDRESS_A',
+          amount: '1000000',
+          toAddress: 'yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm',
+          coreFeePerByte: 1,
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_A'
+        }]
+      },
+      addressTransferFromIdentity: {
+        testnet: [{
+          identityId: '7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC',
+          recipientAddress: process.env.TEST_PLATFORM_ADDRESS_A || 'PLACEHOLDER_PLATFORM_ADDRESS_A',
+          amount: '100000000',
+          privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER || 'PLACEHOLDER_TRANSFER_KEY'
+        }]
+      },
+      addressFundFromAssetLock: {
+        testnet: [{
+          recipientAddress: process.env.TEST_PLATFORM_ADDRESS_B || 'PLACEHOLDER_PLATFORM_ADDRESS_B',
+          addressPrivateKeyWif: process.env.TEST_PLATFORM_ADDRESS_KEY_B || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_B',
+          amount: '1000000',
+          assetLockProof: process.env.TEST_PLATFORM_ASSET_LOCK_PROOF || '',
+          privateKey: process.env.TEST_PLATFORM_ASSET_LOCK_PRIVATE_KEY || 'PLACEHOLDER_ASSET_LOCK_KEY'
+        }]
+      },
+      addressCreateIdentity: {
+        testnet: [{
+          senderAddress: process.env.TEST_PLATFORM_ADDRESS_A || 'PLACEHOLDER_PLATFORM_ADDRESS_A',
+          amount: '5000000',
+          identityPrivateKeyWif: 'GENERATED_AT_TEST_RUNTIME',
+          privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_A'
+        }]
+      }
     }
   },
 

@@ -4645,7 +4645,7 @@
       "sdkMethod": "addresses.transfer",
       "label": "Address Transfer",
       "description": "Transfer credits between Platform addresses",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "transfer(options: wasm.AddressFundsTransferOptions): Promise<Map<string, wasm.PlatformAddressInfo>>",
       "parameters": [
         {
@@ -4718,7 +4718,7 @@
       "sdkMethod": "addresses.topUpIdentity",
       "label": "Top Up Identity from Address",
       "description": "Top up an identity using Platform address credits",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "topUpIdentity(options: wasm.IdentityTopUpFromAddressesOptions): Promise<wasm.IdentityTopUpFromAddressesResult>",
       "parameters": [
         {
@@ -4782,7 +4782,7 @@
       "sdkMethod": "addresses.withdraw",
       "label": "Withdraw to Core",
       "description": "Withdraw Platform address credits to Dash Core",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "withdraw(options: wasm.AddressFundsWithdrawOptions): Promise<Map<string, wasm.PlatformAddressInfo>>",
       "parameters": [
         {
@@ -4880,7 +4880,7 @@
       "sdkMethod": "addresses.transferFromIdentity",
       "label": "Transfer from Identity to Address",
       "description": "Transfer credits from an identity to Platform addresses",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "transferFromIdentity(options: wasm.IdentityTransferToAddressesOptions): Promise<wasm.IdentityTransferToAddressesResult>",
       "parameters": [
         {
@@ -4951,7 +4951,7 @@
       "sdkMethod": "addresses.fundFromAssetLock",
       "label": "Fund Address from Asset Lock",
       "description": "Fund Platform addresses from an asset lock",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "fundFromAssetLock(options: wasm.AddressFundingFromAssetLockOptions): Promise<Map<string, wasm.PlatformAddressInfo>>",
       "parameters": [
         {
@@ -5033,7 +5033,7 @@
       "sdkMethod": "addresses.createIdentity",
       "label": "Create Identity from Address",
       "description": "Create a new identity funded from Platform addresses",
-      "disabled": "Platform addresses not fully implemented in SDK",
+      "disabled": null,
       "signature": "createIdentity(options: wasm.IdentityCreateFromAddressesOptions): Promise<wasm.IdentityCreateFromAddressesResult>",
       "parameters": [
         {

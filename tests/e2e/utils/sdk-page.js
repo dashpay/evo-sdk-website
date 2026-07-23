@@ -641,7 +641,9 @@ class EvoSdkPage extends BaseTest {
       } else if (key === 'privateKey') {
         await this.fillPrivateKey(value);
       } else if (key === 'identityId') {
-        await this.fillIdentityId(value);
+        // Identity IDs can be either global authentication fields or dynamic
+        // operation inputs (for example, addressTopUpIdentity).
+        await this.fillParameterByName(key, value, true);
       } else if (key === 'seedPhrase') {
         await this.fillSeedPhrase(value);
       } else if (key === 'identityIndex') {
