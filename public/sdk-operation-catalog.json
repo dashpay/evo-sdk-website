@@ -3387,7 +3387,7 @@
       "sdkMethod": "dpns.registerName",
       "label": "DPNS Register Name",
       "description": "Register a new DPNS username",
-      "disabled": null,
+      "disabled": "Typed v4 preorder and registration flow is not covered by a usable credential fixture.",
       "signature": "registerName(options: wasm.DpnsRegisterNameOptions): Promise<wasm.RegisterDpnsNameResult>",
       "parameters": [
         {
@@ -4485,7 +4485,7 @@
       "sdkMethod": "voting.masternodeVote",
       "label": "DPNS Username",
       "description": "Cast a vote for a contested DPNS username",
-      "disabled": null,
+      "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
       "signature": "masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>",
       "parameters": [
         {
@@ -4565,7 +4565,7 @@
       "sdkMethod": "voting.masternodeVote",
       "label": "Contested Resource",
       "description": "Cast a vote for contested resources as a masternode",
-      "disabled": null,
+      "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
       "signature": "masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>",
       "parameters": [
         {

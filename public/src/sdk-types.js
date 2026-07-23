@@ -1,0 +1,16 @@
+export {
+  AssetLockProof,
+  DataContract,
+  Document,
+  EvoSDK,
+  Identifier,
+  Identity,
+  IdentityPublicKeyInCreation,
+  IdentitySigner,
+  KeyType,
+  PlatformAddressSigner,
+  PrivateKey,
+  Purpose,
+  SecurityLevel,
+  wallet,
+} from '../dist/evo-sdk.module.js';

@@ -9,7 +9,9 @@ describe('generated state transition examples', () => {
     expect(aiReference).toContain('sdk.documents.create({ document, identityKey, signer })');
     expect(aiReference).toContain('sdk.contracts.publish({ dataContract, identityKey, signer })');
     expect(aiReference).toContain('sdk.identities.topUp({ identity, assetLockProof, assetLockPrivateKey })');
-    expect(aiReference).toContain('sdk.tokens.burn({ dataContractId, tokenPosition');
+    expect(aiReference).toContain('await sdk.tokens.burn({');
+    expect(aiReference).toContain('dataContractId: Identifier.fromBase58(contractId)');
+    expect(aiReference).toContain('tokenPosition: Number(tokenPosition)');
   });
 
   it('does not pass WIF strings directly to transition methods', () => {
@@ -22,5 +24,6 @@ describe('generated state transition examples', () => {
 
   it('renders multiline transition examples as valid snippets', () => {
     expect(docs).not.toMatch(/\breturn\s+(?:const|let|var|\/\/)/);
+    expect(aiReference).not.toMatch(/const result =\s*import\b/);
   });
 });

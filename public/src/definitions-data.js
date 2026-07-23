@@ -108,6 +108,10 @@ export const DPNS_CATEGORY_DEFINITIONS = {
       },
     },
   },
+  // TODO(issue-67): Restore a Registration category after dpns.registerName
+  // constructs Identity, IdentityPublicKey, IdentitySigner, and the preorder
+  // callback required by the SDK's typed v4 options.
+  /*
   registration: {
     label: 'Registration',
     operations: {
@@ -121,6 +125,7 @@ export const DPNS_CATEGORY_DEFINITIONS = {
       },
     },
   },
+  */
 };
 
 export const PROOF_CAPABLE = new Set([
@@ -169,7 +174,7 @@ export const TRANSITION_AUTH_REQUIREMENTS = {
     privateKey: { required: true, targets: ['assetLockPrivateKeyWif'] },
   },
   identityCreditTransfer: {
-    identity: { required: true, targets: ['senderId'] },
+    identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true, keyIdTarget: 'keyId' },
   },
   identityCreditWithdrawal: {
@@ -221,7 +226,7 @@ export const TRANSITION_AUTH_REQUIREMENTS = {
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenTransfer: {
-    identity: { required: true, targets: ['senderId'] },
+    identity: { required: true, targets: ['identityId'] },
     privateKey: { required: true, targets: ['privateKeyWif'], allowKeyId: true },
   },
   tokenFreeze: {

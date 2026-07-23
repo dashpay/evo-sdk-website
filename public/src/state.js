@@ -30,6 +30,8 @@ export const elements = {
   queryInputs: document.getElementById('queryInputs'),
   queryTitle: document.getElementById('queryTitle'),
   dynamicInputs: document.getElementById('dynamicInputs'),
+  generatedCodePanel: document.getElementById('generatedCodePanel'),
+  generatedCode: document.getElementById('generatedCode'),
   proofToggleContainer: document.getElementById('proofToggleContainer'),
   proofToggle: document.getElementById('proofToggle'),
   noProofInfoContainer: document.getElementById('noProofInfoContainer'),
