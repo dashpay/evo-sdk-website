@@ -2496,7 +2496,7 @@
           "inputs": [
             {
               "name": "addressPrivateKeyWif",
-              "type": "text",
+              "type": "password",
               "label": "Recipient Platform Address Private Key (WIF)",
               "required": true
             },
@@ -2535,7 +2535,7 @@
             },
             {
               "name": "identityPrivateKeyWif",
-              "type": "text",
+              "type": "password",
               "label": "New Identity Private Key (WIF)",
               "required": true,
               "placeholder": "c..."

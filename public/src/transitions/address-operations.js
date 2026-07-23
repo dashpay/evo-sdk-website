@@ -33,6 +33,15 @@ function positiveAmount(value) {
   return amount;
 }
 
+function optionalCoreFeePerByte(value) {
+  if (value === undefined || value === null || value === '') return undefined;
+  const fee = Number(value);
+  if (!Number.isSafeInteger(fee) || fee < 0 || fee > 0xffffffff) {
+    throw new Error('Core fee per byte must be a non-negative 32-bit integer');
+  }
+  return fee;
+}
+
 function addressText(address) {
   return address?.toHex?.() || address?.toString?.() || String(address);
 }
@@ -193,9 +202,10 @@ export const addressTransitionOperations = {
     sdkMethod: 'addresses.withdraw', fields: ADDRESS_FIELDS,
     async prepare(values, sdk) {
       const outputScript = await coreScript(values.toAddress);
+      const coreFeePerByte = optionalCoreFeePerByte(values.coreFeePerByte);
       const build = async () => {
         const input = await spendingInput(values, sdk);
-        return { inputs: [input.input], coreFeePerByte: values.coreFeePerByte === '' || values.coreFeePerByte == null ? undefined : Number(values.coreFeePerByte), pooling: PoolingWasm.Never, outputScript, signer: input.signer };
+        return { inputs: [input.input], coreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer: input.signer };
       };
       return { options: await build(), rebuild: build };
     },
@@ -248,16 +258,19 @@ export const addressTransitionOperations = {
   addressCreateIdentity: {
     sdkMethod: 'addresses.createIdentity', fields: ADDRESS_FIELDS,
     async prepare(values, sdk) {
-      const input = await spendingInput(values, sdk);
       const identityPrivateKey = PrivateKey.fromWIF(required(values.identityPrivateKeyWif, 'Identity private key'));
       const identity = new Identity(Identifier.fromBytes(crypto.getRandomValues(new Uint8Array(32))));
       identity.addPublicKey(new IdentityPublicKeyInCreation({ keyId: 0, purpose: Purpose.AUTHENTICATION, securityLevel: SecurityLevel.MASTER, keyType: KeyType.ECDSA_SECP256K1, data: identityPrivateKey.getPublicKey().toBytes() }).toIdentityPublicKey());
       const identitySigner = new IdentitySigner();
       identitySigner.addKey(identityPrivateKey);
-      return { options: { identity, inputs: [input.input], identitySigner, addressSigner: input.signer }, context: { identityId: identity.id?.toString() } };
+      const build = async () => {
+        const input = await spendingInput(values, sdk);
+        return { identity, inputs: [input.input], identitySigner, addressSigner: input.signer };
+      };
+      return { options: await build(), rebuild: build, context: { identityId: identity.id?.toString() } };
     },
     async execute(prepared, sdk) {
-      const result = await sdk.addresses.createIdentity(prepared.options);
+      const result = await withNonceRetry(prepared, sdk, 'createIdentity');
       return { status: 'success', identityId: result.identity?.id?.toString() || prepared.context.identityId, addressInfos: serializeAddressInfos(result), message: 'Identity created from Platform Address' };
     },
     renderCode() { return ["import { Identifier, Identity, IdentityPublicKeyInCreation, IdentitySigner, KeyType, PlatformAddressSigner, PrivateKey, Purpose, SecurityLevel } from '@dashevo/evo-sdk';", 'const identityPrivateKey = PrivateKey.fromWIF(identityPrivateKeyWif);', 'const identity = new Identity(Identifier.fromBytes(crypto.getRandomValues(new Uint8Array(32))));', 'const identityPublicKey = new IdentityPublicKeyInCreation({ keyId: 0, purpose: Purpose.AUTHENTICATION, securityLevel: SecurityLevel.MASTER, keyType: KeyType.ECDSA_SECP256K1, data: identityPrivateKey.getPublicKey().toBytes() }).toIdentityPublicKey();', 'identity.addPublicKey(identityPublicKey);', 'const addressSigner = new PlatformAddressSigner();', 'const derivedAddress = addressSigner.addKey(PrivateKey.fromWIF(addressPrivateKeyWif));', 'const inputs = [{ address: derivedAddress.toBech32m(network), amount: BigInt(amount) }];', 'const identitySigner = new IdentitySigner();', 'identitySigner.addKey(identityPrivateKey);', 'await sdk.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner });'].join('\n'); },

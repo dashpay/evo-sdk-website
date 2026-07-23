@@ -152,6 +152,19 @@ describe('Platform Address transition operations', () => {
     }, fundedSdk())).rejects.toThrow('Dash Core address checksum is invalid');
   });
 
+  it.each(['not-a-number', '-1', '1.5', '4294967296'])(
+    'rejects an invalid Core fee per byte: %s',
+    async coreFeePerByte => {
+      await expect(addressTransitionOperations.addressWithdraw.prepare({
+        senderAddress: transferValues.senderAddress,
+        addressPrivateKeyWif: transferValues.addressPrivateKeyWif,
+        amount: '1000',
+        toAddress: 'yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm',
+        coreFeePerByte,
+      }, fundedSdk())).rejects.toThrow('Core fee per byte must be a non-negative 32-bit integer');
+    },
+  );
+
   it('rebuilds inputs once after a stale nonce error', async () => {
     const transfer = vi.fn()
       .mockRejectedValueOnce(new Error('invalid address nonce'))
@@ -194,6 +207,27 @@ describe('Platform Address transition operations', () => {
     });
   });
 
+  it('rebuilds address-funded identity inputs once after a nonce conflict', async () => {
+    const sdk = fundedSdk();
+    sdk.addresses.createIdentity = vi.fn()
+      .mockRejectedValueOnce(new Error('invalid address nonce'))
+      .mockResolvedValueOnce({ identity: { id: { toString: () => 'generated-id' } } });
+    const prepared = await addressTransitionOperations.addressCreateIdentity.prepare({
+      senderAddress: transferValues.senderAddress,
+      addressPrivateKeyWif: transferValues.addressPrivateKeyWif,
+      identityPrivateKeyWif: 'identity-key',
+      amount: '2500',
+    }, sdk);
+    const originalIdentity = prepared.options.identity;
+
+    const result = await addressTransitionOperations.addressCreateIdentity.execute(prepared, sdk);
+
+    expect(sdk.addresses.get).toHaveBeenCalledTimes(2);
+    expect(sdk.addresses.createIdentity).toHaveBeenCalledTimes(2);
+    expect(sdk.addresses.createIdentity.mock.calls[1][0].identity).toBe(originalIdentity);
+    expect(result).toMatchObject({ status: 'success', identityId: 'generated-id' });
+  });
+
   it('exposes all six operations and current SDK constructor examples', () => {
     expect(Object.keys(addressTransitionOperations)).toHaveLength(6);
     for (const operation of Object.values(addressTransitionOperations)) {
@@ -212,5 +246,7 @@ describe('Platform Address transition operations', () => {
     const operations = definitions.transitions.address.transitions;
     expect(Object.values(operations).every(operation => !operation.disabled)).toBe(true);
     expect(Object.values(operations).flatMap(operation => operation.inputs).some(input => input.name === 'senderNonce')).toBe(false);
+    expect(operations.addressFundFromAssetLock.inputs.find(input => input.name === 'addressPrivateKeyWif')?.type).toBe('password');
+    expect(operations.addressCreateIdentity.inputs.find(input => input.name === 'identityPrivateKeyWif')?.type).toBe('password');
   });
 });
