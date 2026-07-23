@@ -30,11 +30,13 @@ vi.mock('../../public/src/sdk-types.js', () => {
 let contractTransitionOperations;
 let documentTransitionOperations;
 let identityTransitionOperations;
+let tokenTransitionOperations;
 
 beforeAll(async () => {
   ({ contractTransitionOperations } = await import('../../public/src/transitions/contract-operations.js'));
   ({ documentTransitionOperations } = await import('../../public/src/transitions/document-operations.js'));
   ({ identityTransitionOperations } = await import('../../public/src/transitions/identity-operations.js'));
+  ({ tokenTransitionOperations } = await import('../../public/src/transitions/token-operations.js'));
 });
 
 function testIdentity(id = 'identity-id') {
@@ -349,5 +351,52 @@ describe('document transition preparation and execution', () => {
       recipientId: 'recipient-id',
       privateKeyWif: 'document-wif',
     }, sdk)).rejects.toThrow('Document not found: missing');
+  });
+});
+
+describe('token transition result normalization', () => {
+  const prepared = (options, values = {}) => ({ options, context: { values } });
+
+  it.each([
+    ['tokenMint', 'mint', { amount: 5n }, 'Minted 5 tokens'],
+    ['tokenBurn', 'burn', { amount: 4n }, 'Burned 4 tokens'],
+    ['tokenClaim', 'claim', {}, 'Claimed tokens from distribution'],
+    ['tokenDirectPurchase', 'directPurchase', { amount: 3n }, 'Purchased 3 tokens'],
+  ])('returns an operation-specific response when %s has no result payload', async (key, method, options, message) => {
+    const sdk = { tokens: { [method]: vi.fn(async () => ({})) } };
+    const result = await tokenTransitionOperations[key].execute(prepared(options), sdk);
+
+    expect(result).toMatchObject({ status: 'success', message });
+    expect(() => JSON.stringify(result)).not.toThrow();
+    expect(sdk.tokens[method]).toHaveBeenCalledWith(options);
+  });
+
+  it('returns transfer context when the SDK has no result payload', async () => {
+    const options = { amount: 6n };
+    const transfer = vi.fn(async () => ({}));
+    const result = await tokenTransitionOperations.tokenTransfer.execute(
+      prepared(options, { recipientId: 'recipient-id' }),
+      { tokens: { transfer } },
+    );
+
+    expect(result).toEqual({
+      status: 'success',
+      senderBalance: undefined,
+      recipientBalance: undefined,
+      message: 'Transferred 6 tokens to recipient-id',
+    });
+    expect(() => JSON.stringify(result)).not.toThrow();
+  });
+
+  it.each([
+    ['tokenFreeze', 'freeze', { identityToFreeze: 'frozen-id' }, 'Frozen tokens for identity frozen-id'],
+    ['tokenUnfreeze', 'unfreeze', { identityToUnfreeze: 'frozen-id' }, 'Unfrozen tokens for identity frozen-id'],
+    ['tokenDestroyFrozen', 'destroyFrozen', { frozenIdentityId: 'frozen-id' }, 'Destroyed frozen tokens for identity frozen-id'],
+    ['tokenSetPriceForDirectPurchase', 'setPrice', {}, 'Token price set successfully'],
+    ['tokenEmergencyAction', 'emergencyAction', {}, 'Emergency action pause performed', { action: 'pause' }],
+  ])('returns an operation-specific message for %s', async (key, method, values, message, options = {}) => {
+    const sdk = { tokens: { [method]: vi.fn(async () => ({})) } };
+    const result = await tokenTransitionOperations[key].execute(prepared(options, values), sdk);
+    expect(result).toEqual({ status: 'success', message });
   });
 });

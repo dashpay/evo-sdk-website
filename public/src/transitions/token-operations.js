@@ -83,21 +83,70 @@ export const tokenTransitionOperations = Object.fromEntries(Object.entries(CONFI
   },
   async execute(prepared, sdk) {
     const result = await sdk.tokens[config.method](prepared.options);
-    if (key === 'tokenDirectPurchase') {
-      return {
+    switch (key) {
+      case 'tokenMint':
+        return {
+          status: 'success',
+          balance: result?.balance?.toString(),
+          message: `Minted ${prepared.options.amount} tokens`,
+        };
+      case 'tokenBurn':
+        return {
+          status: 'success',
+          balance: result?.balance?.toString(),
+          message: `Burned ${prepared.options.amount} tokens`,
+        };
+      case 'tokenTransfer':
+        return {
+          status: 'success',
+          senderBalance: result?.senderBalance?.toString(),
+          recipientBalance: result?.recipientBalance?.toString(),
+          message: `Transferred ${prepared.options.amount} tokens to ${prepared.context.values.recipientId}`,
+        };
+      case 'tokenFreeze':
+        return {
+          status: 'success',
+          message: `Frozen tokens for identity ${prepared.context.values.identityToFreeze}`,
+        };
+      case 'tokenUnfreeze':
+        return {
+          status: 'success',
+          message: `Unfrozen tokens for identity ${prepared.context.values.identityToUnfreeze}`,
+        };
+      case 'tokenDestroyFrozen':
+        return {
+          status: 'success',
+          message: `Destroyed frozen tokens for identity ${prepared.context.values.frozenIdentityId}`,
+        };
+      case 'tokenSetPriceForDirectPurchase':
+        return {
+          status: 'success',
+          message: 'Token price set successfully',
+        };
+      case 'tokenDirectPurchase':
+        return {
+          status: 'success',
+          balance: result?.balance?.toString(),
+          creditsPaid: result?.creditsPaid?.toString(),
+          message: `Purchased ${prepared.options.amount} tokens`,
+        };
+      case 'tokenClaim':
+        return {
+          status: 'success',
+          claimedAmount: result?.claimedAmount?.toString(),
+          message: 'Claimed tokens from distribution',
+        };
+      case 'tokenEmergencyAction':
+        return {
+          status: 'success',
+          message: `Emergency action ${prepared.options.action} performed`,
+        };
+      default:
+        return {
         status: 'success',
-        balance: result?.balance?.toString(),
-        creditsPaid: result?.creditsPaid?.toString(),
-        message: `Purchased ${prepared.options.amount} tokens`,
-      };
+          message: `${key} completed successfully`,
+        };
     }
-    if (key === 'tokenEmergencyAction') {
-      return {
-        status: 'success',
-        message: `Emergency action ${prepared.options.action} performed`,
-      };
-    }
-    return { status: 'success', result, message: `${key} completed successfully` };
   },
   renderCode() { return renderCode(config); },
 }]));

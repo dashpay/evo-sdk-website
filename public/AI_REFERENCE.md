@@ -1695,7 +1695,8 @@ if (!identity) throw new Error('Identity not found');
 const signer = new IdentitySigner();
 signer.addKeyFromWif(privateKeyWif);
 
-await sdk.identities.update({ identity, addPublicKeys, disablePublicKeys, signer });
+const disabledKeyIds = disablePublicKeys?.split(',').map(value => Number(value.trim()));
+await sdk.identities.update({ identity, addPublicKeys, disablePublicKeys: disabledKeyIds, signer });
 ```
 
 **Identity Credit Transfer** - `identities.creditTransfer`
