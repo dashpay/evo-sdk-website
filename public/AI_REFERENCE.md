@@ -1,6 +1,6 @@
 # Evo SDK - AI Reference
 
-Return types: generated from `@dashevo/evo-sdk@4.0.0` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
+Return types: generated from `@dashevo/evo-sdk@4.1.0` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
 
 ## Overview
 The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. It exposes ergonomic namespaces (identities, documents, contracts, tokens, and more) optimized for automation and AI-assisted workflows.
@@ -2459,9 +2459,22 @@ Parameters:
   - `authorityId`: `Identifier` (required)
     - The identity ID of the token authority setting the price.
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
-  - `price`: `bigint | null` (required)
-    - The price in credits for one token.
+  - `price`: `bigint | null` (optional)
+    - The flat price in credits for one token (SinglePrice schedule).
 Set to null to disable direct purchases.
+Mutually exclusive with `priceTiers`.
+  - `priceTiers`: `Record<string, bigint>` (optional)
+    - Tiered direct-purchase pricing (SetPrices schedule).
+
+Maps the minimum bulk-buy amount (token amount, as a string key)
+to the per-token price in credits for that tier. Keys are unsigned
+integers encoded as strings; values are credit amounts as bigint.
+
+Example: `{ "1": 1_000n, "100": 900n, "1000": 800n }` charges 1000
+credits/token for purchases of 1+, 900 for purchases of 100+, and
+800 for purchases of 1000+.
+
+Mutually exclusive with `price`. Must contain at least one entry.
   - `publicNote`: `string` (optional)
     - Optional public note for the price change.
   - `identityKey`: `IdentityPublicKey` (required)

@@ -1,6 +1,6 @@
 # Evo SDK Type Reference
 
-Generated from `@dashevo/evo-sdk@4.0.0` published TypeScript declarations under `dist/`.
+Generated from `@dashevo/evo-sdk@4.1.0` published TypeScript declarations under `dist/`.
 
 Named types reachable from documented method inputs and outputs are included recursively.
 
@@ -175,7 +175,7 @@ export class AssetLockProof {
     readonly instantLockProof: InstantAssetLockProof;
     /**
      * Returns the lock type as a lowercase wire-shape string ("instant" or
-     * "chain") — matching the `type` discriminator emitted by `toObject()` /
+     * "chain") — matching the `$type` discriminator emitted by `toObject()` /
      * `toJSON()`.
      */
     readonly lockType: string;
@@ -550,14 +550,14 @@ export class Document {
     static fromBytes(bytes: Uint8Array, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;
     static fromHex(hex: string, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;
     /**
-     * Create a Document from a JSON object.
+     * Create a Document from a JSON object (canonical-tagged shape).
      * JSON format has identifiers as base58 strings.
      */
-    static fromJSON(value: DocumentJSON, platform_version: PlatformVersionLike): Document;
+    static fromJSON(value: DocumentJSON, _platform_version: PlatformVersionLike): Document;
     /**
-     * Create a Document from a JS object.
+     * Create a Document from a JS object (canonical-tagged shape).
      */
-    static fromObject(value: DocumentObject, platform_version: PlatformVersionLike): Document;
+    static fromObject(value: DocumentObject, _platform_version: PlatformVersionLike): Document;
     static generateId(documentTypeName: string, ownerId: IdentifierLike, dataContractId: IdentifierLike, entropy?: Uint8Array | null): Uint8Array;
     toBase64(data_contract: DataContract, platform_version: PlatformVersionLike): string;
     toBytes(data_contract: DataContract, platform_version: PlatformVersionLike): Uint8Array;
@@ -565,9 +565,15 @@ export class Document {
     /**
      * Convert to a JSON-compatible JS object with binary fields as strings.
      */
-    toJSON(platform_version: PlatformVersionLike): DocumentJSON;
+    toJSON(_platform_version: PlatformVersionLike): DocumentJSON;
     /**
      * Convert to a JS object with binary fields as Uint8Array.
+     *
+     * Wire shape (Phase D step 8 slice B):
+     * - `$formatVersion: "0"` — canonical Document version tag
+     * - `$dataContractId`, `$type`, `$entropy` — wasm-side metadata
+     * - V0 Document fields (`$id`, `$ownerId`, `$revision`, …) flat
+     *   alongside user-defined properties
      */
     toObject(): DocumentObject;
     get createdAt(): bigint | undefined;
@@ -1261,8 +1267,8 @@ export class Group {
     free(): void;
     [Symbol.dispose](): void;
     constructor(members: GroupMembersMap, requiredPower: number);
-    static fromJSON(object: GroupJSON): Group;
-    static fromObject(value: GroupObject): Group;
+    static fromJSON(js: GroupJSON): Group;
+    static fromObject(obj: GroupObject): Group;
     setMemberRequiredPower(member: IdentifierLike, memberRequiredPower: number): void;
     toJSON(): GroupJSON;
     toObject(): GroupObject;
@@ -1624,6 +1630,13 @@ export class Identity {
     static fromBytes(bytes: Uint8Array): Identity;
     static fromHex(hex: string): Identity;
     static fromJSON(value: IdentityJSON): Identity;
+    /**
+     * `fromObject` keeps the manual path because the wasm API dispatches on
+     * the `platform_version` arg (via `try_from_platform_versioned`) rather
+     * than the value's embedded `$formatVersion` tag — explicit version
+     * coupling is the wasm SDK convention. The canonical
+     * `ValueConvertible::from_object` would dispatch on the tag.
+     */
     static fromObject(value: IdentityObject, platform_version: PlatformVersionLike): Identity;
     getPublicKeyById(keyId: number): IdentityPublicKey | undefined;
     toBase64(): string;
@@ -2026,33 +2039,42 @@ export class IdentityPublicKey {
     static fromBytes(bytes: Uint8Array): IdentityPublicKey;
     static fromHex(hex: string): IdentityPublicKey;
     /**
-     * Deserialize from JSON-compatible JS object (human-readable).
+     * Deserialize from JSON-compatible JS object (canonical wire shape).
      *
-     * Uses serde_json conversion which properly handles the tagged enum
-     * and deserializes base64 strings to binary data.
+     * Expects base64 strings for binary fields, base58 strings for
+     * identifiers — the canonical shape produced by `toJSON`.
+     * `platform_version` is accepted for SDK API consistency but not
+     * load-bearing today (canonical tag-driven dispatch handles V0).
      */
-    static fromJSON(value: IdentityPublicKeyJSON, platform_version: PlatformVersionLike): IdentityPublicKey;
+    static fromJSON(value: IdentityPublicKeyJSON, _platform_version: PlatformVersionLike): IdentityPublicKey;
     /**
      * Deserialize from JS object (non-human-readable).
      *
      * Uses platform_value conversion which properly handles the tagged enum.
+     * `platform_version` is accepted for SDK API consistency but not
+     * load-bearing today — canonical `ValueConvertible::from_object`
+     * dispatches on the value's `$formatVersion` tag, which produces
+     * identical output for the only currently-defined V0.
      */
-    static fromObject(value: IdentityPublicKeyObject, platform_version: PlatformVersionLike): IdentityPublicKey;
+    static fromObject(value: IdentityPublicKeyObject, _platform_version: PlatformVersionLike): IdentityPublicKey;
     getPublicKeyHash(): string;
     hex(): string;
     toBytes(): Uint8Array;
     /**
-     * Serialize to JSON-compatible JS object (human-readable).
+     * Serialize to JSON-compatible JS object (canonical wire shape).
      *
-     * Uses serde_json conversion which properly handles the tagged enum
-     * and serializes binary data as base64 strings.
+     * Binary fields render as base64 strings. Identifier fields render
+     * as base58 strings. This matches the canonical `JsonConvertible`
+     * path used by every other rs-dpp type's JSON conversion in this
+     * SDK — including `IdentityWasm.toJSON`'s embedded public keys.
      */
     toJSON(): IdentityPublicKeyJSON;
     /**
      * Serialize to JS object (non-human-readable).
      *
-     * Uses platform_value conversion which properly handles the tagged enum
-     * and removes None fields like disabledAt.
+     * Uses platform_value conversion which properly handles the tagged enum.
+     * `disabledAt: null` is stripped automatically by the
+     * `skip_serializing_if` attribute on the rs-dpp side.
      */
     toObject(): IdentityPublicKeyObject;
     validatePrivateKey(private_key_bytes_input: Uint8Array, network: NetworkLike): boolean;
@@ -2654,11 +2676,19 @@ export class ProtocolVersionUpgradeState {
     static fromObject(obj: object): ProtocolVersionUpgradeState;
     toJSON(): any;
     toObject(): any;
-    readonly activationHeight: bigint | undefined;
+    /**
+     * Protocol version the chain was running when this response was produced.
+     */
     readonly currentProtocolVersion: number;
-    readonly isThresholdReached: boolean;
+    /**
+     * Candidate upgrade version: the version above the current one with the
+     * most evonode votes, if any votes exist.
+     */
     readonly nextProtocolVersion: number | undefined;
-    readonly voteCount: number | undefined;
+    /**
+     * Number of evonode votes cast for `nextProtocolVersion`.
+     */
+    readonly voteCount: bigint | undefined;
 }
 ```
 
@@ -3638,10 +3668,26 @@ export interface TokenSetPriceOptions {
     authorityId: Identifier;
 
     /**
-     * The price in credits for one token.
+     * The flat price in credits for one token (SinglePrice schedule).
      * Set to null to disable direct purchases.
+     * Mutually exclusive with `priceTiers`.
      */
-    price: bigint | null;
+    price?: bigint | null;
+
+    /**
+     * Tiered direct-purchase pricing (SetPrices schedule).
+     *
+     * Maps the minimum bulk-buy amount (token amount, as a string key)
+     * to the per-token price in credits for that tier. Keys are unsigned
+     * integers encoded as strings; values are credit amounts as bigint.
+     *
+     * Example: `{ "1": 1_000n, "100": 900n, "1000": 800n }` charges 1000
+     * credits/token for purchases of 1+, 900 for purchases of 100+, and
+     * 800 for purchases of 1000+.
+     *
+     * Mutually exclusive with `price`. Must contain at least one entry.
+     */
+    priceTiers?: Record<string, bigint>;
 
     /**
      * Optional public note for the price change.
@@ -4120,8 +4166,8 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type AssetLockProofJSON =
-| ({ type: "instant" } & InstantAssetLockProofJSON)
-| ({ type: "chain" } & ChainAssetLockProofJSON);
+| ({ $type: "instant" } & InstantAssetLockProofJSON)
+| ({ $type: "chain" } & ChainAssetLockProofJSON);
 ```
 
 <a id="type-assetlockproofobject"></a>
@@ -4131,8 +4177,8 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type AssetLockProofObject =
-| ({ type: "instant" } & InstantAssetLockProofObject)
-| ({ type: "chain" } & ChainAssetLockProofObject);
+| ({ $type: "instant" } & InstantAssetLockProofObject)
+| ({ $type: "chain" } & ChainAssetLockProofObject);
 ```
 
 <a id="type-chainassetlockproof"></a>
@@ -4648,10 +4694,10 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface GroupActionJSON {
-    $formatVersion: string;
-    contractId: string;
-    proposerId: string;
-    tokenContractPosition: number;
+    $formatVersion: "0";
+    contract_id: string;
+    proposer_id: string;
+    token_contract_position: number;
     event: GroupActionEventJSON;
 }
 ```
@@ -4663,10 +4709,10 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface GroupActionObject {
-    $formatVersion: string;
-    contractId: Uint8Array;
-    proposerId: Uint8Array;
-    tokenContractPosition: number;
+    $formatVersion: "0";
+    contract_id: Uint8Array;
+    proposer_id: Uint8Array;
+    token_contract_position: number;
     event: GroupActionEventObject;
 }
 ```
@@ -5145,9 +5191,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type ResourceVoteChoiceJSON =
-| { type: "towardsIdentity"; data: string }
-| { type: "abstain" }
-| { type: "lock" };
+| { $type: "towardsIdentity"; identity: string }
+| { $type: "abstain" }
+| { $type: "lock" };
 ```
 
 <a id="type-resourcevotechoiceobject"></a>
@@ -5157,9 +5203,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type ResourceVoteChoiceObject =
-| { type: "towardsIdentity"; data: Uint8Array }
-| { type: "abstain" }
-| { type: "lock" };
+| { $type: "towardsIdentity"; identity: Uint8Array }
+| { $type: "abstain" }
+| { $type: "lock" };
 ```
 
 <a id="type-statuschain"></a>
@@ -5303,6 +5349,7 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface TokenContractInfoJSON {
+    $formatVersion: "0";
     contractId: string;
     tokenContractPosition: number;
 }
@@ -5315,6 +5362,7 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface TokenContractInfoObject {
+    $formatVersion: "0";
     contractId: Uint8Array;
     tokenContractPosition: number;
 }
@@ -5332,6 +5380,10 @@ export class TokenPricingSchedule {
     [Symbol.dispose](): void;
     static SetPrices(prices: Record<string, bigint>): TokenPricingSchedule;
     static SinglePrice(credits: bigint): TokenPricingSchedule;
+    static fromJSON(js: any): TokenPricingSchedule;
+    static fromObject(obj: any): TokenPricingSchedule;
+    toJSON(): any;
+    toObject(): any;
     readonly scheduleType: string;
     static readonly __struct: string;
     readonly __type: string;
@@ -5346,13 +5398,11 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface VotePollJSON {
-    type: "contestedDocumentResourceVotePoll";
-    data: {
-        contractId: string;
-        documentTypeName: string;
-        indexName: string;
-        indexValues: any[];
-    };
+    $type: "contestedDocumentResourceVotePoll";
+    contractId: string;
+    documentTypeName: string;
+    indexName: string;
+    indexValues: any[];
 }
 ```
 
@@ -5363,13 +5413,11 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface VotePollObject {
-    type: "contestedDocumentResourceVotePoll";
-    data: {
-        contractId: Uint8Array;
-        documentTypeName: string;
-        indexName: string;
-        indexValues: any[];
-    };
+    $type: "contestedDocumentResourceVotePoll";
+    contractId: Uint8Array;
+    documentTypeName: string;
+    indexName: string;
+    indexValues: any[];
 }
 ```
 
@@ -5689,10 +5737,7 @@ export enum GasFeesPaidBy {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface GroupActionEventJSON {
-    type: "tokenEvent";
-    data: TokenEventJSON;
-}
+export type GroupActionEventJSON = { $kind: "tokenEvent" } & TokenEventJSON;
 ```
 
 <a id="type-groupactioneventobject"></a>
@@ -5701,10 +5746,7 @@ export interface GroupActionEventJSON {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface GroupActionEventObject {
-    type: "tokenEvent";
-    data: TokenEventObject;
-}
+export type GroupActionEventObject = { $kind: "tokenEvent" } & TokenEventObject;
 ```
 
 <a id="type-groupactioneventvariant"></a>
@@ -5900,9 +5942,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type ContestedDocumentVotePollWinnerInfoJSON =
-| { type: "noWinner" }
-| { type: "locked" }
-| { type: "wonByIdentity"; data: string };
+| { $type: "noWinner" }
+| { $type: "locked" }
+| { $type: "wonByIdentity"; identity: string };
 ```
 
 <a id="type-contesteddocumentvotepollwinnerinfoobject"></a>
@@ -5912,9 +5954,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type ContestedDocumentVotePollWinnerInfoObject =
-| { type: "noWinner" }
-| { type: "locked" }
-| { type: "wonByIdentity"; data: Uint8Array };
+| { $type: "noWinner" }
+| { $type: "locked" }
+| { $type: "wonByIdentity"; identity: Uint8Array };
 ```
 
 <a id="type-canchangeadminactiontakersoptions"></a>
@@ -5958,8 +6000,8 @@ export class TokenConfigurationLocalization {
     free(): void;
     [Symbol.dispose](): void;
     constructor(shouldCapitalize: boolean, singularForm: string, pluralForm: string);
-    static fromJSON(value: TokenConfigurationLocalizationJSON): TokenConfigurationLocalization;
-    static fromObject(value: TokenConfigurationLocalizationObject): TokenConfigurationLocalization;
+    static fromJSON(js: TokenConfigurationLocalizationJSON): TokenConfigurationLocalization;
+    static fromObject(obj: TokenConfigurationLocalizationObject): TokenConfigurationLocalization;
     toJSON(): TokenConfigurationLocalizationJSON;
     toObject(): TokenConfigurationLocalizationObject;
     pluralForm: string;
@@ -6070,8 +6112,8 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface TokenEventJSON {
-    type: string;
-    data?: unknown;
+    $type: string;
+    [field: string]: unknown;
 }
 ```
 
@@ -6082,8 +6124,8 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface TokenEventObject {
-    type: string;
-    data?: unknown;
+    $type: string;
+    [field: string]: unknown;
 }
 ```
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "sdk": {
     "name": "@dashevo/evo-sdk",
-    "version": "4.0.0",
+    "version": "4.1.0",
     "declarationRoot": "dist"
   },
   "operations": [
@@ -3808,8 +3808,15 @@
             {
               "name": "price",
               "type": "bigint | null",
-              "optional": false,
-              "description": "The price in credits for one token.\nSet to null to disable direct purchases.",
+              "optional": true,
+              "description": "The flat price in credits for one token (SinglePrice schedule).\nSet to null to disable direct purchases.\nMutually exclusive with `priceTiers`.",
+              "references": []
+            },
+            {
+              "name": "priceTiers",
+              "type": "Record<string, bigint>",
+              "optional": true,
+              "description": "Tiered direct-purchase pricing (SetPrices schedule).\n\nMaps the minimum bulk-buy amount (token amount, as a string key)\nto the per-token price in credits for that tier. Keys are unsigned\nintegers encoded as strings; values are credit amounts as bigint.\n\nExample: `{ \"1\": 1_000n, \"100\": 900n, \"1000\": 800n }` charges 1000\ncredits/token for purchases of 1+, 900 for purchases of 100+, and\n800 for purchases of 1000+.\n\nMutually exclusive with `price`. Must contain at least one entry.",
               "references": []
             },
             {
@@ -9319,8 +9326,15 @@
             {
               "name": "price",
               "type": "bigint | null",
-              "optional": false,
-              "description": "The price in credits for one token.\nSet to null to disable direct purchases.",
+              "optional": true,
+              "description": "The flat price in credits for one token (SinglePrice schedule).\nSet to null to disable direct purchases.\nMutually exclusive with `priceTiers`.",
+              "references": []
+            },
+            {
+              "name": "priceTiers",
+              "type": "Record<string, bigint>",
+              "optional": true,
+              "description": "Tiered direct-purchase pricing (SetPrices schedule).\n\nMaps the minimum bulk-buy amount (token amount, as a string key)\nto the per-token price in credits for that tier. Keys are unsigned\nintegers encoded as strings; values are credit amounts as bigint.\n\nExample: `{ \"1\": 1_000n, \"100\": 900n, \"1000\": 800n }` charges 1000\ncredits/token for purchases of 1+, 900 for purchases of 100+, and\n800 for purchases of 1000+.\n\nMutually exclusive with `price`. Must contain at least one entry.",
               "references": []
             },
             {
@@ -10853,7 +10867,7 @@
     "AssetLockProof": {
       "kind": "ClassDeclaration",
       "anchor": "type-assetlockproof",
-      "declaration": "export class AssetLockProof {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(assetLockProof: ChainAssetLockProof | InstantAssetLockProof);\n    static createChainAssetLockProof(coreChainLockedHeight: number, outPoint: OutPoint): AssetLockProof;\n    createIdentityId(): Identifier;\n    static createInstantAssetLockProof(instantLock: Uint8Array, transaction: Uint8Array, outputIndex: number): AssetLockProof;\n    static fromBytes(bytes: Uint8Array): AssetLockProof;\n    static fromHex(assetLockProof: string): AssetLockProof;\n    static fromJSON(js: AssetLockProofJSON): AssetLockProof;\n    static fromObject(obj: AssetLockProofObject): AssetLockProof;\n    toBytes(): Uint8Array;\n    toHex(): string;\n    toJSON(): AssetLockProofJSON;\n    toObject(): AssetLockProofObject;\n    readonly chainLockProof: ChainAssetLockProof;\n    readonly instantLockProof: InstantAssetLockProof;\n    /**\n     * Returns the lock type as a lowercase wire-shape string (\"instant\" or\n     * \"chain\") \u2014 matching the `type` discriminator emitted by `toObject()` /\n     * `toJSON()`.\n     */\n    readonly lockType: string;\n    readonly outPoint: OutPoint | undefined;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class AssetLockProof {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(assetLockProof: ChainAssetLockProof | InstantAssetLockProof);\n    static createChainAssetLockProof(coreChainLockedHeight: number, outPoint: OutPoint): AssetLockProof;\n    createIdentityId(): Identifier;\n    static createInstantAssetLockProof(instantLock: Uint8Array, transaction: Uint8Array, outputIndex: number): AssetLockProof;\n    static fromBytes(bytes: Uint8Array): AssetLockProof;\n    static fromHex(assetLockProof: string): AssetLockProof;\n    static fromJSON(js: AssetLockProofJSON): AssetLockProof;\n    static fromObject(obj: AssetLockProofObject): AssetLockProof;\n    toBytes(): Uint8Array;\n    toHex(): string;\n    toJSON(): AssetLockProofJSON;\n    toObject(): AssetLockProofObject;\n    readonly chainLockProof: ChainAssetLockProof;\n    readonly instantLockProof: InstantAssetLockProof;\n    /**\n     * Returns the lock type as a lowercase wire-shape string (\"instant\" or\n     * \"chain\") \u2014 matching the `$type` discriminator emitted by `toObject()` /\n     * `toJSON()`.\n     */\n    readonly lockType: string;\n    readonly outPoint: OutPoint | undefined;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "chainLockProof",
@@ -10877,7 +10891,7 @@
           "name": "lockType",
           "type": "string",
           "optional": false,
-          "description": "Returns the lock type as a lowercase wire-shape string (\"instant\" or\n\"chain\") \u2014 matching the `type` discriminator emitted by `toObject()` /\n`toJSON()`.",
+          "description": "Returns the lock type as a lowercase wire-shape string (\"instant\" or\n\"chain\") \u2014 matching the `$type` discriminator emitted by `toObject()` /\n`toJSON()`.",
           "references": []
         },
         {
@@ -11395,7 +11409,7 @@
     "Document": {
       "kind": "ClassDeclaration",
       "anchor": "type-document",
-      "declaration": "export class Document {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(options: DocumentOptions);\n    static fromBase64(base64: string, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    static fromBytes(bytes: Uint8Array, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    static fromHex(hex: string, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    /**\n     * Create a Document from a JSON object.\n     * JSON format has identifiers as base58 strings.\n     */\n    static fromJSON(value: DocumentJSON, platform_version: PlatformVersionLike): Document;\n    /**\n     * Create a Document from a JS object.\n     */\n    static fromObject(value: DocumentObject, platform_version: PlatformVersionLike): Document;\n    static generateId(documentTypeName: string, ownerId: IdentifierLike, dataContractId: IdentifierLike, entropy?: Uint8Array | null): Uint8Array;\n    toBase64(data_contract: DataContract, platform_version: PlatformVersionLike): string;\n    toBytes(data_contract: DataContract, platform_version: PlatformVersionLike): Uint8Array;\n    toHex(data_contract: DataContract, platform_version: PlatformVersionLike): string;\n    /**\n     * Convert to a JSON-compatible JS object with binary fields as strings.\n     */\n    toJSON(platform_version: PlatformVersionLike): DocumentJSON;\n    /**\n     * Convert to a JS object with binary fields as Uint8Array.\n     */\n    toObject(): DocumentObject;\n    get createdAt(): bigint | undefined;\n    set createdAt(value: bigint | null | undefined);\n    get createdAtBlockHeight(): bigint | undefined;\n    set createdAtBlockHeight(value: bigint | null | undefined);\n    get createdAtCoreBlockHeight(): number | undefined;\n    set createdAtCoreBlockHeight(value: number | null | undefined);\n    get dataContractId(): Identifier;\n    set dataContractId(value: IdentifierLike);\n    documentTypeName: string;\n    get entropy(): Uint8Array | undefined;\n    set entropy(value: Uint8Array | null | undefined);\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    get ownerId(): Identifier;\n    set ownerId(value: IdentifierLike);\n    properties: Record<string, unknown>;\n    get revision(): bigint | undefined;\n    set revision(value: bigint | null | undefined);\n    get transferredAt(): bigint | undefined;\n    set transferredAt(value: bigint | null | undefined);\n    get transferredAtBlockHeight(): bigint | undefined;\n    set transferredAtBlockHeight(value: bigint | null | undefined);\n    get transferredAtCoreBlockHeight(): number | undefined;\n    set transferredAtCoreBlockHeight(value: number | null | undefined);\n    get updatedAt(): bigint | undefined;\n    set updatedAt(value: bigint | null | undefined);\n    get updatedAtBlockHeight(): bigint | undefined;\n    set updatedAtBlockHeight(value: bigint | null | undefined);\n    get updatedAtCoreBlockHeight(): number | undefined;\n    set updatedAtCoreBlockHeight(value: number | null | undefined);\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class Document {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(options: DocumentOptions);\n    static fromBase64(base64: string, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    static fromBytes(bytes: Uint8Array, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    static fromHex(hex: string, dataContract: DataContract, typeName: string, platformVersion: PlatformVersionLike): Document;\n    /**\n     * Create a Document from a JSON object (canonical-tagged shape).\n     * JSON format has identifiers as base58 strings.\n     */\n    static fromJSON(value: DocumentJSON, _platform_version: PlatformVersionLike): Document;\n    /**\n     * Create a Document from a JS object (canonical-tagged shape).\n     */\n    static fromObject(value: DocumentObject, _platform_version: PlatformVersionLike): Document;\n    static generateId(documentTypeName: string, ownerId: IdentifierLike, dataContractId: IdentifierLike, entropy?: Uint8Array | null): Uint8Array;\n    toBase64(data_contract: DataContract, platform_version: PlatformVersionLike): string;\n    toBytes(data_contract: DataContract, platform_version: PlatformVersionLike): Uint8Array;\n    toHex(data_contract: DataContract, platform_version: PlatformVersionLike): string;\n    /**\n     * Convert to a JSON-compatible JS object with binary fields as strings.\n     */\n    toJSON(_platform_version: PlatformVersionLike): DocumentJSON;\n    /**\n     * Convert to a JS object with binary fields as Uint8Array.\n     *\n     * Wire shape (Phase D step 8 slice B):\n     * - `$formatVersion: \"0\"` \u2014 canonical Document version tag\n     * - `$dataContractId`, `$type`, `$entropy` \u2014 wasm-side metadata\n     * - V0 Document fields (`$id`, `$ownerId`, `$revision`, \u2026) flat\n     *   alongside user-defined properties\n     */\n    toObject(): DocumentObject;\n    get createdAt(): bigint | undefined;\n    set createdAt(value: bigint | null | undefined);\n    get createdAtBlockHeight(): bigint | undefined;\n    set createdAtBlockHeight(value: bigint | null | undefined);\n    get createdAtCoreBlockHeight(): number | undefined;\n    set createdAtCoreBlockHeight(value: number | null | undefined);\n    get dataContractId(): Identifier;\n    set dataContractId(value: IdentifierLike);\n    documentTypeName: string;\n    get entropy(): Uint8Array | undefined;\n    set entropy(value: Uint8Array | null | undefined);\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    get ownerId(): Identifier;\n    set ownerId(value: IdentifierLike);\n    properties: Record<string, unknown>;\n    get revision(): bigint | undefined;\n    set revision(value: bigint | null | undefined);\n    get transferredAt(): bigint | undefined;\n    set transferredAt(value: bigint | null | undefined);\n    get transferredAtBlockHeight(): bigint | undefined;\n    set transferredAtBlockHeight(value: bigint | null | undefined);\n    get transferredAtCoreBlockHeight(): number | undefined;\n    set transferredAtCoreBlockHeight(value: number | null | undefined);\n    get updatedAt(): bigint | undefined;\n    set updatedAt(value: bigint | null | undefined);\n    get updatedAtBlockHeight(): bigint | undefined;\n    set updatedAtBlockHeight(value: bigint | null | undefined);\n    get updatedAtCoreBlockHeight(): number | undefined;\n    set updatedAtCoreBlockHeight(value: number | null | undefined);\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "documentTypeName",
@@ -12445,7 +12459,7 @@
     "Group": {
       "kind": "ClassDeclaration",
       "anchor": "type-group",
-      "declaration": "export class Group {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(members: GroupMembersMap, requiredPower: number);\n    static fromJSON(object: GroupJSON): Group;\n    static fromObject(value: GroupObject): Group;\n    setMemberRequiredPower(member: IdentifierLike, memberRequiredPower: number): void;\n    toJSON(): GroupJSON;\n    toObject(): GroupObject;\n    members: GroupMembersMap;\n    requiredPower: number;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class Group {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(members: GroupMembersMap, requiredPower: number);\n    static fromJSON(js: GroupJSON): Group;\n    static fromObject(obj: GroupObject): Group;\n    setMemberRequiredPower(member: IdentifierLike, memberRequiredPower: number): void;\n    toJSON(): GroupJSON;\n    toObject(): GroupObject;\n    members: GroupMembersMap;\n    requiredPower: number;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "members",
@@ -12942,7 +12956,7 @@
     "Identity": {
       "kind": "ClassDeclaration",
       "anchor": "type-identity",
-      "declaration": "export class Identity {\n    free(): void;\n    [Symbol.dispose](): void;\n    addPublicKey(publicKey: IdentityPublicKey): void;\n    constructor(id: IdentifierLike);\n    static fromBase64(base64: string): Identity;\n    static fromBytes(bytes: Uint8Array): Identity;\n    static fromHex(hex: string): Identity;\n    static fromJSON(value: IdentityJSON): Identity;\n    static fromObject(value: IdentityObject, platform_version: PlatformVersionLike): Identity;\n    getPublicKeyById(keyId: number): IdentityPublicKey | undefined;\n    toBase64(): string;\n    toBytes(): Uint8Array;\n    toHex(): string;\n    toJSON(): IdentityJSON;\n    toObject(): IdentityObject;\n    balance: bigint;\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    readonly publicKeys: IdentityPublicKey[];\n    revision: bigint;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class Identity {\n    free(): void;\n    [Symbol.dispose](): void;\n    addPublicKey(publicKey: IdentityPublicKey): void;\n    constructor(id: IdentifierLike);\n    static fromBase64(base64: string): Identity;\n    static fromBytes(bytes: Uint8Array): Identity;\n    static fromHex(hex: string): Identity;\n    static fromJSON(value: IdentityJSON): Identity;\n    /**\n     * `fromObject` keeps the manual path because the wasm API dispatches on\n     * the `platform_version` arg (via `try_from_platform_versioned`) rather\n     * than the value's embedded `$formatVersion` tag \u2014 explicit version\n     * coupling is the wasm SDK convention. The canonical\n     * `ValueConvertible::from_object` would dispatch on the tag.\n     */\n    static fromObject(value: IdentityObject, platform_version: PlatformVersionLike): Identity;\n    getPublicKeyById(keyId: number): IdentityPublicKey | undefined;\n    toBase64(): string;\n    toBytes(): Uint8Array;\n    toHex(): string;\n    toJSON(): IdentityJSON;\n    toObject(): IdentityObject;\n    balance: bigint;\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    readonly publicKeys: IdentityPublicKey[];\n    revision: bigint;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "balance",
@@ -13508,7 +13522,7 @@
     "IdentityPublicKey": {
       "kind": "ClassDeclaration",
       "anchor": "type-identitypublickey",
-      "declaration": "export class IdentityPublicKey {\n    free(): void;\n    [Symbol.dispose](): void;\n    base64(): string;\n    constructor(options: IdentityPublicKeyOptions);\n    static fromBase64(hex: string): IdentityPublicKey;\n    static fromBytes(bytes: Uint8Array): IdentityPublicKey;\n    static fromHex(hex: string): IdentityPublicKey;\n    /**\n     * Deserialize from JSON-compatible JS object (human-readable).\n     *\n     * Uses serde_json conversion which properly handles the tagged enum\n     * and deserializes base64 strings to binary data.\n     */\n    static fromJSON(value: IdentityPublicKeyJSON, platform_version: PlatformVersionLike): IdentityPublicKey;\n    /**\n     * Deserialize from JS object (non-human-readable).\n     *\n     * Uses platform_value conversion which properly handles the tagged enum.\n     */\n    static fromObject(value: IdentityPublicKeyObject, platform_version: PlatformVersionLike): IdentityPublicKey;\n    getPublicKeyHash(): string;\n    hex(): string;\n    toBytes(): Uint8Array;\n    /**\n     * Serialize to JSON-compatible JS object (human-readable).\n     *\n     * Uses serde_json conversion which properly handles the tagged enum\n     * and serializes binary data as base64 strings.\n     */\n    toJSON(): IdentityPublicKeyJSON;\n    /**\n     * Serialize to JS object (non-human-readable).\n     *\n     * Uses platform_value conversion which properly handles the tagged enum\n     * and removes None fields like disabledAt.\n     */\n    toObject(): IdentityPublicKeyObject;\n    validatePrivateKey(private_key_bytes_input: Uint8Array, network: NetworkLike): boolean;\n    readonly contractBounds: ContractBounds | undefined;\n    data: string;\n    get disabledAt(): bigint | undefined;\n    set disabledAt(value: any);\n    readonly isMaster: boolean;\n    isReadOnly: boolean;\n    get keyId(): number;\n    set keyId(value: any);\n    get keyType(): string;\n    set keyType(value: KeyTypeLike);\n    readonly keyTypeNumber: KeyType;\n    get purpose(): string;\n    set purpose(value: PurposeLike);\n    readonly purposeNumber: Purpose;\n    get securityLevel(): string;\n    set securityLevel(value: SecurityLevelLike);\n    readonly securityLevelNumber: SecurityLevel;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class IdentityPublicKey {\n    free(): void;\n    [Symbol.dispose](): void;\n    base64(): string;\n    constructor(options: IdentityPublicKeyOptions);\n    static fromBase64(hex: string): IdentityPublicKey;\n    static fromBytes(bytes: Uint8Array): IdentityPublicKey;\n    static fromHex(hex: string): IdentityPublicKey;\n    /**\n     * Deserialize from JSON-compatible JS object (canonical wire shape).\n     *\n     * Expects base64 strings for binary fields, base58 strings for\n     * identifiers \u2014 the canonical shape produced by `toJSON`.\n     * `platform_version` is accepted for SDK API consistency but not\n     * load-bearing today (canonical tag-driven dispatch handles V0).\n     */\n    static fromJSON(value: IdentityPublicKeyJSON, _platform_version: PlatformVersionLike): IdentityPublicKey;\n    /**\n     * Deserialize from JS object (non-human-readable).\n     *\n     * Uses platform_value conversion which properly handles the tagged enum.\n     * `platform_version` is accepted for SDK API consistency but not\n     * load-bearing today \u2014 canonical `ValueConvertible::from_object`\n     * dispatches on the value's `$formatVersion` tag, which produces\n     * identical output for the only currently-defined V0.\n     */\n    static fromObject(value: IdentityPublicKeyObject, _platform_version: PlatformVersionLike): IdentityPublicKey;\n    getPublicKeyHash(): string;\n    hex(): string;\n    toBytes(): Uint8Array;\n    /**\n     * Serialize to JSON-compatible JS object (canonical wire shape).\n     *\n     * Binary fields render as base64 strings. Identifier fields render\n     * as base58 strings. This matches the canonical `JsonConvertible`\n     * path used by every other rs-dpp type's JSON conversion in this\n     * SDK \u2014 including `IdentityWasm.toJSON`'s embedded public keys.\n     */\n    toJSON(): IdentityPublicKeyJSON;\n    /**\n     * Serialize to JS object (non-human-readable).\n     *\n     * Uses platform_value conversion which properly handles the tagged enum.\n     * `disabledAt: null` is stripped automatically by the\n     * `skip_serializing_if` attribute on the rs-dpp side.\n     */\n    toObject(): IdentityPublicKeyObject;\n    validatePrivateKey(private_key_bytes_input: Uint8Array, network: NetworkLike): boolean;\n    readonly contractBounds: ContractBounds | undefined;\n    data: string;\n    get disabledAt(): bigint | undefined;\n    set disabledAt(value: any);\n    readonly isMaster: boolean;\n    isReadOnly: boolean;\n    get keyId(): number;\n    set keyId(value: any);\n    get keyType(): string;\n    set keyType(value: KeyTypeLike);\n    readonly keyTypeNumber: KeyType;\n    get purpose(): string;\n    set purpose(value: PurposeLike);\n    readonly purposeNumber: Purpose;\n    get securityLevel(): string;\n    set securityLevel(value: SecurityLevelLike);\n    readonly securityLevelNumber: SecurityLevel;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "contractBounds",
@@ -14381,41 +14395,27 @@
     "ProtocolVersionUpgradeState": {
       "kind": "ClassDeclaration",
       "anchor": "type-protocolversionupgradestate",
-      "declaration": "export class ProtocolVersionUpgradeState {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static fromJSON(js: object): ProtocolVersionUpgradeState;\n    static fromObject(obj: object): ProtocolVersionUpgradeState;\n    toJSON(): any;\n    toObject(): any;\n    readonly activationHeight: bigint | undefined;\n    readonly currentProtocolVersion: number;\n    readonly isThresholdReached: boolean;\n    readonly nextProtocolVersion: number | undefined;\n    readonly voteCount: number | undefined;\n}",
+      "declaration": "export class ProtocolVersionUpgradeState {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static fromJSON(js: object): ProtocolVersionUpgradeState;\n    static fromObject(obj: object): ProtocolVersionUpgradeState;\n    toJSON(): any;\n    toObject(): any;\n    /**\n     * Protocol version the chain was running when this response was produced.\n     */\n    readonly currentProtocolVersion: number;\n    /**\n     * Candidate upgrade version: the version above the current one with the\n     * most evonode votes, if any votes exist.\n     */\n    readonly nextProtocolVersion: number | undefined;\n    /**\n     * Number of evonode votes cast for `nextProtocolVersion`.\n     */\n    readonly voteCount: bigint | undefined;\n}",
       "properties": [
-        {
-          "name": "activationHeight",
-          "type": "bigint | undefined",
-          "optional": false,
-          "description": "",
-          "references": []
-        },
         {
           "name": "currentProtocolVersion",
           "type": "number",
           "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "isThresholdReached",
-          "type": "boolean",
-          "optional": false,
-          "description": "",
+          "description": "Protocol version the chain was running when this response was produced.",
           "references": []
         },
         {
           "name": "nextProtocolVersion",
           "type": "number | undefined",
           "optional": false,
-          "description": "",
+          "description": "Candidate upgrade version: the version above the current one with the\nmost evonode votes, if any votes exist.",
           "references": []
         },
         {
           "name": "voteCount",
-          "type": "number | undefined",
+          "type": "bigint | undefined",
           "optional": false,
-          "description": "",
+          "description": "Number of evonode votes cast for `nextProtocolVersion`.",
           "references": []
         }
       ],
@@ -15603,7 +15603,7 @@
     "TokenSetPriceOptions": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-tokensetpriceoptions",
-      "declaration": "export interface TokenSetPriceOptions {\n    /**\n     * The ID of the data contract containing the token.\n     */\n    dataContractId: Identifier;\n\n    /**\n     * The position of the token in the contract (0-indexed).\n     */\n    tokenPosition: number;\n\n    /**\n     * The identity ID of the token authority setting the price.\n     */\n    authorityId: Identifier;\n\n    /**\n     * The price in credits for one token.\n     * Set to null to disable direct purchases.\n     */\n    price: bigint | null;\n\n    /**\n     * Optional public note for the price change.\n     */\n    publicNote?: string;\n\n    /**\n     * The identity public key to use for signing the transition.\n     */\n    identityKey: IdentityPublicKey;\n\n    /**\n     * Signer containing the private key for the authority's authentication key.\n     * Use IdentitySigner to add the authentication key before calling.\n     */\n    signer: IdentitySigner;\n\n    /**\n     * Optional group action info for group-managed price changes.\n     * Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,\n     * or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.\n     */\n    groupInfo?: GroupStateTransitionInfoStatus;\n\n    /**\n     * Optional settings for the broadcast operation.\n     * Includes retries, timeouts, userFeeIncrease, etc.\n     */\n    settings?: PutSettings;\n}",
+      "declaration": "export interface TokenSetPriceOptions {\n    /**\n     * The ID of the data contract containing the token.\n     */\n    dataContractId: Identifier;\n\n    /**\n     * The position of the token in the contract (0-indexed).\n     */\n    tokenPosition: number;\n\n    /**\n     * The identity ID of the token authority setting the price.\n     */\n    authorityId: Identifier;\n\n    /**\n     * The flat price in credits for one token (SinglePrice schedule).\n     * Set to null to disable direct purchases.\n     * Mutually exclusive with `priceTiers`.\n     */\n    price?: bigint | null;\n\n    /**\n     * Tiered direct-purchase pricing (SetPrices schedule).\n     *\n     * Maps the minimum bulk-buy amount (token amount, as a string key)\n     * to the per-token price in credits for that tier. Keys are unsigned\n     * integers encoded as strings; values are credit amounts as bigint.\n     *\n     * Example: `{ \"1\": 1_000n, \"100\": 900n, \"1000\": 800n }` charges 1000\n     * credits/token for purchases of 1+, 900 for purchases of 100+, and\n     * 800 for purchases of 1000+.\n     *\n     * Mutually exclusive with `price`. Must contain at least one entry.\n     */\n    priceTiers?: Record<string, bigint>;\n\n    /**\n     * Optional public note for the price change.\n     */\n    publicNote?: string;\n\n    /**\n     * The identity public key to use for signing the transition.\n     */\n    identityKey: IdentityPublicKey;\n\n    /**\n     * Signer containing the private key for the authority's authentication key.\n     * Use IdentitySigner to add the authentication key before calling.\n     */\n    signer: IdentitySigner;\n\n    /**\n     * Optional group action info for group-managed price changes.\n     * Use GroupStateTransitionInfoStatus.proposer() to propose a new group action,\n     * or GroupStateTransitionInfoStatus.otherSigner() to vote on an existing action.\n     */\n    groupInfo?: GroupStateTransitionInfoStatus;\n\n    /**\n     * Optional settings for the broadcast operation.\n     * Includes retries, timeouts, userFeeIncrease, etc.\n     */\n    settings?: PutSettings;\n}",
       "properties": [
         {
           "name": "dataContractId",
@@ -15633,8 +15633,15 @@
         {
           "name": "price",
           "type": "bigint | null",
-          "optional": false,
-          "description": "The price in credits for one token.\nSet to null to disable direct purchases.",
+          "optional": true,
+          "description": "The flat price in credits for one token (SinglePrice schedule).\nSet to null to disable direct purchases.\nMutually exclusive with `priceTiers`.",
+          "references": []
+        },
+        {
+          "name": "priceTiers",
+          "type": "Record<string, bigint>",
+          "optional": true,
+          "description": "Tiered direct-purchase pricing (SetPrices schedule).\n\nMaps the minimum bulk-buy amount (token amount, as a string key)\nto the per-token price in credits for that tier. Keys are unsigned\nintegers encoded as strings; values are credit amounts as bigint.\n\nExample: `{ \"1\": 1_000n, \"100\": 900n, \"1000\": 800n }` charges 1000\ncredits/token for purchases of 1+, 900 for purchases of 100+, and\n800 for purchases of 1000+.\n\nMutually exclusive with `price`. Must contain at least one entry.",
           "references": []
         },
         {
@@ -16184,7 +16191,7 @@
     "AssetLockProofJSON": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-assetlockproofjson",
-      "declaration": "export type AssetLockProofJSON =\n| ({ type: \"instant\" } & InstantAssetLockProofJSON)\n| ({ type: \"chain\" } & ChainAssetLockProofJSON);",
+      "declaration": "export type AssetLockProofJSON =\n| ({ $type: \"instant\" } & InstantAssetLockProofJSON)\n| ({ $type: \"chain\" } & ChainAssetLockProofJSON);",
       "properties": [],
       "references": [
         "ChainAssetLockProofJSON",
@@ -16195,7 +16202,7 @@
     "AssetLockProofObject": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-assetlockproofobject",
-      "declaration": "export type AssetLockProofObject =\n| ({ type: \"instant\" } & InstantAssetLockProofObject)\n| ({ type: \"chain\" } & ChainAssetLockProofObject);",
+      "declaration": "export type AssetLockProofObject =\n| ({ $type: \"instant\" } & InstantAssetLockProofObject)\n| ({ $type: \"chain\" } & ChainAssetLockProofObject);",
       "properties": [],
       "references": [
         "ChainAssetLockProofObject",
@@ -17736,31 +17743,31 @@
     "GroupActionJSON": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-groupactionjson",
-      "declaration": "export interface GroupActionJSON {\n    $formatVersion: string;\n    contractId: string;\n    proposerId: string;\n    tokenContractPosition: number;\n    event: GroupActionEventJSON;\n}",
+      "declaration": "export interface GroupActionJSON {\n    $formatVersion: \"0\";\n    contract_id: string;\n    proposer_id: string;\n    token_contract_position: number;\n    event: GroupActionEventJSON;\n}",
       "properties": [
         {
           "name": "$formatVersion",
+          "type": "\"0\"",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "contract_id",
           "type": "string",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "contractId",
+          "name": "proposer_id",
           "type": "string",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "proposerId",
-          "type": "string",
-          "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "tokenContractPosition",
+          "name": "token_contract_position",
           "type": "number",
           "optional": false,
           "description": "",
@@ -17784,31 +17791,31 @@
     "GroupActionObject": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-groupactionobject",
-      "declaration": "export interface GroupActionObject {\n    $formatVersion: string;\n    contractId: Uint8Array;\n    proposerId: Uint8Array;\n    tokenContractPosition: number;\n    event: GroupActionEventObject;\n}",
+      "declaration": "export interface GroupActionObject {\n    $formatVersion: \"0\";\n    contract_id: Uint8Array;\n    proposer_id: Uint8Array;\n    token_contract_position: number;\n    event: GroupActionEventObject;\n}",
       "properties": [
         {
           "name": "$formatVersion",
-          "type": "string",
+          "type": "\"0\"",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "contractId",
+          "name": "contract_id",
           "type": "Uint8Array",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "proposerId",
+          "name": "proposer_id",
           "type": "Uint8Array",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "tokenContractPosition",
+          "name": "token_contract_position",
           "type": "number",
           "optional": false,
           "description": "",
@@ -18726,7 +18733,7 @@
     "ResourceVoteChoiceJSON": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-resourcevotechoicejson",
-      "declaration": "export type ResourceVoteChoiceJSON =\n| { type: \"towardsIdentity\"; data: string }\n| { type: \"abstain\" }\n| { type: \"lock\" };",
+      "declaration": "export type ResourceVoteChoiceJSON =\n| { $type: \"towardsIdentity\"; identity: string }\n| { $type: \"abstain\" }\n| { $type: \"lock\" };",
       "properties": [],
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
@@ -18734,7 +18741,7 @@
     "ResourceVoteChoiceObject": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-resourcevotechoiceobject",
-      "declaration": "export type ResourceVoteChoiceObject =\n| { type: \"towardsIdentity\"; data: Uint8Array }\n| { type: \"abstain\" }\n| { type: \"lock\" };",
+      "declaration": "export type ResourceVoteChoiceObject =\n| { $type: \"towardsIdentity\"; identity: Uint8Array }\n| { $type: \"abstain\" }\n| { $type: \"lock\" };",
       "properties": [],
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
@@ -18985,8 +18992,15 @@
     "TokenContractInfoJSON": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-tokencontractinfojson",
-      "declaration": "export interface TokenContractInfoJSON {\n    contractId: string;\n    tokenContractPosition: number;\n}",
+      "declaration": "export interface TokenContractInfoJSON {\n    $formatVersion: \"0\";\n    contractId: string;\n    tokenContractPosition: number;\n}",
       "properties": [
+        {
+          "name": "$formatVersion",
+          "type": "\"0\"",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
         {
           "name": "contractId",
           "type": "string",
@@ -19008,8 +19022,15 @@
     "TokenContractInfoObject": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-tokencontractinfoobject",
-      "declaration": "export interface TokenContractInfoObject {\n    contractId: Uint8Array;\n    tokenContractPosition: number;\n}",
+      "declaration": "export interface TokenContractInfoObject {\n    $formatVersion: \"0\";\n    contractId: Uint8Array;\n    tokenContractPosition: number;\n}",
       "properties": [
+        {
+          "name": "$formatVersion",
+          "type": "\"0\"",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
         {
           "name": "contractId",
           "type": "Uint8Array",
@@ -19031,7 +19052,7 @@
     "TokenPricingSchedule": {
       "kind": "ClassDeclaration",
       "anchor": "type-tokenpricingschedule",
-      "declaration": "export class TokenPricingSchedule {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static SetPrices(prices: Record<string, bigint>): TokenPricingSchedule;\n    static SinglePrice(credits: bigint): TokenPricingSchedule;\n    readonly scheduleType: string;\n    static readonly __struct: string;\n    readonly __type: string;\n    readonly value: bigint | Record<string, bigint>;\n}",
+      "declaration": "export class TokenPricingSchedule {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static SetPrices(prices: Record<string, bigint>): TokenPricingSchedule;\n    static SinglePrice(credits: bigint): TokenPricingSchedule;\n    static fromJSON(js: any): TokenPricingSchedule;\n    static fromObject(obj: any): TokenPricingSchedule;\n    toJSON(): any;\n    toObject(): any;\n    readonly scheduleType: string;\n    static readonly __struct: string;\n    readonly __type: string;\n    readonly value: bigint | Record<string, bigint>;\n}",
       "properties": [
         {
           "name": "scheduleType",
@@ -19070,18 +19091,39 @@
     "VotePollJSON": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-votepolljson",
-      "declaration": "export interface VotePollJSON {\n    type: \"contestedDocumentResourceVotePoll\";\n    data: {\n        contractId: string;\n        documentTypeName: string;\n        indexName: string;\n        indexValues: any[];\n    };\n}",
+      "declaration": "export interface VotePollJSON {\n    $type: \"contestedDocumentResourceVotePoll\";\n    contractId: string;\n    documentTypeName: string;\n    indexName: string;\n    indexValues: any[];\n}",
       "properties": [
         {
-          "name": "type",
+          "name": "$type",
           "type": "\"contestedDocumentResourceVotePoll\"",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "data",
-          "type": "{ contractId: string; documentTypeName: string; indexName: string; indexValues: any[]; }",
+          "name": "contractId",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "documentTypeName",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "indexName",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "indexValues",
+          "type": "any[]",
           "optional": false,
           "description": "",
           "references": []
@@ -19093,18 +19135,39 @@
     "VotePollObject": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-votepollobject",
-      "declaration": "export interface VotePollObject {\n    type: \"contestedDocumentResourceVotePoll\";\n    data: {\n        contractId: Uint8Array;\n        documentTypeName: string;\n        indexName: string;\n        indexValues: any[];\n    };\n}",
+      "declaration": "export interface VotePollObject {\n    $type: \"contestedDocumentResourceVotePoll\";\n    contractId: Uint8Array;\n    documentTypeName: string;\n    indexName: string;\n    indexValues: any[];\n}",
       "properties": [
         {
-          "name": "type",
+          "name": "$type",
           "type": "\"contestedDocumentResourceVotePoll\"",
           "optional": false,
           "description": "",
           "references": []
         },
         {
-          "name": "data",
-          "type": "{ contractId: Uint8Array; documentTypeName: string; indexName: string; indexValues: any[]; }",
+          "name": "contractId",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "documentTypeName",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "indexName",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "indexValues",
+          "type": "any[]",
           "optional": false,
           "description": "",
           "references": []
@@ -19947,54 +20010,20 @@
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
     "GroupActionEventJSON": {
-      "kind": "InterfaceDeclaration",
+      "kind": "TypeAliasDeclaration",
       "anchor": "type-groupactioneventjson",
-      "declaration": "export interface GroupActionEventJSON {\n    type: \"tokenEvent\";\n    data: TokenEventJSON;\n}",
-      "properties": [
-        {
-          "name": "type",
-          "type": "\"tokenEvent\"",
-          "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "data",
-          "type": "TokenEventJSON",
-          "optional": false,
-          "description": "",
-          "references": [
-            "TokenEventJSON"
-          ]
-        }
-      ],
+      "declaration": "export type GroupActionEventJSON = { $kind: \"tokenEvent\" } & TokenEventJSON;",
+      "properties": [],
       "references": [
         "TokenEventJSON"
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
     "GroupActionEventObject": {
-      "kind": "InterfaceDeclaration",
+      "kind": "TypeAliasDeclaration",
       "anchor": "type-groupactioneventobject",
-      "declaration": "export interface GroupActionEventObject {\n    type: \"tokenEvent\";\n    data: TokenEventObject;\n}",
-      "properties": [
-        {
-          "name": "type",
-          "type": "\"tokenEvent\"",
-          "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "data",
-          "type": "TokenEventObject",
-          "optional": false,
-          "description": "",
-          "references": [
-            "TokenEventObject"
-          ]
-        }
-      ],
+      "declaration": "export type GroupActionEventObject = { $kind: \"tokenEvent\" } & TokenEventObject;",
+      "properties": [],
       "references": [
         "TokenEventObject"
       ],
@@ -20356,7 +20385,7 @@
     "ContestedDocumentVotePollWinnerInfoJSON": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-contesteddocumentvotepollwinnerinfojson",
-      "declaration": "export type ContestedDocumentVotePollWinnerInfoJSON =\n| { type: \"noWinner\" }\n| { type: \"locked\" }\n| { type: \"wonByIdentity\"; data: string };",
+      "declaration": "export type ContestedDocumentVotePollWinnerInfoJSON =\n| { $type: \"noWinner\" }\n| { $type: \"locked\" }\n| { $type: \"wonByIdentity\"; identity: string };",
       "properties": [],
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
@@ -20364,7 +20393,7 @@
     "ContestedDocumentVotePollWinnerInfoObject": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-contesteddocumentvotepollwinnerinfoobject",
-      "declaration": "export type ContestedDocumentVotePollWinnerInfoObject =\n| { type: \"noWinner\" }\n| { type: \"locked\" }\n| { type: \"wonByIdentity\"; data: Uint8Array };",
+      "declaration": "export type ContestedDocumentVotePollWinnerInfoObject =\n| { $type: \"noWinner\" }\n| { $type: \"locked\" }\n| { $type: \"wonByIdentity\"; identity: Uint8Array };",
       "properties": [],
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
@@ -20489,7 +20518,7 @@
     "TokenConfigurationLocalization": {
       "kind": "ClassDeclaration",
       "anchor": "type-tokenconfigurationlocalization",
-      "declaration": "export class TokenConfigurationLocalization {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(shouldCapitalize: boolean, singularForm: string, pluralForm: string);\n    static fromJSON(value: TokenConfigurationLocalizationJSON): TokenConfigurationLocalization;\n    static fromObject(value: TokenConfigurationLocalizationObject): TokenConfigurationLocalization;\n    toJSON(): TokenConfigurationLocalizationJSON;\n    toObject(): TokenConfigurationLocalizationObject;\n    pluralForm: string;\n    shouldCapitalize: boolean;\n    singularForm: string;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class TokenConfigurationLocalization {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(shouldCapitalize: boolean, singularForm: string, pluralForm: string);\n    static fromJSON(js: TokenConfigurationLocalizationJSON): TokenConfigurationLocalization;\n    static fromObject(obj: TokenConfigurationLocalizationObject): TokenConfigurationLocalization;\n    toJSON(): TokenConfigurationLocalizationJSON;\n    toObject(): TokenConfigurationLocalizationObject;\n    pluralForm: string;\n    shouldCapitalize: boolean;\n    singularForm: string;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "pluralForm",
@@ -20792,19 +20821,12 @@
     "TokenEventJSON": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-tokeneventjson",
-      "declaration": "export interface TokenEventJSON {\n    type: string;\n    data?: unknown;\n}",
+      "declaration": "export interface TokenEventJSON {\n    $type: string;\n    [field: string]: unknown;\n}",
       "properties": [
         {
-          "name": "type",
+          "name": "$type",
           "type": "string",
           "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "data",
-          "type": "unknown",
-          "optional": true,
           "description": "",
           "references": []
         }
@@ -20815,19 +20837,12 @@
     "TokenEventObject": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-tokeneventobject",
-      "declaration": "export interface TokenEventObject {\n    type: string;\n    data?: unknown;\n}",
+      "declaration": "export interface TokenEventObject {\n    $type: string;\n    [field: string]: unknown;\n}",
       "properties": [
         {
-          "name": "type",
+          "name": "$type",
           "type": "string",
           "optional": false,
-          "description": "",
-          "references": []
-        },
-        {
-          "name": "data",
-          "type": "unknown",
-          "optional": true,
           "description": "",
           "references": []
         }
