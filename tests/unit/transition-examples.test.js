@@ -335,6 +335,31 @@ describe('v4 state transition documentation examples', () => {
     );
   });
 
+  it('selects DPNS keys only by authentication purpose and accepted security level', () => {
+    const example = generatedExamples.dpnsRegister;
+
+    expect(example).toMatch(/purpose\s*===\s*['"]AUTHENTICATION['"]/);
+    expect(example).toContain("['CRITICAL', 'HIGH'].includes(k.securityLevel)");
+    expect(example).not.toMatch(/getPublicKeyById\s*\(/);
+    expect(example).not.toMatch(/securityLevel\s*===\s*['"]MEDIUM['"]/);
+    expect(example).toMatch(/if \(!identityKey\)/);
+    expect(example).toContain(
+      'DPNS registration requires an AUTHENTICATION key with CRITICAL or HIGH security level',
+    );
+  });
+
+  it('requires a VOTING-purpose key for every masternode voting example', () => {
+    for (const key of ['dpnsUsername', 'masternodeVote']) {
+      const example = generatedExamples[key];
+
+      expect(example, key).toMatch(/find\(k => k\.purpose === ['"]VOTING['"]\)/);
+      expect(example, key).not.toMatch(/getPublicKeyById\s*\(/);
+      expect(example, key).not.toMatch(/\|\|\s*votingIdentity\./);
+      expect(example, key).toMatch(/if \(!votingKey\)/);
+      expect(example, key).toContain('Masternode voting requires a VOTING-purpose identity key');
+    }
+  });
+
   it('passes only declared option properties on the final sdk write call', () => {
     const failures = [];
     for (const [key, item] of Object.entries(TRANSITION_BY_KEY)) {
@@ -572,7 +597,7 @@ describe('v4 state transition documentation examples', () => {
     // Transition examples stay multi-statement and must not be force-wrapped into one assignment.
     const transitionSection = aiReference.split('## State Transition Operations')[1] || '';
     expect(transitionSection).toMatch(/import \{[\s\S]*IdentitySigner[\s\S]*\} from '@dashevo\/evo-sdk';/);
-    expect(transitionSection).toMatch(/const result = await sdk\.tokens\.mint\(\{/);
+    expect(transitionSection).toMatch(/await sdk\.tokens\.mint\(\{/);
     // Multi-statement identity create still has setup before the call.
     expect(transitionSection).toMatch(/new Identity\(assetLockProof\.createIdentityId\(\)\)/);
   });

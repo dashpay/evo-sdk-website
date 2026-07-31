@@ -1163,11 +1163,16 @@ def evo_example_for_transition(key: str):
             """,
             signer_only,
             """
-            // HIGH authentication key is typically used for DPNS registration.
-            const identityKey = identity.getPublicKeyById(1)
-              || identity.publicKeys.find(
-                k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'HIGH',
+            // DPNS registration requires a strong authentication key.
+            const identityKey = identity.publicKeys.find(
+              k => k.purpose === 'AUTHENTICATION'
+                && ['CRITICAL', 'HIGH'].includes(k.securityLevel),
+            );
+            if (!identityKey) {
+              throw new Error(
+                'DPNS registration requires an AUTHENTICATION key with CRITICAL or HIGH security level',
               );
+            }
 
             const result = await sdk.dpns.registerName({
               label: 'alice',
@@ -1190,8 +1195,10 @@ def evo_example_for_transition(key: str):
             f"""
             // Voting key must match the masternode voting public key on the identity.
             const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
-            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
-              || votingIdentity.getPublicKeyById(0);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING');
+            if (!votingKey) {{
+              throw new Error('Masternode voting requires a VOTING-purpose identity key');
+            }}
 
             const votePoll = new VotePoll({{
               contractId: '{contract}',
@@ -1218,8 +1225,10 @@ def evo_example_for_transition(key: str):
             signer_voting,
             f"""
             const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
-            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
-              || votingIdentity.getPublicKeyById(0);
+            const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING');
+            if (!votingKey) {{
+              throw new Error('Masternode voting requires a VOTING-purpose identity key');
+            }}
 
             const votePoll = new VotePoll({{
               contractId: '{contract}',
