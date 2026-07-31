@@ -1,4 +1,4 @@
-import { EvoSDK, wallet, DataContract, Document, IdentitySigner, Identifier } from '../dist/evo-sdk.module.js';
+import { EvoSDK, wallet, DataContract, Document, IdentitySigner, Identifier } from './sdk-types.js';
 import { assembleClientOptions } from './client-options.js';
 import { elements, state } from './state.js';
 import { setStatus } from './ui.js';

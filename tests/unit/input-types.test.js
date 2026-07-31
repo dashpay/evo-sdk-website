@@ -42,6 +42,7 @@ describe('SUPPORTED_INPUT_TYPES', () => {
       'keyPreview',
       'multiselect',
       'number',
+      'password',
       'select',
       'string',
       'text',

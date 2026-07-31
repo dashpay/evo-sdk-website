@@ -1482,70 +1482,11 @@
           "description": "Create a new identity with initial credits",
           "inputs": [
             {
-              "name": "seedPhrase",
-              "type": "textarea",
-              "label": "Seed Phrase",
+              "name": "identityPrivateKeyWif",
+              "type": "password",
+              "label": "Identity Master Private Key (WIF)",
               "required": true,
-              "placeholder": "Enter seed phrase (12-24 words) or click Generate",
-              "help": "The wallet seed phrase that will be used to derive identity keys"
-            },
-            {
-              "name": "generateSeedButton",
-              "type": "button",
-              "label": "Generate New Seed",
-              "action": "generateTestSeed"
-            },
-            {
-              "name": "identityIndex",
-              "type": "number",
-              "label": "Identity Index",
-              "required": true,
-              "value": 0,
-              "min": 0,
-              "max": 999,
-              "help": "The identity index is an internal reference within the wallet. Leave as 0 for first identity."
-            },
-            {
-              "name": "keySelectionMode",
-              "type": "select",
-              "label": "Key Selection Mode",
-              "required": true,
-              "value": "default",
-              "options": [
-                {
-                  "value": "default",
-                  "label": "Default (Recommended)"
-                },
-                {
-                  "value": "advanced",
-                  "label": "Advanced"
-                }
-              ],
-              "help": "Default adds standard keys for most Platform operations. Advanced allows custom key configuration."
-            },
-            {
-              "name": "keyType",
-              "type": "select",
-              "label": "Key Type",
-              "required": true,
-              "value": "ECDSA_HASH160",
-              "options": [
-                {
-                  "value": "ECDSA_HASH160",
-                  "label": "ECDSA_HASH160 (Dash Evo Tool default)"
-                },
-                {
-                  "value": "ECDSA_SECP256K1",
-                  "label": "ECDSA_SECP256K1 (Dash mobile wallet default)"
-                }
-              ],
-              "help": "Choose key type"
-            },
-            {
-              "name": "keyPreview",
-              "type": "keyPreview",
-              "label": "Keys to be added",
-              "help": "These keys will be added to your new identity"
+              "help": "Creates the identity's ECDSA_SECP256K1 master authentication key; separate from the asset-lock key."
             }
           ],
           "sdk_method": "identities.create"
@@ -1950,6 +1891,7 @@
         },
         "dpnsRegister": {
           "label": "DPNS Register Name",
+          "disabled": "Typed v4 preorder and registration flow is not covered by a usable credential fixture.",
           "description": "Register a new DPNS username",
           "inputs": [
             {
@@ -2063,7 +2005,7 @@
                   "label": "Perpetual"
                 },
                 {
-                  "value": "preprogrammed",
+                  "value": "preProgrammed",
                   "label": "Pre-programmed"
                 }
               ]
@@ -2150,8 +2092,8 @@
             {
               "name": "totalAgreedPrice",
               "type": "text",
-              "label": "Total Agreed Price (in credits) - Optional, fetches from pricing schedule if not provided",
-              "required": false
+              "label": "Maximum Total Cost (in credits)",
+              "required": true
             }
           ],
           "sdk_method": "tokens.directPurchase"
@@ -2334,6 +2276,7 @@
       "transitions": {
         "dpnsUsername": {
           "label": "DPNS Username",
+          "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
           "description": "Cast a vote for a contested DPNS username",
           "inputs": [
             {
@@ -2379,6 +2322,7 @@
         },
         "masternodeVote": {
           "label": "Contested Resource",
+          "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
           "description": "Cast a vote for contested resources as a masternode",
           "inputs": [
             {

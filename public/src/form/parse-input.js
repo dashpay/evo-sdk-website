@@ -54,6 +54,7 @@ export function parseInputValue(type, def, control) {
       return val;
     }
     case 'textarea':
+    case 'password':
     case 'text':
     default: {
       const raw = control.value.trim();

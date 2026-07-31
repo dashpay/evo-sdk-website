@@ -4,6 +4,40 @@ body {
   background-color: #f5f5f5;
 }
 
+.input-group-heading {
+  margin: 18px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #d9e2ec;
+  color: #334e68;
+  font-size: 0.95rem;
+}
+
+.generated-code-panel {
+  width: 100%;
+  margin: 15px 0;
+  padding: 14px;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.generated-code-panel p {
+  color: #52606d;
+  font-size: 0.82rem;
+}
+
+.generated-code-panel pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  color: #e6edf3;
+  background: #0d1117;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .header {
   background-color: #2c3e50;
   color: white;

@@ -1,9 +1,11 @@
 import { computeAuthRequirements, updateAuthInputsVisibility } from '../auth.js';
+import { getPreviewKeyId } from '../auth-preview.js';
 import { DPNS_AUTH_REQUIREMENTS, PROOF_CAPABLE, TYPE_CONFIG, getTypeConfig } from '../definitions-data.js';
 import { SUPPORTED_INPUT_TYPES, normalizeType } from '../input-types.js';
 import { createContestedResourceHandler, createDocumentFieldsHandler, createGenericDynamicHandler, fetchContestedResources, fetchDocumentSchema, generateTestSeed, loadExistingDocument } from './dynamic-handlers.js';
 import { clearDynamicHandlers, elements, registerDynamicHandler, state } from '../state.js';
 import { setNoProofInfoVisibility, setStatus } from '../ui.js';
+import { getTransitionOperation, renderTransitionCode } from '../transitions/registry.js';
 
 export function populateCategories() {
   const type = elements.operationType.value;
@@ -83,6 +85,8 @@ export function hideOperationDetails() {
   elements.queryDescription.style.display = 'none';
   elements.queryInputs.style.display = 'none';
   elements.dynamicInputs.innerHTML = '';
+  if (elements.generatedCodePanel) elements.generatedCodePanel.style.display = 'none';
+  if (elements.generatedCode) elements.generatedCode.textContent = '';
   elements.proofToggleContainer.style.display = 'none';
   setNoProofInfoVisibility(false);
   if (elements.executeButton) {
@@ -141,6 +145,7 @@ export function onOperationChange(categoryKey, operationKey) {
     elements.executeButton.disabled = isDisabled;
   }
   state.selected = { type, categoryKey, operationKey, definition: def, auth: authRequirements };
+  updateGeneratedCodePreview();
 }
 
 export function renderInputs(def) {
@@ -152,11 +157,23 @@ export function renderInputs(def) {
     return;
   }
   const dependencyListeners = [];
+  const operation = getTransitionOperation(state.selected?.operationKey || elements.queryType?.value);
+  let previousGroup = null;
   inputs.forEach((inputDef, index) => {
     const normalizedType = normalizeType(inputDef.type);
     if (!SUPPORTED_INPUT_TYPES.has(normalizedType)) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'input-group';
+
+    const fieldModel = operation?.fields?.find(field => field.name === inputDef.name);
+    const group = fieldModel?.group || null;
+    if (group && group !== previousGroup) {
+      const heading = document.createElement('h5');
+      heading.className = 'input-group-heading';
+      heading.textContent = group;
+      elements.dynamicInputs.appendChild(heading);
+      previousGroup = group;
+    }
 
     const label = document.createElement('label');
     label.textContent = inputDef.label || inputDef.name || `Parameter ${index + 1}`;
@@ -206,6 +223,41 @@ export function renderInputs(def) {
   }
 
   elements.queryInputs.style.display = 'block';
+
+  if (operation) {
+    elements.dynamicInputs.querySelectorAll('select, input, textarea').forEach(el => {
+      el.addEventListener('change', updateGeneratedCodePreview);
+      el.addEventListener('input', updateGeneratedCodePreview);
+    });
+  }
+}
+
+export function updateGeneratedCodePreview() {
+  if (!elements.generatedCodePanel || !elements.generatedCode || state.selected?.type !== 'transitions') return;
+  const { operationKey, definition, auth } = state.selected;
+  if (!getTransitionOperation(operationKey)) {
+    elements.generatedCodePanel.style.display = 'none';
+    return;
+  }
+  const defs = definition.inputs || [];
+  const args = defs.map((input, index) => {
+    const control = elements.dynamicInputs.querySelector(`[data-input-name="${input.name || `param_${index}`}"]`);
+    if (!control) return undefined;
+    if (control.type === 'checkbox') return control.checked;
+    return control.value || undefined;
+  });
+  const extras = {};
+  const identityId = elements.identityIdInput?.value.trim();
+  auth?.identity?.targets?.forEach(target => { extras[target] = identityId || `<${target}>`; });
+  const rawPrivateKey = elements.privateKeyInput?.value.trim();
+  auth?.privateKey?.targets?.forEach(target => { extras[target] = `<${target}>`; });
+  const keyId = getPreviewKeyId(rawPrivateKey, auth?.privateKey?.allowKeyId);
+  if (keyId !== undefined) {
+    extras[auth.privateKey.keyIdTarget || 'keyId'] = keyId;
+  }
+  const code = renderTransitionCode(operationKey, defs, args, extras);
+  elements.generatedCode.textContent = code;
+  elements.generatedCodePanel.style.display = code ? 'block' : 'none';
 }
 
 export function createControl(type, def, wrapper) {
@@ -285,6 +337,11 @@ export function createControl(type, def, wrapper) {
       control = document.createElement('div');
       control.className = 'key-preview-container';
       control.textContent = def.help || 'Enter a seed phrase to preview keys.';
+      break;
+    }
+    case 'password': {
+      control = document.createElement('input');
+      control.type = 'password';
       break;
     }
     case 'array':

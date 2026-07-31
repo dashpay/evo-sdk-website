@@ -325,9 +325,9 @@ function validateTokenMintResult(resultStr, expectedIdentityId, expectedAmount) 
   const mintResponse = JSON.parse(resultStr);
   expect(mintResponse).toBeDefined();
   expect(mintResponse).toBeInstanceOf(Object);
-
-  // Token mint returns an empty object {} on success
-  // This indicates the transaction was submitted successfully
+  expect(mintResponse.status).toBe('success');
+  expect(mintResponse.message).toContain('Minted');
+  expect(mintResponse.message).toContain(expectedAmount);
   return mintResponse;
 }
 
@@ -343,9 +343,10 @@ function validateTokenTransferResult(resultStr, expectedSenderId, expectedRecipi
   const transferResponse = JSON.parse(resultStr);
   expect(transferResponse).toBeDefined();
   expect(transferResponse).toBeInstanceOf(Object);
-
-  // Token transfer returns an empty object {} on success
-  // This indicates the transaction was submitted successfully
+  expect(transferResponse.status).toBe('success');
+  expect(transferResponse.message).toContain('Transferred');
+  expect(transferResponse.message).toContain(expectedAmount);
+  expect(transferResponse.message).toContain(expectedRecipientId);
   return transferResponse;
 }
 
@@ -360,9 +361,9 @@ function validateTokenBurnResult(resultStr, expectedIdentityId, expectedAmount) 
   const burnResponse = JSON.parse(resultStr);
   expect(burnResponse).toBeDefined();
   expect(burnResponse).toBeInstanceOf(Object);
-
-  // Token burn returns an empty object {} on success
-  // This indicates the transaction was submitted successfully
+  expect(burnResponse.status).toBe('success');
+  expect(burnResponse.message).toContain('Burned');
+  expect(burnResponse.message).toContain(expectedAmount);
   return burnResponse;
 }
 
@@ -376,8 +377,9 @@ function validateTokenFreezeResult(resultStr, expectedIdentityId) {
   const freezeResponse = JSON.parse(resultStr);
   expect(freezeResponse).toBeDefined();
   expect(freezeResponse).toBeInstanceOf(Object);
-
-  // Token freeze returns an empty object {} on success
+  expect(freezeResponse.status).toBe('success');
+  expect(freezeResponse.message).toContain('Frozen');
+  expect(freezeResponse.message).toContain(expectedIdentityId);
   return freezeResponse;
 }
 
@@ -391,8 +393,9 @@ function validateTokenDestroyFrozenResult(resultStr, expectedIdentityId) {
   const destroyResponse = JSON.parse(resultStr);
   expect(destroyResponse).toBeDefined();
   expect(destroyResponse).toBeInstanceOf(Object);
-
-  // Token destroy frozen returns an empty object {} on success
+  expect(destroyResponse.status).toBe('success');
+  expect(destroyResponse.message).toContain('Destroyed');
+  expect(destroyResponse.message).toContain(expectedIdentityId);
   console.log(`✅ Token destroy frozen transaction submitted successfully: destroyed all frozen tokens from ${expectedIdentityId}`);
 
   return destroyResponse;
@@ -408,8 +411,9 @@ function validateTokenUnfreezeResult(resultStr, expectedIdentityId) {
   const unfreezeResponse = JSON.parse(resultStr);
   expect(unfreezeResponse).toBeDefined();
   expect(unfreezeResponse).toBeInstanceOf(Object);
-
-  // Token unfreeze returns an empty object {} on success
+  expect(unfreezeResponse.status).toBe('success');
+  expect(unfreezeResponse.message).toContain('Unfrozen');
+  expect(unfreezeResponse.message).toContain(expectedIdentityId);
   console.log(`✅ Token unfreeze transaction submitted successfully for identity: ${expectedIdentityId}`);
 
   return unfreezeResponse;
@@ -420,8 +424,8 @@ function validateTokenClaimResult(resultStr, expectedDistributionType) {
   const claimResponse = JSON.parse(resultStr);
   expect(claimResponse).toBeDefined();
   expect(claimResponse).toBeInstanceOf(Object);
-
-  // Token claim returns an empty object {} on success
+  expect(claimResponse.status).toBe('success');
+  expect(claimResponse.message).toContain('Claimed');
   console.log(`✅ Token claim transaction submitted successfully for distribution type: ${expectedDistributionType}`);
 
   return claimResponse;
@@ -432,8 +436,8 @@ function validateTokenSetPriceResult(resultStr, expectedPriceType, expectedPrice
   const setPriceResponse = JSON.parse(resultStr);
   expect(setPriceResponse).toBeDefined();
   expect(setPriceResponse).toBeInstanceOf(Object);
-
-  // Token set price returns an empty object {} on success
+  expect(setPriceResponse.status).toBe('success');
+  expect(setPriceResponse.message).toContain('price set');
   console.log(`✅ Token set price transaction submitted successfully - Type: ${expectedPriceType}, Price: ${expectedPriceData}`);
 
   return setPriceResponse;
@@ -1212,35 +1216,38 @@ test.describe('Evo SDK State Transition Tests', () => {
     });
 
     test('should execute token emergency action transition (pause and resume)', async () => {
-      await test.step('Pause token', async () => {
+      const performEmergencyAction = async (actionType) => {
         await evoSdkPage.setupStateTransition('token', 'tokenEmergencyAction');
 
         const success = await parameterInjector.injectStateTransitionParameters(
           'token',
           'tokenEmergencyAction',
           'testnet',
-          { actionType: 'pause' }
+          { actionType }
         );
         expect(success).toBe(true);
 
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+        return evoSdkPage.executeStateTransitionAndGetResult();
+      };
+
+      await test.step('Pause token', async () => {
+        let result = await performEmergencyAction('pause');
+
+        // A previous interrupted run may have paused the shared fixture without
+        // reaching its cleanup step. Restore the baseline, then exercise Pause.
+        if (!result.success && /already paused/i.test(result.result || '')) {
+          const recovery = await performEmergencyAction('resume');
+          validateBasicStateTransitionResult(recovery);
+          validateTokenEmergencyActionResult(recovery.result, 'resume');
+          result = await performEmergencyAction('pause');
+        }
 
         validateBasicStateTransitionResult(result);
         validateTokenEmergencyActionResult(result.result, 'pause');
       });
 
       await test.step('Resume token', async () => {
-        await evoSdkPage.setupStateTransition('token', 'tokenEmergencyAction');
-
-        const success = await parameterInjector.injectStateTransitionParameters(
-          'token',
-          'tokenEmergencyAction',
-          'testnet',
-          { actionType: 'resume' }
-        );
-        expect(success).toBe(true);
-
-        const result = await evoSdkPage.executeStateTransitionAndGetResult();
+        const result = await performEmergencyAction('resume');
 
         validateBasicStateTransitionResult(result);
         validateTokenEmergencyActionResult(result.result, 'resume');

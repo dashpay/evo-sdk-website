@@ -1,6 +1,6 @@
 import { getTypeConfig, loadDefinitions } from './definitions.js';
 import { clearCache, clearResults, copyResults, executeSelected } from './execute.js';
-import { hideOperationDetails, onOperationChange, populateCategories, populateOperations } from './form/render.js';
+import { hideOperationDetails, onOperationChange, populateCategories, populateOperations, updateGeneratedCodePreview } from './form/render.js';
 import { applyAdvancedConfig, loadVersionInfo, updateNetworkIndicator } from './sdk-client.js';
 import { elements, state } from './state.js';
 import { defaultResultMessage, hidePreloader, setNoProofInfoVisibility, setProgress, setStatus, showApiError, showPreloader } from './ui.js';
@@ -52,6 +52,9 @@ export function attachEventListeners() {
   if (elements.executeButton) {
     elements.executeButton.addEventListener('click', executeSelected);
   }
+  [elements.identityIdInput, elements.privateKeyInput, elements.assetLockProofInput].filter(Boolean).forEach(input => {
+    input.addEventListener('input', updateGeneratedCodePreview);
+  });
   if (elements.clearButton && !elements.clearButton.hasAttribute('onclick')) {
     elements.clearButton.addEventListener('click', clearResults);
   }

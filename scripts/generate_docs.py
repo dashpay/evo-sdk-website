@@ -25,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = REPO_ROOT / 'public'
 NODE_MODULES_DIR = REPO_ROOT / 'node_modules'
 DEFAULT_TEST_IDENTITY = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'
+TRANSITION_OPERATION_EXAMPLES: dict[str, str] = {}
 
 def copy_node_modules_dist(package: str, destination: Path) -> bool:
     """Copy the /dist directory from node_modules if it exists."""
@@ -189,6 +190,19 @@ def load_sdk_type_metadata(api_definitions_file: Path) -> dict:
         cwd=REPO_ROOT,
         check=True,
         capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def load_transition_operation_examples() -> dict[str, str]:
+    """Render examples from the browser transition-operation registry."""
+    renderer = REPO_ROOT / 'scripts' / 'render_transition_examples.mjs'
+    completed = subprocess.run(
+        ['node', str(renderer)],
+        cwd=REPO_ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
         text=True,
     )
     return json.loads(completed.stdout)
@@ -614,10 +628,12 @@ def compose_example(*sections: str) -> str:
 def evo_example_for_transition(key: str):
     """Return practical v4 state-transition examples matching shipped Options interfaces.
 
-    Examples build typed payload objects, select identity keys, and construct
-    IdentitySigner / asset-lock PrivateKey instances rather than the pre-v4
-    privateKeyWif-in-call shape.
+    Prefer examples rendered by the typed transition registry. Operations that are
+    not yet executable in the UI retain explicit documentation-only examples here.
     """
+    if key in TRANSITION_OPERATION_EXAMPLES:
+        return TRANSITION_OPERATION_EXAMPLES[key]
+
     identity = TESTNET_TEST_DATA['identity_id']
     contract = TESTNET_TEST_DATA['data_contract_id']
     token_contract = TESTNET_TEST_DATA['token_contract_id']
@@ -2515,11 +2531,22 @@ def generate_version_info() -> dict:
 
 
 def main() -> None:
+    global TRANSITION_OPERATION_EXAMPLES
     api_file = PUBLIC_DIR / 'api-definitions.json'
     if not api_file.exists():
         raise SystemExit(f'api-definitions.json not found at {api_file}')
 
+    # Transition modules import the browser SDK bundle through sdk-types.js, so
+    # prepare public/dist before rendering examples on a clean checkout.
+    public_dist = PUBLIC_DIR / 'dist'
+    if copy_node_modules_dist('@dashevo/evo-sdk', public_dist):
+        print('Copied Evo SDK dist from node_modules into public/dist')
+        rewrite_wasm_wrapper(public_dist / 'wasm.js')
+    else:
+        raise SystemExit('Evo SDK dist not found; install dependencies before generating documentation.')
+
     queries, transitions = load_api_definitions(api_file)
+    TRANSITION_OPERATION_EXAMPLES = load_transition_operation_examples()
     type_metadata = load_sdk_type_metadata(api_file)
     attach_sdk_metadata(queries, transitions, type_metadata)
 
@@ -2538,13 +2565,6 @@ def main() -> None:
 
     type_reference_html = generate_type_reference_html(type_metadata)
     (PUBLIC_DIR / 'TYPE_REFERENCE.html').write_text(type_reference_html, encoding='utf-8')
-
-    public_dist = PUBLIC_DIR / 'dist'
-    if copy_node_modules_dist('@dashevo/evo-sdk', public_dist):
-        print('Copied Evo SDK dist from node_modules into public/dist')
-        rewrite_wasm_wrapper(public_dist / 'wasm.js')
-    else:
-        print('Warning: Evo SDK dist not found; ensure dependencies are installed or build the workspace package.')
 
     # Generate version info
     version_info = generate_version_info()

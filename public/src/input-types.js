@@ -1,5 +1,6 @@
 export const SUPPORTED_INPUT_TYPES = new Set([
   'text',
+  'password',
   'string',
   'textarea',
   'number',

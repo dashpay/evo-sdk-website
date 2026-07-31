@@ -1605,43 +1605,16 @@ Returns:
 
 Example:
 ```javascript
-import {
-  AssetLockProof,
-  Identity,
-  IdentityPublicKeyInCreation,
-  IdentitySigner,
-  KeyType,
-  PrivateKey,
-  Purpose,
-  SecurityLevel,
-} from '@dashevo/evo-sdk';
-
-// Asset-lock proof and the separate private key controlling its Core output.
-const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
-
-const assetLockPrivateKey = PrivateKey.fromWIF('cVExampleAssetLockKeyForIdentityFunding');
-
-// Identity key registered on Platform and held by IdentitySigner for key proofs.
-const identityPrivateKey = PrivateKey.fromWIF('L1ExamplePrivateKeyWifGoesHere');
+import { AssetLockProof, Identity, IdentityPublicKeyInCreation, IdentitySigner, KeyType, PrivateKey, Purpose, SecurityLevel } from '@dashevo/evo-sdk';
+const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
+const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
+const identityPrivateKey = PrivateKey.fromWIF(identityPrivateKeyWif);
 const identity = new Identity(assetLockProof.createIdentityId());
-const masterKey = new IdentityPublicKeyInCreation({
-  keyId: 0,
-  purpose: Purpose.AUTHENTICATION,
-  securityLevel: SecurityLevel.MASTER,
-  keyType: KeyType.ECDSA_SECP256K1,
-  data: identityPrivateKey.getPublicKey().toBytes(),
-}).toIdentityPublicKey();
+const masterKey = new IdentityPublicKeyInCreation({ keyId: 0, purpose: Purpose.AUTHENTICATION, securityLevel: SecurityLevel.MASTER, keyType: KeyType.ECDSA_SECP256K1, data: identityPrivateKey.getPublicKey().toBytes() }).toIdentityPublicKey();
 identity.addPublicKey(masterKey);
-
 const signer = new IdentitySigner();
 signer.addKey(identityPrivateKey);
-
-await sdk.identities.create({
-  identity,
-  assetLockProof,
-  assetLockPrivateKey,
-  signer,
-});
+await sdk.identities.create({ identity, assetLockProof, assetLockPrivateKey, signer });
 ```
 
 **Identity Top Up** - `identities.topUp`
@@ -1675,17 +1648,11 @@ Returns:
 Example:
 ```javascript
 import { AssetLockProof, PrivateKey } from '@dashevo/evo-sdk';
-
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
-// Asset-lock signing only — top-up does not use IdentitySigner.
-const assetLockPrivateKey = PrivateKey.fromWIF('cVExampleAssetLockKeyForIdentityFunding');
-
-const newBalance = await sdk.identities.topUp({
-  identity,
-  assetLockProof,
-  assetLockPrivateKey,
-});
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
+const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
+await sdk.identities.topUp({ identity, assetLockProof, assetLockPrivateKey });
 ```
 
 **Identity Update** - `identities.update`
@@ -1723,18 +1690,13 @@ Example:
 ```javascript
 import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-
+const identity = await sdk.identities.fetch("<identityId>");
+if (!identity) throw new Error('Identity not found');
 const signer = new IdentitySigner();
-// Master key is required to add/disable identity keys.
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-await sdk.identities.update({
-  identity,
-  addPublicKeys: undefined, // optional IdentityPublicKeyInCreation[]
-  disablePublicKeys: [2],   // optional key ids to disable
-  signer,
-});
+const disabledKeyIds = disablePublicKeys?.split(',').map(value => Number(value.trim()));
+await sdk.identities.update({ identity, addPublicKeys, disablePublicKeys: disabledKeyIds, signer });
 ```
 
 **Identity Credit Transfer** - `identities.creditTransfer`
@@ -1775,18 +1737,15 @@ Example:
 ```javascript
 import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-
+const identity = await sdk.identities.fetch("<identityId>");
+if (!identity) throw new Error('Identity not found');
 const signer = new IdentitySigner();
-// Add the private key for a TRANSFER purpose identity key.
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-// Omit signingKey so the SDK auto-selects an available TRANSFER key.
-// Supplying a non-TRANSFER key (for example AUTHENTICATION) is invalid.
 await sdk.identities.creditTransfer({
   identity,
-  recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  amount: 1000000n,
+  recipientId: "<recipientId>",
+  amount: BigInt("<amount>"),
   signer,
 });
 ```
@@ -1830,19 +1789,16 @@ Example:
 ```javascript
 import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-
+const identity = await sdk.identities.fetch("<identityId>");
+if (!identity) throw new Error('Identity not found');
 const signer = new IdentitySigner();
-// Add the private key for a TRANSFER or OWNER purpose identity key.
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-// Omit signingKey so the SDK auto-selects a matching TRANSFER or OWNER key.
-// Supplying a non-matching key (for example AUTHENTICATION) is invalid.
-const remainingBalance = await sdk.identities.creditWithdrawal({
+await sdk.identities.creditWithdrawal({
   identity,
-  amount: 1000000n,
-  toAddress: 'yT8DDY5NkX4Zt44Fy8QjmCekheJQH4EMkv',
-  coreFeePerByte: 1,
+  amount: BigInt("<amount>"),
+  toAddress: "<toAddress>",
+  coreFeePerByte: <coreFeePerByte>,
   signer,
 });
 ```
@@ -1883,41 +1839,16 @@ Example:
 ```javascript
 import { DataContract, IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-// Contract publish requires a CRITICAL authentication key.
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL',
-);
+const identityNonce = (await sdk.identities.nonce(identity.id)) + 1n;
+const dataContract = new DataContract({ ownerId: identity.id, identityNonce, schemas, tokens, fullValidation: false });
 
-const identityNonce = (await sdk.identities.nonce(ownerId)) ?? 0n;
-const dataContract = new DataContract({
-  ownerId,
-  identityNonce: identityNonce + 1n,
-  schemas: {
-    note: {
-      type: 'object',
-      properties: {
-        message: { type: 'string', maxLength: 200, position: 0 },
-      },
-      required: ['message'],
-      additionalProperties: false,
-    },
-  },
-});
-
-const published = await sdk.contracts.publish({
-  dataContract,
-  identityKey,
-  signer,
-});
+await sdk.contracts.publish({ dataContract, identityKey, signer });
 ```
 
 **Data Contract Update** - `contracts.update`
@@ -1952,25 +1883,18 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { DataContract, IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-const contractId = 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec';
-const dataContract = await sdk.contracts.fetch(contractId);
-dataContract.version = (dataContract.version || 1) + 1;
-// Optionally merge additional document type schemas before update:
-// dataContract.setSchemas(mergedSchemas, undefined, false, sdk.version());
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'CRITICAL',
-);
+const dataContract = await sdk.contracts.fetch("<dataContractId>");
+if (!dataContract) throw new Error('Data contract not found');
+dataContract.version += 1;
+dataContract.setSchemas({ ...dataContract.schemas, ...newDocumentSchemas }, undefined, false);
 
 await sdk.contracts.update({ dataContract, identityKey, signer });
 ```
@@ -2012,27 +1936,17 @@ Returns:
 
 Example:
 ```javascript
-import { Document, IdentitySigner } from '@dashevo/evo-sdk';
+import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-const document = new Document({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-  documentTypeName: 'domain',
-  ownerId,
-  properties: { /* fields required by the document type schema */ },
-});
+import { Document } from '@dashevo/evo-sdk';
+const document = new Document({ dataContractId: "<contractId>", documentTypeName: "<documentType>", ownerId: "<ownerId>", properties });
 
 await sdk.documents.create({ document, identityKey, signer });
 ```
@@ -2072,31 +1986,17 @@ Returns:
 
 Example:
 ```javascript
-import { Document, IdentitySigner } from '@dashevo/evo-sdk';
+import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-// Fetch current document, then rebuild/replace with revision + 1.
-const current = await sdk.documents.get('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec', 'domain', '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r');
-const document = new Document({
-  dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-  documentTypeName: 'domain',
-  ownerId,
-  id: '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r',
-  revision: BigInt(current.revision) + 1n,
-  properties: { /* updated properties */ },
-});
+import { Document } from '@dashevo/evo-sdk';
+const document = new Document({ dataContractId, documentTypeName, ownerId, properties, id: documentId, revision: Number(BigInt(revision) + 1n) });
 
 await sdk.documents.replace({ document, identityKey, signer });
 ```
@@ -2136,29 +2036,15 @@ Example:
 ```javascript
 import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-await sdk.documents.delete({
-  document: {
-    id: '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r',
-    ownerId,
-    dataContractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-    documentTypeName: 'domain',
-  },
-  identityKey,
-  signer,
-});
+const document = { id: documentId, ownerId, dataContractId, documentTypeName };
+await sdk.documents.delete({ document, identityKey, signer });
 ```
 
 **Document Transfer** - `documents.transfer`
@@ -2198,30 +2084,21 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-const document = await sdk.documents.get('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec', 'domain', '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r');
+const document = await sdk.documents.get("<contractId>", "<documentType>", "<documentId>");
+if (!document) throw new Error('Document not found');
 document.revision = BigInt(document.revision) + 1n;
 
-await sdk.documents.transfer({
-  document,
-  recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  identityKey,
-  signer,
-});
+const recipientIdentifier = Identifier.fromBase58(recipientId);
+await sdk.documents.transfer({ document, recipientId: recipientIdentifier, identityKey, signer });
 ```
 
 **Document Purchase** - `documents.purchase`
@@ -2264,31 +2141,21 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const buyerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const buyer = await sdk.identities.fetch("<buyerId>");
+if (!buyer) throw new Error('Identity not found');
+const identityKey = buyer.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: buyerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-const document = await sdk.documents.get('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec', 'domain', '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r');
+const document = await sdk.documents.get("<contractId>", "<documentType>", "<documentId>");
+if (!document) throw new Error('Document not found');
 document.revision = BigInt(document.revision) + 1n;
 
-await sdk.documents.purchase({
-  document,
-  buyerId,
-  price: 1000n,
-  identityKey,
-  signer,
-});
+const buyerIdentifier = Identifier.fromBase58(buyerId);
+await sdk.documents.purchase({ document, buyerId: buyerIdentifier, price: BigInt(price), identityKey, signer });
 ```
 
 **Document Set Price** - `documents.setPrice`
@@ -2330,32 +2197,24 @@ Example:
 ```javascript
 import { IdentitySigner } from '@dashevo/evo-sdk';
 
-const ownerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch("<ownerId>");
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(0);
+if (!identityKey) throw new Error('Identity key not found');
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+signer.addKeyFromWif(privateKeyWif);
 
-const keys = await sdk.identities.getKeys({
-  identityId: ownerId,
-  request: { type: 'all' },
-});
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
-
-const document = await sdk.documents.get('GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec', 'domain', '7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r');
+const document = await sdk.documents.get("<contractId>", "<documentType>", "<documentId>");
+if (!document) throw new Error('Document not found');
 document.revision = BigInt(document.revision) + 1n;
 
-await sdk.documents.setPrice({
-  document,
-  price: 1000n,
-  identityKey,
-  signer,
-});
+await sdk.documents.setPrice({ document, price: BigInt(price), identityKey, signer });
 ```
 
 **DPNS Register Name** - `dpns.registerName`
 *Register a new DPNS username*
+
+**Disabled:** Typed v4 preorder and registration flow is not covered by a usable credential fixture.
 
 Signature: `registerName(options: wasm.DpnsRegisterNameOptions): Promise<wasm.RegisterDpnsNameResult>`
 
@@ -2389,29 +2248,7 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
-
-const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-const identity = await sdk.identities.fetch(identityId);
-
-const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-
-// HIGH authentication key is typically used for DPNS registration.
-const identityKey = identity.getPublicKeyById(1)
-  || identity.publicKeys.find(
-    k => k.purpose === 'AUTHENTICATION' && k.securityLevel === 'HIGH',
-  );
-
-const result = await sdk.dpns.registerName({
-  label: 'alice',
-  identity,
-  identityKey,
-  signer,
-  preorderCallback: (preorderDocument) => {
-    console.log('preorder submitted', preorderDocument.id?.toString?.());
-  },
-});
+const result = await sdk.dpns.registerName({ label, identity, identityKey, signer, preorderCallback });
 ```
 
 #### Token Transitions
@@ -2460,23 +2297,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
-const result = await sdk.tokens.burn({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  amount: 10n,
-  identityId,
-  publicNote: 'burn',
+await sdk.tokens.burn({
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  identityId: Identifier.fromBase58(identityId),
+  amount: BigInt(amount),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2531,24 +2365,21 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
-const result = await sdk.tokens.mint({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  amount: 100n,
-  identityId,
-  recipientId: identityId,
-  publicNote: 'mint',
+await sdk.tokens.mint({
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  identityId: Identifier.fromBase58(identityId),
+  recipientId: issuedToIdentityId ? Identifier.fromBase58(issuedToIdentityId) : undefined,
+  amount: BigInt(amount),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2593,23 +2424,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
-const result = await sdk.tokens.claim({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  identityId,
-  distributionType: 'perpetual', // or 'preProgrammed'
-  publicNote: 'claim',
+await sdk.tokens.claim({
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  identityId: Identifier.fromBase58(identityId),
+  distributionType: distributionType,
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2660,23 +2488,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const authorityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: authorityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
 await sdk.tokens.setPrice({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  authorityId,
-  price: 1000n, // or null to clear
-  publicNote: 'set price',
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  authorityId: Identifier.fromBase58(identityId),
+  price: priceData == null || priceData === '' ? null : BigInt(priceData),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2722,23 +2547,21 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const buyerId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: buyerId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
-const result = await sdk.tokens.directPurchase({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  buyerId,
-  amount: 10n,
-  maxTotalCost: 10000n,
+await sdk.tokens.directPurchase({
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  buyerId: Identifier.fromBase58(identityId),
+  amount: BigInt(amount),
+  maxTotalCost: BigInt(totalAgreedPrice),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2788,23 +2611,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const authorityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: authorityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
 await sdk.tokens.emergencyAction({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  authorityId,
-  action: 'pause', // or 'resume'
-  publicNote: 'pause trading',
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  authorityId: Identifier.fromBase58(identityId),
+  action: actionType,
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2852,24 +2672,21 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const senderId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: senderId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
-const result = await sdk.tokens.transfer({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  amount: 5n,
-  senderId,
-  recipientId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  publicNote: 'transfer',
+await sdk.tokens.transfer({
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  senderId: Identifier.fromBase58(identityId),
+  recipientId: Identifier.fromBase58(recipientId),
+  amount: BigInt(amount),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2920,23 +2737,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const authorityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: authorityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
 await sdk.tokens.freeze({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  authorityId,
-  frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  publicNote: 'freeze',
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  authorityId: Identifier.fromBase58(identityId),
+  frozenIdentityId: Identifier.fromBase58(identityToFreeze),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -2987,23 +2801,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const authorityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: authorityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
 await sdk.tokens.unfreeze({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  authorityId,
-  frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  publicNote: 'unfreeze',
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  authorityId: Identifier.fromBase58(identityId),
+  frozenIdentityId: Identifier.fromBase58(identityToUnfreeze),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -3054,23 +2865,20 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner } from '@dashevo/evo-sdk';
+import { Identifier, IdentitySigner } from '@dashevo/evo-sdk';
 
-const authorityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
-
+const identity = await sdk.identities.fetch(identityId);
+if (!identity) throw new Error('Identity not found');
+const identityKey = identity.getPublicKeyById(keyId);
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-const keys = await sdk.identities.getKeys({ identityId: authorityId, request: { type: 'all' } });
-const identityKey = keys.find(
-  k => k.purpose === 'AUTHENTICATION' && ['CRITICAL', 'HIGH', 'MEDIUM'].includes(k.securityLevel),
-);
+signer.addKeyFromWif(privateKeyWif);
 
 await sdk.tokens.destroyFrozen({
-  dataContractId: 'ALybvzfcCwMs7sinDwmtumw17NneuW7RgFtFHgjKmF3A',
-  tokenPosition: 0,
-  authorityId,
-  frozenIdentityId: 'H72iEt2zG4MEyoh3ZzCEMkYbDWqx1GvK1xHmpM8qH1yL',
-  publicNote: 'destroy',
+  dataContractId: Identifier.fromBase58(contractId),
+  tokenPosition: Number(tokenPosition),
+  authorityId: Identifier.fromBase58(identityId),
+  frozenIdentityId: Identifier.fromBase58(frozenIdentityId),
+  publicNote: publicNote || undefined,
   identityKey,
   signer,
 });
@@ -3081,6 +2889,8 @@ await sdk.tokens.destroyFrozen({
 **DPNS Username** - `voting.masternodeVote`
 *Cast a vote for a contested DPNS username*
 
+**Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
+
 Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
 
 Parameters:
@@ -3116,37 +2926,14 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner, ResourceVoteChoice, VotePoll } from '@dashevo/evo-sdk';
-
-const masternodeProTxHash = '143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113';
-
-const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
-
-// Voting key must match the masternode voting public key on the identity.
-const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
-const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
-  || votingIdentity.getPublicKeyById(0);
-
-const votePoll = new VotePoll({
-  contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-  documentTypeName: 'domain',
-  indexName: 'parentNameAndLabel',
-  indexValues: ['dash', 'alice'],
-});
-
-await sdk.voting.masternodeVote({
-  masternodeProTxHash,
-  votePoll,
-  voteChoice: ResourceVoteChoice.TowardsIdentity('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'),
-  votingKey,
-  signer,
-});
+const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
 ```
 
 **Contested Resource** - `voting.masternodeVote`
 *Cast a vote for contested resources as a masternode*
 
+**Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
+
 Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
 
 Parameters:
@@ -3182,31 +2969,7 @@ Returns:
 
 Example:
 ```javascript
-import { IdentitySigner, ResourceVoteChoice, VotePoll } from '@dashevo/evo-sdk';
-
-const masternodeProTxHash = '143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113';
-
-const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
-
-const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
-const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING')
-  || votingIdentity.getPublicKeyById(0);
-
-const votePoll = new VotePoll({
-  contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
-  documentTypeName: 'domain',
-  indexName: 'parentNameAndLabel',
-  indexValues: ['dash', 'alice'],
-});
-
-await sdk.voting.masternodeVote({
-  masternodeProTxHash,
-  votePoll,
-  voteChoice: ResourceVoteChoice.TowardsIdentity('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'),
-  votingKey,
-  signer,
-});
+const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
 ```
 
 #### Platform Address Transitions
@@ -3250,28 +3013,12 @@ Returns:
 
 Example:
 ```javascript
-import {
-  PlatformAddressInput,
-  PlatformAddressOutput,
-  PlatformAddressSigner,
-  PrivateKey,
-} from '@dashevo/evo-sdk';
-
-const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+import { PlatformAddressInput, PlatformAddressOutput, PlatformAddressSigner } from '@dashevo/evo-sdk';
+const inputs = [new PlatformAddressInput({ address: senderAddress, amount })];
+const outputs = [new PlatformAddressOutput({ address: recipientAddress, amount })];
 const signer = new PlatformAddressSigner();
-const senderAddr = signer.addKey(privateKey); // derives P2PKH platform address
-
-const input = new PlatformAddressInput(senderAddr, 0, 100000n);
-const output = new PlatformAddressOutput(
-  /* recipient PlatformAddress or bech32m */ 'tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf',
-  90000n,
-);
-
-const result = await sdk.addresses.transfer({
-  inputs: [input],
-  outputs: [output],
-  signer,
-});
+signer.addKey(privateKey);
+await sdk.addresses.transfer({ inputs, outputs, signer });
 ```
 
 **Top Up Identity from Address** - `addresses.topUpIdentity`
@@ -3308,19 +3055,12 @@ Returns:
 
 Example:
 ```javascript
-import { PlatformAddressInput, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';
-
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+import { PlatformAddressInput, PlatformAddressSigner } from '@dashevo/evo-sdk';
+const identity = await sdk.identities.fetch(identityId);
+const inputs = [new PlatformAddressInput({ address: senderAddress, amount })];
 const signer = new PlatformAddressSigner();
-const sourceAddr = signer.addKey(privateKey);
-const input = new PlatformAddressInput(sourceAddr, 0, 50000n);
-
-const result = await sdk.addresses.topUpIdentity({
-  identity,
-  inputs: [input],
-  signer,
-});
+signer.addKey(privateKey);
+await sdk.addresses.topUpIdentity({ identity, inputs, signer });
 ```
 
 **Withdraw to Core** - `addresses.withdraw`
@@ -3375,37 +3115,12 @@ Returns:
 
 Example:
 ```javascript
-import {
-  CoreScript,
-  PlatformAddressInput,
-  PlatformAddressSigner,
-  PoolingWasm,
-  PrivateKey,
-} from '@dashevo/evo-sdk';
-
-const privateKey = PrivateKey.fromWIF('cPrivateKeyWif...');
+import { CoreScript, PlatformAddressInput, PlatformAddressSigner } from '@dashevo/evo-sdk';
+const inputs = [new PlatformAddressInput({ address: senderAddress, amount })];
+const outputScript = CoreScript.newP2PKH(coreAddress);
 const signer = new PlatformAddressSigner();
-const platformAddr = signer.addKey(privateKey);
-const input = new PlatformAddressInput(platformAddr, 0, 100000n);
-
-// Caller-supplied 20-byte public-key hash for the spendable Core L1 destination.
-const corePubkeyHashHex = 'replace-with-40-hex-character-core-pubkey-hash';
-if (!/^[0-9a-fA-F]{40}$/.test(corePubkeyHashHex)) {
-  throw new Error('Set corePubkeyHashHex to the 20-byte hash from your Core P2PKH address');
-}
-const corePubkeyHash = Uint8Array.from(
-  corePubkeyHashHex.match(/../g),
-  byte => Number.parseInt(byte, 16),
-);
-const outputScript = CoreScript.fromP2PKH(corePubkeyHash);
-
-const result = await sdk.addresses.withdraw({
-  inputs: [input],
-  coreFeePerByte: 1,
-  pooling: PoolingWasm.Standard,
-  outputScript,
-  signer,
-});
+signer.addKey(privateKey);
+await sdk.addresses.withdraw({ inputs, coreFeePerByte, pooling, outputScript, signer });
 ```
 
 **Transfer from Identity to Address** - `addresses.transferFromIdentity`
@@ -3446,19 +3161,11 @@ Returns:
 Example:
 ```javascript
 import { IdentitySigner, PlatformAddressOutput } from '@dashevo/evo-sdk';
-
-// Uses IdentitySigner (identity transfer key), not PlatformAddressSigner.
-const identity = await sdk.identities.fetch('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk');
-
+const identity = await sdk.identities.fetch(identityId);
+const outputs = [new PlatformAddressOutput({ address: recipientAddress, amount })];
 const signer = new IdentitySigner();
-signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
-
-const output = new PlatformAddressOutput('tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf', 100000n);
-const result = await sdk.addresses.transferFromIdentity({
-  identity,
-  outputs: [output],
-  signer,
-});
+signer.addKeyFromWif(privateKeyWif);
+await sdk.addresses.transferFromIdentity({ identity, outputs, signer });
 ```
 
 **Fund Address from Asset Lock** - `addresses.fundFromAssetLock`
@@ -3504,28 +3211,12 @@ Returns:
 
 Example:
 ```javascript
-import {
-  AssetLockProof,
-  PlatformAddressOutput,
-  PlatformAddressSigner,
-  PrivateKey,
-} from '@dashevo/evo-sdk';
-
-// Asset-lock key signs the L1 funding proof; address signer controls outputs.
-const assetLockPrivateKey = PrivateKey.fromWIF('cAssetLockPrivateKeyWif...');
-const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
-const assetLockProof = AssetLockProof.fromHex('a9147d3b...(hex-encoded)');
-
+import { AssetLockProof, PlatformAddressOutput, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';
+const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
+const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
+const outputs = [new PlatformAddressOutput({ address: recipientAddress, amount })];
 const signer = new PlatformAddressSigner();
-const platformAddr = signer.addKey(addressPrivateKey);
-const output = new PlatformAddressOutput(platformAddr, 100000n);
-
-const result = await sdk.addresses.fundFromAssetLock({
-  assetLockProof,
-  assetLockPrivateKey,
-  outputs: [output],
-  signer,
-});
+await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer });
 ```
 
 **Create Identity from Address** - `addresses.createIdentity`
@@ -3571,44 +3262,17 @@ Returns:
 
 Example:
 ```javascript
-import {
-  Identity,
-  IdentityPublicKeyInCreation,
-  IdentitySigner,
-  KeyType,
-  PlatformAddressInput,
-  PlatformAddressSigner,
-  PrivateKey,
-  Purpose,
-  SecurityLevel,
-} from '@dashevo/evo-sdk';
-
-const addressPrivateKey = PrivateKey.fromWIF('cAddressPrivateKeyWif...');
-const identityPrivateKey = PrivateKey.fromWIF('cIdentityKeyWif...');
-
-const identity = new Identity(/* 32-byte id */ new Uint8Array(32));
-identity.addPublicKey(
-  new IdentityPublicKeyInCreation({
-    keyId: 0,
-    purpose: Purpose.AUTHENTICATION,
-    securityLevel: SecurityLevel.MASTER,
-    keyType: KeyType.ECDSA_SECP256K1,
-    data: identityPrivateKey.getPublicKey().toBytes(),
-  }).toIdentityPublicKey(),
-);
-
-const addressSigner = new PlatformAddressSigner();
-const sourceAddr = addressSigner.addKey(addressPrivateKey);
+import { Identifier, Identity, IdentityPublicKeyInCreation, IdentitySigner, KeyType, PlatformAddressInput, PlatformAddressSigner, PrivateKey, Purpose, SecurityLevel } from '@dashevo/evo-sdk';
+const identityPrivateKey = PrivateKey.fromWIF(identityPrivateKeyWif);
+const identity = new Identity(Identifier.random());
+const identityPublicKey = new IdentityPublicKeyInCreation({ keyId: 0, purpose: Purpose.AUTHENTICATION, securityLevel: SecurityLevel.MASTER, keyType: KeyType.ECDSA_SECP256K1, data: identityPrivateKey.getPublicKey().toBytes() }).toIdentityPublicKey();
+identity.addPublicKey(identityPublicKey);
+const inputs = [new PlatformAddressInput({ address: senderAddress, amount })];
 const identitySigner = new IdentitySigner();
 identitySigner.addKey(identityPrivateKey);
-const input = new PlatformAddressInput(sourceAddr, 0, 50_000_000_000n);
-
-const result = await sdk.addresses.createIdentity({
-  identity,
-  inputs: [input],
-  identitySigner,
-  addressSigner,
-});
+const addressSigner = new PlatformAddressSigner();
+addressSigner.addKey(addressPrivateKey);
+await sdk.addresses.createIdentity({ identity, inputs, identitySigner, addressSigner });
 ```
 
 ## Common Patterns
