@@ -890,6 +890,11 @@ test.describe('Evo SDK Query Execution Tests', () => {
 
     epochQueries.forEach(({ name, hasProofSupport, needsParameters, validateFn }) => {
       test.describe(`${name} query (parameterized)`, () => {
+        test.fixme(
+          name === 'getCurrentEpoch',
+          'Platform v4.1.0 intentionally rejects proved current-epoch queries without an explicit start (DS-CAND-374); fixed for v4.2 by platform#4231'
+        );
+
         test('without proof info', async () => {
           await evoSdkPage.setupQuery('epoch', name);
           await evoSdkPage.disableProofInfo();
@@ -1496,9 +1501,18 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(typeof stateData).toBe('object');
           // Check required structure
           expect(stateData).toHaveProperty('currentProtocolVersion');
-          expect(stateData).toHaveProperty('thresholdReached');
+          expect(stateData).toHaveProperty('nextProtocolVersion');
+          expect(stateData).toHaveProperty('voteCount');
           expect(typeof stateData.currentProtocolVersion).toBe('number');
-          expect(typeof stateData.thresholdReached).toBe('boolean');
+          expect(
+            stateData.nextProtocolVersion === null ||
+            typeof stateData.nextProtocolVersion === 'number'
+          ).toBe(true);
+          expect(
+            stateData.voteCount === null ||
+            typeof stateData.voteCount === 'string' ||
+            typeof stateData.voteCount === 'number'
+          ).toBe(true);
         }
       },
       {
