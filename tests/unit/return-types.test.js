@@ -8,6 +8,8 @@ const typeReferenceHtml = fs.readFileSync(new URL('../../public/TYPE_REFERENCE.h
 const manifest = JSON.parse(fs.readFileSync(new URL('../../public/docs_manifest.json', import.meta.url), 'utf8'));
 const catalog = JSON.parse(fs.readFileSync(new URL('../../public/sdk-operation-catalog.json', import.meta.url), 'utf8'));
 const apiDefinitions = JSON.parse(fs.readFileSync(new URL('../../public/api-definitions.json', import.meta.url), 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+const sdkVersion = packageJson.dependencies['@dashevo/evo-sdk'];
 const documentedMethods = ['queries', 'transitions'].flatMap((group) =>
   Object.values(apiDefinitions[group]).flatMap((category) =>
     Object.values(category[group]).map((operation) => operation.sdk_method),
@@ -40,8 +42,8 @@ describe('generated return type documentation', () => {
   });
 
   it('records the declaration source version', () => {
-    expect(manifest.sdk_types).toMatchObject({ name: '@dashevo/evo-sdk', version: '4.0.0', declarationRoot: 'dist' });
-    expect(aiReference).toContain('`@dashevo/evo-sdk@4.0.0`');
+    expect(manifest.sdk_types).toMatchObject({ name: '@dashevo/evo-sdk', version: sdkVersion, declarationRoot: 'dist' });
+    expect(aiReference).toContain(`\`@dashevo/evo-sdk@${sdkVersion}\``);
   });
 
   it('publishes declaration-derived signatures and option properties', () => {

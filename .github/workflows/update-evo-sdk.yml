@@ -85,6 +85,14 @@ jobs:
             exit 1
           }
 
+      - name: Run unit tests
+        id: unit_tests
+        if: steps.check_version.outputs.needs_update == 'true'
+        continue-on-error: true
+        run: |
+          echo "Running unit tests to verify generated documentation and SDK compatibility..."
+          yarn test:unit
+
       - name: Run smoke tests
         id: smoke_tests
         if: steps.check_version.outputs.needs_update == 'true'
@@ -107,7 +115,7 @@ jobs:
         if: steps.check_version.outputs.needs_update == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          draft: ${{ steps.smoke_tests.outcome != 'success' || steps.query_tests.outcome != 'success' }}
+          draft: ${{ steps.unit_tests.outcome != 'success' || steps.smoke_tests.outcome != 'success' || steps.query_tests.outcome != 'success' }}
           branch: update-deps/evo-sdk-${{ steps.check_version.outputs.latest }}
           title: "chore: upgrade evo-sdk to ${{ steps.check_version.outputs.latest }}"
           body: |
@@ -118,11 +126,12 @@ jobs:
             - New: `${{ steps.check_version.outputs.latest }}`
 
             **Test Results:**
+            - Unit tests: ${{ steps.unit_tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
             - Smoke tests: ${{ steps.smoke_tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
             - Query tests: ${{ steps.query_tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}
-            ${{ steps.smoke_tests.outcome == 'success' && steps.query_tests.outcome == 'success' && '
+            ${{ steps.unit_tests.outcome == 'success' && steps.smoke_tests.outcome == 'success' && steps.query_tests.outcome == 'success' && '
 
-            ✅ Smoke and query tests passed!' || format('
+            ✅ Unit, smoke, and query tests passed!' || format('
 
             ⚠️ **This PR is in draft because tests failed.**
 
