@@ -891,7 +891,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
     epochQueries.forEach(({ name, hasProofSupport, needsParameters, validateFn }) => {
       test.describe(`${name} query (parameterized)`, () => {
         test.fixme(
-          name === 'getCurrentEpoch',
+          name === 'getCurrentEpoch' && !needsParameters,
           'Platform v4.1.0 intentionally rejects proved current-epoch queries without an explicit start (DS-CAND-374); fixed for v4.2 by platform#4231'
         );
 
