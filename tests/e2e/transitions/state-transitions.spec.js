@@ -1317,7 +1317,6 @@ test.describe('Evo SDK State Transition Tests', () => {
     const IDENTITY_TOP_UP_AMOUNT = 500_000;
     const ADDRESS_WITHDRAW_AMOUNT = 1_000_000;
     const IDENTITY_CREATE_AMOUNT = 5_000_000;
-    const ASSET_LOCK_FUND_AMOUNT = 1_000_000;
     const addressFixturesConfigured = Boolean(
       process.env.TEST_PLATFORM_ADDRESS_A &&
       process.env.TEST_PLATFORM_ADDRESS_KEY_A &&
@@ -1424,7 +1423,6 @@ test.describe('Evo SDK State Transition Tests', () => {
         {
           recipientAddress: addressB,
           addressPrivateKeyWif: process.env.TEST_PLATFORM_ADDRESS_KEY_B,
-          amount: String(ASSET_LOCK_FUND_AMOUNT),
           assetLockProof: process.env.TEST_PLATFORM_ASSET_LOCK_PROOF,
           privateKey: process.env.TEST_PLATFORM_ASSET_LOCK_PRIVATE_KEY
         }

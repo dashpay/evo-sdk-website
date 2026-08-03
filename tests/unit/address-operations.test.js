@@ -32,6 +32,7 @@ vi.mock('../../public/src/sdk-types.js', () => {
       fromP2PKH: hash => ({ type: 'p2pkh', hash: [...hash] }),
       fromP2SH: hash => ({ type: 'p2sh', hash: [...hash] }),
     },
+    FeeStrategyStep: { reduceOutput: index => ({ type: 'reduceOutput', index }) },
     Identifier: { fromBytes: bytes => ({ bytes, toString: () => 'generated-id' }) },
     Identity: class {
       constructor(id) { this.id = id; }
@@ -143,6 +144,27 @@ describe('Platform Address transition operations', () => {
     expect(prepared.options.coreFeePerByte).toBe(2);
   });
 
+  it('defaults an omitted Core fee per byte to one', async () => {
+    const prepared = await addressTransitionOperations.addressWithdraw.prepare({
+      senderAddress: transferValues.senderAddress,
+      addressPrivateKeyWif: transferValues.addressPrivateKeyWif,
+      amount: '1000',
+      toAddress: 'yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm',
+    }, fundedSdk());
+    expect(prepared.options.coreFeePerByte).toBe(1);
+  });
+
+  it('prepares asset-lock funding with one remainder output and an output fee strategy', async () => {
+    const prepared = await addressTransitionOperations.addressFundFromAssetLock.prepare({
+      recipientAddress: 'tdash1:key-b',
+      addressPrivateKeyWif: 'key-b',
+      assetLockProof: 'proof-hex',
+      assetLockPrivateKeyWif: 'asset-lock-key',
+    });
+    expect(prepared.options.outputs).toEqual([{ address: 'tdash1:key-b' }]);
+    expect(prepared.options.feeStrategy).toEqual([{ type: 'reduceOutput', index: 0 }]);
+  });
+
   it('rejects a Core address with an invalid checksum', async () => {
     await expect(addressTransitionOperations.addressWithdraw.prepare({
       senderAddress: transferValues.senderAddress,
@@ -236,6 +258,9 @@ describe('Platform Address transition operations', () => {
       expect(operation.renderCode({})).not.toContain('new PlatformAddressOutput');
     }
     expect(addressTransitionOperations.addressWithdraw.renderCode({})).toContain('CoreScript.fromP2PKH');
+    expect(addressTransitionOperations.addressWithdraw.renderCode({})).toContain('coreScriptFromAddress(toAddress)');
+    expect(addressTransitionOperations.addressWithdraw.renderCode({})).toContain('CoreScript, PoolingWasm');
+    expect(addressTransitionOperations.addressWithdraw.renderCode({})).toContain('wallet.validateAddress(address, network)');
     expect(addressTransitionOperations.addressWithdraw.renderCode({})).toContain('pooling: PoolingWasm.Never');
     expect(addressTransitionOperations.addressTopUpIdentity.renderCode({})).toContain('{ identity, inputs:');
     expect(addressTransitionOperations.addressTransferFromIdentity.renderCode({})).toContain('{ identity, outputs, signer }');
@@ -247,6 +272,7 @@ describe('Platform Address transition operations', () => {
     expect(Object.values(operations).every(operation => !operation.disabled)).toBe(true);
     expect(Object.values(operations).flatMap(operation => operation.inputs).some(input => input.name === 'senderNonce')).toBe(false);
     expect(operations.addressFundFromAssetLock.inputs.find(input => input.name === 'addressPrivateKeyWif')?.type).toBe('password');
+    expect(operations.addressFundFromAssetLock.inputs.some(input => input.name === 'amount')).toBe(false);
     expect(operations.addressCreateIdentity.inputs.find(input => input.name === 'identityPrivateKeyWif')?.type).toBe('password');
   });
 });

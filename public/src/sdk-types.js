@@ -5,6 +5,7 @@ export {
   Document,
   ensureInitialized,
   EvoSDK,
+  FeeStrategyStep,
   Identifier,
   Identity,
   IdentityPublicKeyInCreation,

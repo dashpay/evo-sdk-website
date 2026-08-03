@@ -2506,12 +2506,6 @@
               "label": "Recipient Platform Address",
               "required": true,
               "placeholder": "tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"
-            },
-            {
-              "name": "amount",
-              "type": "text",
-              "label": "Amount (credits)",
-              "required": true
             }
           ],
           "sdk_method": "addresses.fundFromAssetLock"

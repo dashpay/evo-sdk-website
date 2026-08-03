@@ -3120,8 +3120,27 @@ const senderAddress = signer.addKey(PrivateKey.fromWIF(addressPrivateKeyWif));
 const addressInfo = await sdk.addresses.get(senderAddress);
 if (!addressInfo) throw new Error('Platform Address is not funded');
 const input = { address: senderAddress.toBech32m(network), amount: BigInt(amount) };
-const outputScript = CoreScript.fromP2PKH(coreAddressHash);
-await sdk.addresses.withdraw({ inputs: [input], coreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer });
+import { CoreScript, PoolingWasm, wallet } from '@dashevo/evo-sdk';
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+async function coreScriptFromAddress(address) {
+  if (!await wallet.validateAddress(address, network)) throw new Error('Dash Core address is invalid for the selected network');
+  let value = 0n;
+  for (const character of address) {
+    value = value * 58n + BigInt(BASE58_ALPHABET.indexOf(character));
+  }
+  const decoded = [];
+  while (value > 0n) { decoded.unshift(Number(value & 255n)); value >>= 8n; }
+  for (const character of address) { if (character !== '1') break; decoded.unshift(0); }
+  const payload = Uint8Array.from(decoded.slice(0, 21));
+  const hash = payload.slice(1);
+  if ([0x4c, 0x8c].includes(payload[0])) return CoreScript.fromP2PKH(hash);
+  if ([0x10, 0x13].includes(payload[0])) return CoreScript.fromP2SH(hash);
+  throw new Error('Unsupported Dash Core address version');
+}
+const outputScript = await coreScriptFromAddress(toAddress);
+const parsedCoreFeePerByte = coreFeePerByte == null || coreFeePerByte === '' ? 1 : Number(coreFeePerByte);
+if (!Number.isSafeInteger(parsedCoreFeePerByte) || parsedCoreFeePerByte < 0 || parsedCoreFeePerByte > 0xffffffff) throw new Error('Core fee per byte must be an unsigned 32-bit integer');
+await sdk.addresses.withdraw({ inputs: [input], coreFeePerByte: parsedCoreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer });
 ```
 
 **Transfer from Identity to Address** - `addresses.transferFromIdentity`
@@ -3209,13 +3228,14 @@ Returns:
 
 Example:
 ```javascript
-import { AssetLockProof, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';
+import { AssetLockProof, FeeStrategyStep, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';
 const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);
 const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);
 const signer = new PlatformAddressSigner();
 signer.addKey(PrivateKey.fromWIF(addressPrivateKeyWif));
-const outputs = [{ address: recipientAddress, amount: BigInt(amount) }];
-await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer });
+const outputs = [{ address: recipientAddress }];
+const feeStrategy = [FeeStrategyStep.reduceOutput(0)];
+await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, feeStrategy, signer });
 ```
 
 **Create Identity from Address** - `addresses.createIdentity`

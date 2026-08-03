@@ -965,7 +965,6 @@ const testData = {
         testnet: [{
           recipientAddress: process.env.TEST_PLATFORM_ADDRESS_B || 'PLACEHOLDER_PLATFORM_ADDRESS_B',
           addressPrivateKeyWif: process.env.TEST_PLATFORM_ADDRESS_KEY_B || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_B',
-          amount: '1000000',
           assetLockProof: process.env.TEST_PLATFORM_ASSET_LOCK_PROOF || '',
           privateKey: process.env.TEST_PLATFORM_ASSET_LOCK_PRIVATE_KEY || 'PLACEHOLDER_ASSET_LOCK_KEY'
         }]

@@ -1,6 +1,7 @@
 import {
   AssetLockProof,
   CoreScript,
+  FeeStrategyStep,
   Identifier,
   Identity,
   IdentityPublicKeyInCreation,
@@ -33,8 +34,8 @@ function positiveAmount(value) {
   return amount;
 }
 
-function optionalCoreFeePerByte(value) {
-  if (value === undefined || value === null || value === '') return undefined;
+function parseCoreFeePerByte(value) {
+  if (value === undefined || value === null || value === '') return 1;
   const fee = Number(value);
   if (!Number.isSafeInteger(fee) || fee < 0 || fee > 0xffffffff) {
     throw new Error('Core fee per byte must be a non-negative 32-bit integer');
@@ -153,6 +154,28 @@ function renderAddressSigner(variable = 'signer') {
   ];
 }
 
+function renderCoreScriptHelper() {
+  return [
+    "import { CoreScript, PoolingWasm, wallet } from '@dashevo/evo-sdk';",
+    "const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';",
+    'async function coreScriptFromAddress(address) {',
+    "  if (!await wallet.validateAddress(address, network)) throw new Error('Dash Core address is invalid for the selected network');",
+    '  let value = 0n;',
+    '  for (const character of address) {',
+    '    value = value * 58n + BigInt(BASE58_ALPHABET.indexOf(character));',
+    '  }',
+    '  const decoded = [];',
+    '  while (value > 0n) { decoded.unshift(Number(value & 255n)); value >>= 8n; }',
+    "  for (const character of address) { if (character !== '1') break; decoded.unshift(0); }",
+    '  const payload = Uint8Array.from(decoded.slice(0, 21));',
+    '  const hash = payload.slice(1);',
+    '  if ([0x4c, 0x8c].includes(payload[0])) return CoreScript.fromP2PKH(hash);',
+    '  if ([0x10, 0x13].includes(payload[0])) return CoreScript.fromP2SH(hash);',
+    "  throw new Error('Unsupported Dash Core address version');",
+    '}',
+  ];
+}
+
 export const addressTransitionOperations = {
   addressTransfer: {
     sdkMethod: 'addresses.transfer', fields: ADDRESS_FIELDS,
@@ -202,7 +225,7 @@ export const addressTransitionOperations = {
     sdkMethod: 'addresses.withdraw', fields: ADDRESS_FIELDS,
     async prepare(values, sdk) {
       const outputScript = await coreScript(values.toAddress);
-      const coreFeePerByte = optionalCoreFeePerByte(values.coreFeePerByte);
+      const coreFeePerByte = parseCoreFeePerByte(values.coreFeePerByte);
       const build = async () => {
         const input = await spendingInput(values, sdk);
         return { inputs: [input.input], coreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer: input.signer };
@@ -213,7 +236,7 @@ export const addressTransitionOperations = {
       const result = await withNonceRetry(prepared, sdk, 'withdraw');
       return { status: 'success', addressInfos: serializeAddressInfos(result), message: 'Platform Address withdrawal submitted' };
     },
-    renderCode() { return [...renderAddressSigner(), 'const outputScript = CoreScript.fromP2PKH(coreAddressHash);', 'await sdk.addresses.withdraw({ inputs: [input], coreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer });'].join('\n'); },
+    renderCode() { return [...renderAddressSigner(), ...renderCoreScriptHelper(), 'const outputScript = await coreScriptFromAddress(toAddress);', "const parsedCoreFeePerByte = coreFeePerByte == null || coreFeePerByte === '' ? 1 : Number(coreFeePerByte);", "if (!Number.isSafeInteger(parsedCoreFeePerByte) || parsedCoreFeePerByte < 0 || parsedCoreFeePerByte > 0xffffffff) throw new Error('Core fee per byte must be an unsigned 32-bit integer');", 'await sdk.addresses.withdraw({ inputs: [input], coreFeePerByte: parsedCoreFeePerByte, pooling: PoolingWasm.Never, outputScript, signer });'].join('\n'); },
   },
   addressTransferFromIdentity: {
     sdkMethod: 'addresses.transferFromIdentity', fields: ADDRESS_FIELDS,
@@ -246,14 +269,14 @@ export const addressTransitionOperations = {
         }
         if (addressKey(recipient) !== addressKey(address)) throw new Error('Recipient Platform Address does not match the supplied private key');
       }
-      const output = outputOptions(required(values.recipientAddress, 'Recipient Platform Address'), positiveAmount(values.amount));
-      return { options: { assetLockProof: AssetLockProof.fromHex(required(values.assetLockProof, 'Asset Lock Proof')), assetLockPrivateKey: PrivateKey.fromWIF(required(values.assetLockPrivateKeyWif, 'Asset Lock private key')), outputs: [output], signer } };
+      const output = { address: required(values.recipientAddress, 'Recipient Platform Address') };
+      return { options: { assetLockProof: AssetLockProof.fromHex(required(values.assetLockProof, 'Asset Lock Proof')), assetLockPrivateKey: PrivateKey.fromWIF(required(values.assetLockPrivateKeyWif, 'Asset Lock private key')), outputs: [output], feeStrategy: [FeeStrategyStep.reduceOutput(0)], signer } };
     },
     async execute(prepared, sdk) {
       const result = await sdk.addresses.fundFromAssetLock(prepared.options);
       return { status: 'success', addressInfos: serializeAddressInfos(result), message: 'Platform Address funded from asset lock' };
     },
-    renderCode() { return ["import { AssetLockProof, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';", 'const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);', 'const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);', 'const signer = new PlatformAddressSigner();', 'signer.addKey(PrivateKey.fromWIF(addressPrivateKeyWif));', 'const outputs = [{ address: recipientAddress, amount: BigInt(amount) }];', 'await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, signer });'].join('\n'); },
+    renderCode() { return ["import { AssetLockProof, FeeStrategyStep, PlatformAddressSigner, PrivateKey } from '@dashevo/evo-sdk';", 'const assetLockProof = AssetLockProof.fromHex(assetLockProofHex);', 'const assetLockPrivateKey = PrivateKey.fromWIF(assetLockPrivateKeyWif);', 'const signer = new PlatformAddressSigner();', 'signer.addKey(PrivateKey.fromWIF(addressPrivateKeyWif));', 'const outputs = [{ address: recipientAddress }];', 'const feeStrategy = [FeeStrategyStep.reduceOutput(0)];', 'await sdk.addresses.fundFromAssetLock({ assetLockProof, assetLockPrivateKey, outputs, feeStrategy, signer });'].join('\n'); },
   },
   addressCreateIdentity: {
     sdkMethod: 'addresses.createIdentity', fields: ADDRESS_FIELDS,
