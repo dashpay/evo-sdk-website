@@ -4,8 +4,8 @@ Testing suite for the Evo SDK web interface using Playwright.
 
 ## Features
 
-- **Project-based test organization** (site, smoke, queries, transitions)
-- **Cross-browser testing** with Chromium support
+- **Project-based test organization** (smoke, queries, transitions)
+- **Chromium testing** through Playwright
 - **Automated parameter injection** from centralized test data
 - **Page Object Model** for maintainable test code
 - **Network switching** (testnet/mainnet) testing
@@ -17,7 +17,7 @@ Testing suite for the Evo SDK web interface using Playwright.
 
 - Node.js 18+ installed
 - Python 3 for serving the web interface
-- Evo SDK built at `public/dist/sdk.js`
+- Dependencies installed with `yarn install` (the postinstall step generates `public/dist/evo-sdk.module.js`)
 
 ### Running Tests
 
@@ -34,6 +34,7 @@ yarn test
 # Run specific test projects
 yarn test:smoke         # Smoke tests (SDK UI functionality)
 yarn test:queries       # Query execution tests
+yarn test:playground    # Playground example execution
 yarn test:transitions   # State transition tests
 
 # Interactive modes
@@ -43,65 +44,48 @@ yarn test:ui            # Visual test runner
 yarn test:report        # Open HTML report
 ```
 
-**Using the comprehensive test runner** (recommended for validation):
-
-```bash
-# From tests/e2e/ directory - includes setup validation
-./run-ui-tests.sh smoke       # Basic functionality tests
-./run-ui-tests.sh queries     # Query execution tests
-./run-ui-tests.sh transitions # State transition tests
-./run-ui-tests.sh all         # Run all tests (default)
-
-# Interactive modes via script
-./run-ui-tests.sh headed      # Run with visible browser
-./run-ui-tests.sh ui          # Visual test runner
-./run-ui-tests.sh debug       # Debug mode
-
-# Debug with detailed output
-DEBUG=true ./run-ui-tests.sh smoke
-```
-
 ## Test Organization
 
 ### Test Projects
 
-The test suite is organized into four distinct projects:
+The Playwright configuration defines four projects. `site-tests` is reserved for `tests/site.spec.ts`, which is not currently present. The active projects are:
 
-1. **site-tests** (3 tests) - `tests/site.spec.ts`
-   - Basic website functionality
-   - Documentation page loading
-   - Simple query execution
-
-2. **smoke-tests** (27 tests) - `tests/e2e/smoke/basic-smoke.spec.js`
+1. **smoke-tests** - `tests/e2e/smoke/*.spec.js`
    - SDK initialization and UI validation
+   - Playground UI behavior
    - Network switching functionality
    - Basic interaction flows
    - State transition UI validation
 
-3. **query-tests** (109 tests) - `tests/e2e/queries/query-execution.spec.js`
+2. **parallel-e2e-tests** - `tests/e2e/queries/*.spec.js`
    - Identity queries (getIdentity, getIdentityBalance, etc.)
    - Data contract queries (getDataContract, getDataContracts, etc.)
    - Document queries (getDocuments, getDocument)
    - System queries (getStatus, getCurrentEpoch, etc.)
    - Token, DPNS, voting, and protocol queries
+   - Playground example execution
    - Error handling and proof support testing
 
-4. **transition-tests** (26 tests) - `tests/e2e/transitions/state-transitions.spec.js`
+3. **sequential-e2e-tests** - `tests/e2e/transitions/*.spec.js`
    - Data contract create/update transitions
    - Document create/replace/delete/transfer transitions
    - Identity credit transfer/withdrawal transitions
-   - Token mint/transfer/burn/freeze transitions
+   - Token and Platform Address transitions
    - Authentication input validation
+   - Runs serially with one worker and is omitted when `CI` is set
 
 ### Directory Structure
 
 ```text
 tests/
-├── site.spec.ts              # Basic site functionality tests
-└── e2e/                      # E2E test suite
+├── unit/                     # Vitest unit tests
+├── type-extraction.test.mjs  # Node type-extraction tests
+└── e2e/                      # Playwright E2E suite
     ├── smoke/                # Quick validation tests
-    │   └── basic-smoke.spec.js
+    │   ├── basic-smoke.spec.js
+    │   └── playground.spec.js
     ├── queries/              # Query execution tests
+    │   ├── playground-examples.spec.js
     │   └── query-execution.spec.js
     ├── transitions/          # State transition tests
     │   └── state-transitions.spec.js
@@ -111,7 +95,6 @@ tests/
     │   └── parameter-injector.js # Parameter injection system
     ├── fixtures/             # Test data and fixtures
     │   └── test-data.js      # Centralized test parameters
-    ├── run-ui-tests.sh       # Comprehensive test runner script
     └── README.md             # This file
 ```
 
@@ -125,7 +108,7 @@ The testing suite uses a unified configuration approach:
 - **Configuration**: `playwright.config.ts` in root directory
 - **Base URL**: `http://localhost:8081` (auto-managed web server, configurable via `PLAYWRIGHT_BASE_URL`)
 - **Browsers**: Chromium (headless by default)
-- **Timeouts**: 30s for actions, 120s for tests
+- **Timeouts**: 30s for actions and navigation, 120s per test, 10s for assertions
 - **Reporters**: HTML, JSON, and console output
 - **CI Handling**: Conditional test execution (skips slow tests in CI)
 
@@ -147,8 +130,10 @@ Test parameters are centralized in `fixtures/test-data.js` and include:
 ```bash
 # Basic execution
 yarn test                   # Run all tests
+yarn test:unit              # Run Vitest and type-extraction tests
 yarn test:smoke            # Run smoke tests only
 yarn test:queries          # Run query tests only
+yarn test:playground       # Run playground example execution only
 yarn test:transitions      # Run transition tests only
 
 # Interactive modes
@@ -165,25 +150,10 @@ PLAYWRIGHT_BASE_URL=https://example.com/ yarn test        # Test remote site
 PLAYWRIGHT_BASE_URL=https://example.com/ yarn test:smoke  # Test specific project
 ```
 
-### run-ui-tests.sh Script
-
-```bash
-# Basic execution with validation
-./run-ui-tests.sh [smoke|queries|transitions|all]
-
-# Interactive modes
-./run-ui-tests.sh [headed|debug|ui]
-
-# Environment options
-DEBUG=true ./run-ui-tests.sh smoke                              # Detailed output
-PLAYWRIGHT_BASE_URL=https://example.com/ ./run-ui-tests.sh smoke # Test remote site
-```
-
 ### Direct Playwright Commands
 
 ```bash
 # From root directory
-yarn playwright test --project=site-tests
 yarn playwright test --project=smoke-tests
 yarn playwright test --project=parallel-e2e-tests
 yarn playwright test --project=sequential-e2e-tests
@@ -240,9 +210,10 @@ test('should execute my new query', async ({ page }) => {
 
 ### 3. Choose Test Location
 
-- **Site tests**: Basic website functionality → `tests/site.spec.ts`
 - **Smoke tests**: SDK UI validation → `tests/e2e/smoke/basic-smoke.spec.js`
+- **Playground UI tests**: Editor behavior → `tests/e2e/smoke/playground.spec.js`
 - **Query tests**: Query execution → `tests/e2e/queries/query-execution.spec.js`
+- **Playground execution tests**: Run every example → `tests/e2e/queries/playground-examples.spec.js`
 - **Transition tests**: State transitions → `tests/e2e/transitions/state-transitions.spec.js`
 
 ## CI/CD Integration
@@ -252,16 +223,16 @@ test('should execute my new query', async ({ page }) => {
 Tests are configured for CI environments with:
 
 - **Conditional execution**: Slow tests (transitions) skip in CI
-- **Proper retry logic**: 2 retries on CI
-- **Multiple reporters**: GitHub Actions, JSON, HTML
+- **Retry logic**: 1 retry on CI
+- **Multiple reporters**: HTML, JSON, and list output by default; `test:ci` selects GitHub and JSON reporters
 - **Artifact collection**: Screenshots, videos, traces
 
 ### CI Commands
 
 ```bash
 # In CI environment
-yarn test:ci              # CI-friendly output
-./run-ui-tests.sh all     # Full validation with setup checks
+yarn test:unit            # Unit and type-extraction tests
+yarn test:ci              # CI-friendly Playwright output
 
 # Results available in:
 # - playwright-report/ (HTML)
@@ -269,36 +240,20 @@ yarn test:ci              # CI-friendly output
 # - test-results/ (screenshots, videos)
 ```
 
-## When to Use What
-
-**Use `yarn test:*`** when:
-
-- Everything is already set up
-- Quick development iteration
-- Running specific test categories
-
-**Use `run-ui-tests.sh`** when:
-
-- First time setup
-- Validating environment prerequisites
-- Need automatic dependency installation
-- Running in CI/CD environments
-- Want detailed progress output
-
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Missing dependencies**: Run `yarn install && yarn install-browsers`
 2. **Port conflicts**: Playwright auto-manages port 8081
-3. **SDK not built**: Ensure `public/dist/sdk.js` exists
-4. **Test timeouts**: Use `DEBUG=true ./run-ui-tests.sh` for details
+3. **SDK bundle missing**: Run `yarn install` or `yarn generate`, then verify `public/dist/evo-sdk.module.js` exists
+4. **Test timeouts**: Run `DEBUG=pw:api yarn playwright test <test-file>` for Playwright API logs
 
 ### Debug Mode
 
 ```bash
-# Detailed execution logs
-DEBUG=true ./run-ui-tests.sh smoke
+# Detailed Playwright API logs
+DEBUG=pw:api yarn test:smoke
 
 # Visual debugging
 yarn test:ui
@@ -308,7 +263,7 @@ yarn test:ui
 
 For issues or questions:
 
-1. **Environment validation**: `./run-ui-tests.sh` with DEBUG mode
+1. **Environment validation**: Run `yarn install`, `yarn install-browsers`, and `yarn playwright test --list`
 2. **Visual debugging**: Check HTML reports in `playwright-report/`
 3. **Test artifacts**: Review screenshots/videos in `test-results/`
 4. **Configuration**: Verify `playwright.config.ts` in root directory

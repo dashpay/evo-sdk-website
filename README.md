@@ -24,7 +24,7 @@ open http://localhost:8081/index.html
 yarn generate
 ```
 
-This regenerates `public/sdk-operation-catalog.json`, `public/docs.html`, the human-facing `public/TYPE_REFERENCE.html`, `public/AI_REFERENCE.md`, `public/TYPE_REFERENCE.md`, and copies the latest installed SDK bundle to `public/dist`. Operation metadata — method signatures, parameters, return types, and the recursively resolved input/output types they reference — is extracted from the declarations shipped by `@dashevo/evo-sdk`.
+This regenerates `public/sdk-operation-catalog.json`, `public/docs.html`, the human-facing `public/TYPE_REFERENCE.html`, `public/AI_REFERENCE.md`, `public/TYPE_REFERENCE.md`, `public/docs_manifest.json`, and `public/version-info.json`. It also copies the installed SDK bundle from `node_modules/@dashevo/evo-sdk/dist` to `public/dist`. Operation metadata — method signatures, parameters, return types, and the recursively resolved input/output types they reference — is extracted from the declarations shipped by `@dashevo/evo-sdk`.
 
 ### Check documentation status
 
@@ -57,6 +57,8 @@ yarn test:transitions   # State transition tests (sequential, slow)
 - `public/TYPE_REFERENCE.html` — Human-facing reference for named input/output types reachable from documented methods
 - `public/TYPE_REFERENCE.md` — Generated declarations for named input/output types reachable from documented methods
 - `public/sdk-operation-catalog.json` — Versioned catalog of declaration-derived operation metadata (signatures, parameters, return types, referenced types)
+- `public/docs_manifest.json` — Generated-documentation metadata and content hashes used for drift checks
+- `public/version-info.json` — Generated SDK version, repository commit, and build timestamp
 - `public/api-definitions.json` — API definitions used by the generator
 - `scripts/generate_docs.py` — Documentation generator script
 - `scripts/extract_sdk_types.mjs` — Extracts operation metadata and recursively resolves referenced input/output types from the installed SDK declarations
@@ -64,4 +66,4 @@ yarn test:transitions   # State transition tests (sequential, slow)
 ## Notes
 
 - The generator reads `public/api-definitions.json` (no fallbacks).
-- The Evo SDK module is expected at `public/dist`. Build the SDK in the platform repo with `yarn workspace @dashevo/evo-sdk build` before regenerating docs.
+- Install dependencies with `yarn install` before regenerating documentation. The generator copies the installed `@dashevo/evo-sdk` distribution from `node_modules` into `public/dist`.

@@ -58,10 +58,10 @@ PLAYWRIGHT_BASE_URL=https://dashpay.github.io/evo-sdk-website/ yarn test:smoke
 - `public/app.js` — One-line entrypoint shim (`import './src/main.js'`); the service worker caches this path
 - `public/playground.html` — Code playground for writing and running SDK snippets directly; linked from the main nav and driven by `public/src/playground.js`
 - `public/src/` — Application logic, split into focused ES modules: `operations.js` (the `callEvo()` dispatcher), `sdk-client.js` (SDK client lifecycle), `main.js` (entrypoint/wiring), `playground.js` (playground page), plus form, auth, and rendering modules
-- `public/api-definitions.json` — Single source of truth for all API operations (~2700 lines)
+- `public/api-definitions.json` — Single source of truth for documented API operation definitions
 - `public/sdk-operation-catalog.json` — Versioned operation catalog generated from the installed declarations: per-operation signatures, parameters, return types, and a recursive map of referenced SDK input/output types. Consumed by the docs generator and checked for drift by `yarn check`
 - `public/dist/evo-sdk.module.js` — Bundled SDK, copied from `node_modules/@dashevo/evo-sdk/dist` by `yarn generate` (not generated here)
-- `scripts/generate_docs.py` — Generates `docs.html` and `AI_REFERENCE.md` from api-definitions.json; also refreshes `public/dist` from the installed SDK package
+- `scripts/generate_docs.py` — Generates `docs.html`, `AI_REFERENCE.md`, both type references, the SDK operation catalog, documentation manifest, and version information from `api-definitions.json` and installed SDK declarations; also refreshes `public/dist` from the installed SDK package
 - `scripts/extract_sdk_types.mjs` — Extracts typed operation metadata (signatures, parameters, return types) and recursively resolves referenced SDK input/output types from the installed TypeScript declarations, emitting `sdk-operation-catalog.json`
 - `scripts/check_documentation.py` — Validates that generated documentation is current (`yarn check`)
 
@@ -104,14 +104,14 @@ await client.documents.create({ document, identityKey, signer });
 - `tests/e2e/utils/base-test.js` — Base test utilities (navigation, UI interaction, assertions)
 - `tests/e2e/fixtures/test-data.js` — Centralized test parameters (identity IDs, contract IDs, etc.)
 
-Playwright config defines 4 test projects: `site-tests`, `smoke-tests`, `parallel-e2e-tests`, and `sequential-e2e-tests` (transitions). Timeouts: 120s global, 30s action, 60s navigation.
+Playwright config defines 4 test projects: `site-tests`, `smoke-tests`, `parallel-e2e-tests`, and `sequential-e2e-tests` (transitions, omitted in CI). Timeouts: 120s per test, 30s action, 30s navigation.
 
 ## Key Patterns
 
 ### Adding New Operations
 
 1. Add definition to `public/api-definitions.json`
-2. Implement handler in `callEvo()` switch statement in `public/src/operations.js`
+2. Implement a query handler in the `callEvo()` switch statement in `public/src/operations.js`, or add a state-transition implementation to the appropriate module under `public/src/transitions/` and export it through `public/src/transitions/registry.js`
 3. Run `yarn generate` to update documentation
 4. Add test parameters to `tests/e2e/fixtures/test-data.js`
 
@@ -121,6 +121,11 @@ Documentation is auto-generated from `api-definitions.json`:
 
 - `public/docs.html` — Human-readable interactive docs
 - `public/AI_REFERENCE.md` — AI assistant reference
+- `public/TYPE_REFERENCE.html` — Human-readable SDK type reference
+- `public/TYPE_REFERENCE.md` — Markdown SDK type declarations
+- `public/sdk-operation-catalog.json` — Declaration-derived operation metadata
+- `public/docs_manifest.json` — Generated-file metadata and content hashes
+- `public/version-info.json` — SDK version and build metadata
 
 Always run `yarn generate` after modifying api-definitions.json.
 
@@ -130,4 +135,3 @@ Always run `yarn generate` after modifying api-definitions.json.
 - Transition tests are skipped in CI (too slow)
 - Site deploys to GitHub Pages after tests pass
 - SDK version auto-updates daily via workflow
-  
