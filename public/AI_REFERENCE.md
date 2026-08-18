@@ -1,6 +1,6 @@
 # Evo SDK - AI Reference
 
-Return types: generated from `@dashevo/evo-sdk@4.1.0` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
+Return types: generated from `@dashevo/evo-sdk@4.1.1` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
 
 ## Overview
 The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. It exposes ergonomic namespaces (identities, documents, contracts, tokens, and more) optimized for automation and AI-assisted workflows.
