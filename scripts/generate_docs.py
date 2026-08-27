@@ -638,6 +638,51 @@ def safe_value(text) -> str:
     return escape(str(text), quote=False)
 
 
+def render_description_html(text, css_class: str = 'parameter-description') -> str:
+    """Render the small Markdown subset used by declaration JSDoc."""
+    if not text:
+        return ''
+
+    def render_inline(value: str) -> str:
+        escaped = safe_value(value)
+        return re.sub(r'`([^`]+)`', r'<code>\1</code>', escaped)
+
+    blocks: List[str] = []
+    paragraph: List[str] = []
+    list_items: List[List[str]] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            blocks.append(f'<p class="{css_class}">{render_inline(" ".join(paragraph))}</p>')
+            paragraph.clear()
+
+    def flush_list() -> None:
+        if list_items:
+            items = ''.join(
+                f'<li>{render_inline(" ".join(item))}</li>'
+                for item in list_items
+            )
+            blocks.append(f'<ul class="{css_class}-list">{items}</ul>')
+            list_items.clear()
+
+    for raw_line in str(text).splitlines():
+        line = raw_line.strip()
+        if not line:
+            flush_paragraph()
+            flush_list()
+        elif line.startswith('- '):
+            flush_paragraph()
+            list_items.append([line[2:].strip()])
+        elif list_items:
+            list_items[-1].append(line)
+        else:
+            paragraph.append(line)
+
+    flush_paragraph()
+    flush_list()
+    return '\n'.join(blocks)
+
+
 def render_parameter(param: dict) -> str:
     name = safe_value(param.get('name') or 'Parameter')
     param_type = str(param.get('type', 'text'))
@@ -658,7 +703,7 @@ def render_parameter(param: dict) -> str:
 
     description = param.get('description')
     if description:
-        lines.append(f'                    <p class="parameter-description">{safe_value(description)}</p>')
+        lines.append(textwrap.indent(render_description_html(description), '                    '))
 
     properties = param.get('properties') or []
     if properties:
@@ -680,7 +725,7 @@ def render_parameter(param: dict) -> str:
                 '                            </div>',
             ])
             if prop.get('description'):
-                lines.append(f'                            <p class="parameter-description">{safe_value(prop["description"])}</p>')
+                lines.append(textwrap.indent(render_description_html(prop['description']), '                            '))
             lines.append('                        </div>')
         lines.append('                    </div>')
 
