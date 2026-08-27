@@ -447,13 +447,13 @@
               "name": "startAfter",
               "type": "text",
               "label": "Start After",
-              "help": "Document ID or index value to resume from."
+              "help": "Exclusive document ID to resume from."
             },
             {
               "name": "startAt",
               "type": "text",
               "label": "Start At",
-              "help": "Explicit starting index value (JSON string)."
+              "help": "Inclusive document ID to start from."
             }
           ],
           "sdk_method": "documents.query"
@@ -532,13 +532,13 @@
               "name": "startAfter",
               "type": "text",
               "label": "Start After",
-              "help": "Document ID or index value to resume from."
+              "help": "Exclusive document ID to resume from."
             },
             {
               "name": "startAt",
               "type": "text",
               "label": "Start At",
-              "help": "Explicit starting index value (JSON string)."
+              "help": "Inclusive document ID to start from."
             }
           ],
           "sdk_method": "documents.count"
@@ -597,13 +597,13 @@
               "name": "startAfter",
               "type": "text",
               "label": "Start After",
-              "help": "Document ID or index value to resume from."
+              "help": "Exclusive document ID to resume from."
             },
             {
               "name": "startAt",
               "type": "text",
               "label": "Start At",
-              "help": "Explicit starting index value (JSON string)."
+              "help": "Inclusive document ID to start from."
             }
           ],
           "sdk_method": "documents.sum"
@@ -662,13 +662,13 @@
               "name": "startAfter",
               "type": "text",
               "label": "Start After",
-              "help": "Document ID or index value to resume from."
+              "help": "Exclusive document ID to resume from."
             },
             {
               "name": "startAt",
               "type": "text",
               "label": "Start At",
-              "help": "Explicit starting index value (JSON string)."
+              "help": "Inclusive document ID to start from."
             }
           ],
           "sdk_method": "documents.average"

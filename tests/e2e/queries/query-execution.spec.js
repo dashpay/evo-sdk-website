@@ -696,6 +696,7 @@ test.describe('Evo SDK Query Execution Tests', () => {
           for (const key of keys) {
             expect(key).toMatch(/^\d+$/);
           }
+          Object.values(history).forEach(doc => validateSingleDocument(doc));
         }
       }
     ];
