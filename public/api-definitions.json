@@ -575,7 +575,7 @@
               "type": "text",
               "label": "Label",
               "required": true,
-              "placeholder": "ąlice"
+              "placeholder": "\u0105lice"
             }
           ],
           "sdk_method": "dpns.convertToHomographSafe"

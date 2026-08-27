@@ -2248,7 +2248,34 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.dpns.registerName({ label, identity, identityKey, signer, preorderCallback });
+import { IdentitySigner } from '@dashevo/evo-sdk';
+
+const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
+const identity = await sdk.identities.fetch(identityId);
+
+const signer = new IdentitySigner();
+signer.addKeyFromWif('L1ExamplePrivateKeyWifGoesHere');
+
+// DPNS registration requires a strong authentication key.
+const identityKey = identity.publicKeys.find(
+  k => k.purpose === 'AUTHENTICATION'
+    && ['CRITICAL', 'HIGH'].includes(k.securityLevel),
+);
+if (!identityKey) {
+  throw new Error(
+    'DPNS registration requires an AUTHENTICATION key with CRITICAL or HIGH security level',
+  );
+}
+
+const result = await sdk.dpns.registerName({
+  label: 'alice',
+  identity,
+  identityKey,
+  signer,
+  preorderCallback: (preorderDocument) => {
+    console.log('preorder submitted', preorderDocument.id?.toString?.());
+  },
+});
 ```
 
 #### Token Transitions
@@ -2939,7 +2966,34 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
+import { IdentitySigner, ResourceVoteChoice, VotePoll } from '@dashevo/evo-sdk';
+
+const masternodeProTxHash = '143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113';
+
+const signer = new IdentitySigner();
+signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
+
+// Voting key must match the masternode voting public key on the identity.
+const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING');
+if (!votingKey) {
+  throw new Error('Masternode voting requires a VOTING-purpose identity key');
+}
+
+const votePoll = new VotePoll({
+  contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  documentTypeName: 'domain',
+  indexName: 'parentNameAndLabel',
+  indexValues: ['dash', 'alice'],
+});
+
+await sdk.voting.masternodeVote({
+  masternodeProTxHash,
+  votePoll,
+  voteChoice: ResourceVoteChoice.TowardsIdentity('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'),
+  votingKey,
+  signer,
+});
 ```
 
 **Contested Resource** - `voting.masternodeVote`
@@ -2982,7 +3036,33 @@ Returns:
 
 Example:
 ```javascript
-const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, voteChoice, votingKey, signer });
+import { IdentitySigner, ResourceVoteChoice, VotePoll } from '@dashevo/evo-sdk';
+
+const masternodeProTxHash = '143dcd6a6b7684fde01e88a10e5d65de9a29244c5ecd586d14a342657025f113';
+
+const signer = new IdentitySigner();
+signer.addKeyFromWif('L1ExampleVotingKeyWifGoesHere');
+
+const votingIdentity = await sdk.identities.fetch(masternodeProTxHash);
+const votingKey = votingIdentity.publicKeys.find(k => k.purpose === 'VOTING');
+if (!votingKey) {
+  throw new Error('Masternode voting requires a VOTING-purpose identity key');
+}
+
+const votePoll = new VotePoll({
+  contractId: 'GWRSAVFMjXx8HpQFaNJMqBV7MBgMK4br5UESsB4S31Ec',
+  documentTypeName: 'domain',
+  indexName: 'parentNameAndLabel',
+  indexValues: ['dash', 'alice'],
+});
+
+await sdk.voting.masternodeVote({
+  masternodeProTxHash,
+  votePoll,
+  voteChoice: ResourceVoteChoice.TowardsIdentity('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk'),
+  votingKey,
+  signer,
+});
 ```
 
 #### Platform Address Transitions
