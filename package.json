@@ -1,7 +1,7 @@
 {
   "private": true,
   "dependencies": {
-    "@dashevo/evo-sdk": "4.1.1"
+    "@dashevo/evo-sdk": "4.2-dev"
   },
   "devDependencies": {
     "@playwright/test": "1.56.0",

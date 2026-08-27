@@ -1,6 +1,6 @@
 # Evo SDK - AI Reference
 
-Return types: generated from `@dashevo/evo-sdk@4.1.1` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
+Return types: generated from `@dashevo/evo-sdk@4.2.0-dev.2` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
 
 ## Overview
 The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. It exposes ergonomic namespaces (identities, documents, contracts, tokens, and more) optimized for automation and AI-assisted workflows.
@@ -489,6 +489,22 @@ Entry direction comes from the first `orderBy` clause's
 direction (which also drives walk order on the materialize +
 prove path); set `orderBy: [["<range_field>", "asc"|"desc"]]`
 alongside `groupBy: ["<range_field>"]` to control sort.
+  - `timeRange`: `{ field: string; selector: "newest" | "oldest"; grid?: { range: number; step: number; phase?: number; }; }[]` (optional)
+    - Time-range bucket selections for "trending"-style queries. Each entry
+picks a single bucket of a timestamp field covered by a `timeRange`
+index. The server resolves the bucket from the current block time and
+the proof verifier re-derives it from the signed response metadata, so
+the result is provable. Requires protocol version 14+ (the first
+version whose contract grammar hosts `timeRange` indexes).
+
+- `selector: "oldest"` → the oldest still-active range (a near-full
+  trailing window of ~`range`; best for "trending over the last window").
+- `selector: "newest"` → the freshest started range (latest partial slice).
+
+`grid` names one of the field's grids in the contract's own declared
+seconds (`{ range, step, phase? }`) — required when the contract buckets
+the field with more than one `timeRange` grid, where the bare selector
+is ambiguous and rejected. A zero phase is spelled by omission.
 
 Returns:
 

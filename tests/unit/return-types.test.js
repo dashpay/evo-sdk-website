@@ -8,8 +8,10 @@ const typeReferenceHtml = fs.readFileSync(new URL('../../public/TYPE_REFERENCE.h
 const manifest = JSON.parse(fs.readFileSync(new URL('../../public/docs_manifest.json', import.meta.url), 'utf8'));
 const catalog = JSON.parse(fs.readFileSync(new URL('../../public/sdk-operation-catalog.json', import.meta.url), 'utf8'));
 const apiDefinitions = JSON.parse(fs.readFileSync(new URL('../../public/api-definitions.json', import.meta.url), 'utf8'));
-const packageJson = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-const sdkVersion = packageJson.dependencies['@dashevo/evo-sdk'];
+const sdkPackageJson = JSON.parse(
+  fs.readFileSync(new URL('../../node_modules/@dashevo/evo-sdk/package.json', import.meta.url), 'utf8'),
+);
+const sdkVersion = sdkPackageJson.version;
 const documentedMethods = ['queries', 'transitions'].flatMap((group) =>
   Object.values(apiDefinitions[group]).flatMap((category) =>
     Object.values(category[group]).map((operation) => operation.sdk_method),
