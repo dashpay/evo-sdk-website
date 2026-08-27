@@ -9,7 +9,7 @@ export const SUPPORTED_QUERIES = new Set([
   // Data Contracts
   'getDataContract', 'getDataContractHistory', 'getDataContracts',
   // Documents
-  'getDocuments', 'getDocument',
+  'getDocuments', 'getDocument', 'getDocumentCount', 'getDocumentSum', 'getDocumentAverage', 'getDocumentHistory',
   // Epoch
   'getEpochsInfo', 'getCurrentEpoch', 'getFinalizedEpochInfos', 'getEvonodesProposedEpochBlocksByIds', 'getEvonodesProposedEpochBlocksByRange',
   // Voting & Contested Resources
@@ -19,7 +19,9 @@ export const SUPPORTED_QUERIES = new Set([
   'getProtocolVersionUpgradeState', 'getProtocolVersionUpgradeVoteStatus',
   // Tokens
   'getTokenStatuses', 'getTokenDirectPurchasePrices', 'getTokenContractInfo', 'getTokenPerpetualDistributionLastClaim',
-  'getTokenTotalSupply', 'getTokenPriceByContract',
+  'getTokenTotalSupply', 'getTokenBalancesForIdentity', 'getTokenPriceByContract',
+  // Shielded
+  'getShieldedPoolState', 'getShieldedEncryptedNotes', 'getShieldedAnchors', 'getShieldedMostRecentAnchor', 'getShieldedNullifiers',
   // Groups
   'getGroupInfo', 'getGroupInfos', 'getGroupMembers', 'getGroupActions', 'getGroupActionSigners',
   'getIdentityGroups', 'getGroupsDataContracts',
@@ -136,6 +138,7 @@ export const PROOF_CAPABLE = new Set([
   'getIdentitiesTokenInfos',
   // Data Contracts & Documents
   'getDataContract', 'getDataContractHistory', 'getDataContracts', 'getDocuments', 'getDocument',
+  'getDocumentCount', 'getDocumentSum', 'getDocumentAverage', 'getDocumentHistory',
   // DPNS
   'getDpnsUsername', 'getDpnsUsernames', 'getDpnsUsernameByName',
   // Epoch
@@ -149,7 +152,9 @@ export const PROOF_CAPABLE = new Set([
   // Tokens
   'getTokenStatuses', 'getTokenDirectPurchasePrices', 'getTokenContractInfo',
   'getTokenPerpetualDistributionLastClaim', 'getTokenTotalSupply', 'getIdentitiesTokenInfos', 'getIdentityTokenInfos',
-  'getIdentitiesTokenBalances', 'getIdentityTokenBalances',
+  'getIdentitiesTokenBalances', 'getIdentityTokenBalances', 'getTokenBalancesForIdentity',
+  // Shielded
+  'getShieldedPoolState', 'getShieldedEncryptedNotes', 'getShieldedAnchors', 'getShieldedMostRecentAnchor', 'getShieldedNullifiers',
   // Groups
   'getGroupInfo', 'getGroupInfos', 'getGroupMembers', 'getGroupActions', 'getGroupActionSigners',
   'getIdentityGroups', 'getGroupsDataContracts',

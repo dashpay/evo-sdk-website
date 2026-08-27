@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { EvoSdkPage } = require('../utils/sdk-page');
 const { ParameterInjector } = require('../utils/parameter-injector');
+const { getTestParameters } = require('../fixtures/test-data');
 
 /**
  * Helper function to execute a query with proof toggle enabled
@@ -120,8 +121,12 @@ function validateProofContent(resultData) {
 /**
  * Helper function to validate result with proof
  * @param {Object} result - The query result object
+ * @param {Object} [options]
+ * @param {boolean} [options.allowNullData] - Accept data: null (for queries
+ *   declared ProofMetadataResponseTyped<T | null>); proof metadata is still
+ *   validated in full.
  */
-function validateResultWithProof(result) {
+function validateResultWithProof(result, { allowNullData = false } = {}) {
   expect(result.success).toBe(true);
   expect(result.result).toBeDefined();
 
@@ -129,7 +134,9 @@ function validateResultWithProof(result) {
   const resultData = JSON.parse(result.result);
   // All proof responses must have a data property
   expect(resultData).toHaveProperty('data');
-  expect(resultData.data).not.toBeNull();
+  if (!allowNullData) {
+    expect(resultData.data).not.toBeNull();
+  }
   expect(resultData.data).toBeDefined();
   expect(resultData).toHaveProperty('metadata');
   expect(resultData).toHaveProperty('proof');
@@ -637,6 +644,112 @@ test.describe('Evo SDK Query Execution Tests', () => {
         validateDocumentResult(result.result);
       }
     });
+
+    // Aggregate and history queries run against the DashRate demo contract
+    // (countable indices on [resourceId] and [resourceId, rating], plus
+    // documentsKeepHistory on the review type).
+    const documentAggregateQueries = [
+      {
+        name: 'getDocumentCount',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          // Map of group key to count; bigint counts serialize as strings.
+          // The fixture omits groupBy, so exactly one aggregate entry comes back.
+          const counts = isProofMode ? parsed.data : parsed;
+          expect(typeof counts === 'object').toBe(true);
+          const values = Object.values(counts);
+          expect(values).toHaveLength(1);
+          for (const count of values) {
+            expect(count).toMatch(/^\d+$/);
+          }
+        }
+      },
+      {
+        // sum/average need an index declaring `summable` for the property; no
+        // known testnet contract has one (see dashpay/platform#3960).
+        name: 'getDocumentSum',
+        skip: true,
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: () => {}
+      },
+      {
+        name: 'getDocumentAverage',
+        skip: true,
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: () => {}
+      },
+      {
+        name: 'getDocumentHistory',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          // Map of bigint revision timestamp (stringified) to document
+          const history = isProofMode ? parsed.data : parsed;
+          expect(typeof history === 'object').toBe(true);
+          const keys = Object.keys(history);
+          expect(keys.length).toBeGreaterThan(0);
+          for (const key of keys) {
+            expect(key).toMatch(/^\d+$/);
+          }
+        }
+      }
+    ];
+
+    documentAggregateQueries.forEach(({ name, hasProofSupport, needsParameters, skip, validateFn }) => {
+      test.describe(`${name} query (parameterized)`, () => {
+        if (skip) {
+          test.skip('without proof info', async () => {
+            // Requires a testnet contract with a summable index
+          });
+          test.skip('with proof info', async () => {
+            // Requires a testnet contract with a summable index
+          });
+          return;
+        }
+
+        test('without proof info', async () => {
+          await evoSdkPage.setupQuery('document', name);
+          await evoSdkPage.disableProofInfo();
+
+          if (needsParameters) {
+            const success = await parameterInjector.injectParameters('document', name, 'testnet');
+            expect(success).toBe(true);
+          }
+
+          const result = await evoSdkPage.executeQueryAndGetResult();
+          validateBasicQueryResult(result);
+          validateResultWithoutProof(result);
+          validateFn(result.result, false);
+        });
+
+        if (hasProofSupport) {
+          test('with proof info', async () => {
+            const { result, proofEnabled } = await executeQueryWithProof(
+              evoSdkPage,
+              parameterInjector,
+              'document',
+              name,
+              'testnet'
+            );
+
+            validateBasicQueryResult(result);
+
+            if (proofEnabled) {
+              validateResultWithProof(result);
+              validateFn(result.result, true);
+            } else {
+              validateResultWithoutProof(result);
+              validateFn(result.result, false);
+            }
+          });
+        }
+      });
+    });
   });
 
   test.describe('System Queries', () => {
@@ -1017,6 +1130,24 @@ test.describe('Evo SDK Query Execution Tests', () => {
           expect(supplyData).toBeDefined();
           expect(typeof supplyData === 'object').toBe(true);
           expect(supplyData).toHaveProperty('totalSupply');
+        }
+      },
+      {
+        name: 'getTokenBalancesForIdentity',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result) => {
+          expect(() => JSON.parse(result)).not.toThrow();
+          // Map keyed by token ID with bigint balances serialized as strings.
+          // The requested token must be present (proof-mode keys are base58 too).
+          const balances = JSON.parse(result);
+          expect(typeof balances === 'object').toBe(true);
+          const { tokenIds } = getTestParameters('token', 'getTokenBalancesForIdentity', 'testnet');
+          expect(Object.keys(balances)).toContain(tokenIds[0]);
+          for (const balance of Object.values(balances)) {
+            expect(typeof balance).toBe('string');
+            expect(balance).toMatch(/^\d+$/);
+          }
         }
       }
     ];
@@ -1408,6 +1539,144 @@ test.describe('Evo SDK Query Execution Tests', () => {
         } else {
           test.skip('with proof info', async () => {
             // Proof support not yet implemented for this query
+          });
+        }
+      });
+    });
+  });
+
+  test.describe('Shielded Queries', () => {
+    // Shielded pool data on testnet may be sparse; validators accept legitimate
+    // empty responses ("Completed (no result returned)") for the nullable queries.
+    const NO_RESULT = 'Completed (no result returned)';
+    // Non-proof scalar results render as the bare formatted string
+    // (result-format.js returns top-level strings verbatim); proof results are
+    // a JSON object whose `data` field carries the converted value. Validators
+    // receive the raw result text plus the mode and assert the exact shape.
+    const shieldedQueries = [
+      {
+        name: 'getShieldedPoolState',
+        hasProofSupport: true,
+        needsParameters: false,
+        // Declared as ProofMetadataResponseTyped<bigint | null>: null when the pool is empty
+        allowsNullData: true,
+        validateFn: (result, isProofMode = false) => {
+          expect(result).toBeDefined();
+          if (isProofMode) {
+            // Balance is a bigint, serialized as a decimal string in data
+            const parsed = JSON.parse(result);
+            if (parsed.data === null) return; // empty pool
+            expect(typeof parsed.data).toBe('string');
+            expect(parsed.data).toMatch(/^\d+$/);
+          } else {
+            if (result === NO_RESULT) return; // empty pool
+            expect(result).toMatch(/^\d+$/);
+          }
+        }
+      },
+      {
+        name: 'getShieldedEncryptedNotes',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          const notes = isProofMode ? parsed.data : parsed;
+          expect(Array.isArray(notes)).toBe(true);
+          for (const note of notes) {
+            // ShieldedEncryptedNote.toJSON(): base64-encoded byte fields
+            expect(typeof note.cmx).toBe('string');
+            expect(typeof note.nullifier).toBe('string');
+            expect(typeof note.cvNet).toBe('string');
+            expect(typeof note.encryptedNote).toBe('string');
+          }
+        }
+      },
+      {
+        name: 'getShieldedAnchors',
+        hasProofSupport: true,
+        needsParameters: false,
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          const anchors = isProofMode ? parsed.data : parsed;
+          // The site hex-encodes each 32-byte anchor in both modes
+          expect(Array.isArray(anchors)).toBe(true);
+          for (const anchor of anchors) {
+            expect(anchor).toMatch(/^[0-9a-f]{64}$/);
+          }
+        }
+      },
+      {
+        name: 'getShieldedMostRecentAnchor',
+        hasProofSupport: true,
+        needsParameters: false,
+        // Declared as ProofMetadataResponseTyped<Uint8Array | null>: null when no anchor exists
+        allowsNullData: true,
+        validateFn: (result, isProofMode = false) => {
+          expect(result).toBeDefined();
+          if (isProofMode) {
+            const parsed = JSON.parse(result);
+            if (parsed.data === null) return; // no anchor yet
+            expect(parsed.data).toMatch(/^[0-9a-f]{64}$/);
+          } else {
+            if (result === NO_RESULT) return; // no anchor yet
+            expect(result).toMatch(/^[0-9a-f]{64}$/);
+          }
+        }
+      },
+      {
+        name: 'getShieldedNullifiers',
+        hasProofSupport: true,
+        needsParameters: true,
+        validateFn: (result, isProofMode = false) => {
+          const parsed = JSON.parse(result);
+          const statuses = isProofMode ? parsed.data : parsed;
+          expect(Array.isArray(statuses)).toBe(true);
+          expect(statuses.length).toBeGreaterThan(0);
+          for (const status of statuses) {
+            // ShieldedNullifierStatus.toJSON(): base64 nullifier + spent flag
+            expect(typeof status.nullifier).toBe('string');
+            expect(typeof status.isSpent).toBe('boolean');
+          }
+        }
+      }
+    ];
+
+    shieldedQueries.forEach(({ name, hasProofSupport, needsParameters, allowsNullData, validateFn }) => {
+      test.describe(`${name} query (parameterized)`, () => {
+        test('without proof info', async () => {
+          await evoSdkPage.setupQuery('shielded', name);
+          await evoSdkPage.disableProofInfo();
+
+          if (needsParameters) {
+            const success = await parameterInjector.injectParameters('shielded', name, 'testnet');
+            expect(success).toBe(true);
+          }
+
+          const result = await evoSdkPage.executeQueryAndGetResult();
+          validateBasicQueryResult(result);
+          validateResultWithoutProof(result);
+          validateFn(result.result, false);
+        });
+
+        if (hasProofSupport) {
+          test('with proof info', async () => {
+            const { result, proofEnabled } = await executeQueryWithProof(
+              evoSdkPage,
+              parameterInjector,
+              'shielded',
+              name,
+              'testnet'
+            );
+
+            validateBasicQueryResult(result);
+
+            if (proofEnabled) {
+              validateResultWithProof(result, { allowNullData: allowsNullData });
+              validateFn(result.result, true);
+            } else {
+              validateResultWithoutProof(result);
+              validateFn(result.result, false);
+            }
           });
         }
       });

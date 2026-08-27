@@ -39,6 +39,48 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
     }
   };
 
+  const hexToBytes = (value, label = 'value') => {
+    const hex = String(value ?? '').trim().replace(/^0x/i, '');
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new Error(`Invalid ${label}: expected 64 hexadecimal characters (32 bytes).`);
+    }
+    const bytes = new Uint8Array(32);
+    for (let i = 0; i < 32; i += 1) {
+      bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    }
+    return bytes;
+  };
+
+  const bytesToHex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+  // Anchors arrive as raw 32-byte values (a single one for mostRecentAnchor,
+  // an array for anchors); hex-encode them for display while keeping proof
+  // metadata wrappers intact.
+  const anchorsToHex = (result) => {
+    const convert = (data) => {
+      if (data === undefined || data === null) return data;
+      return Array.isArray(data) ? data.map(bytesToHex) : bytesToHex(data);
+    };
+    if (result && typeof result === 'object' && 'data' in result && 'metadata' in result && 'proof' in result) {
+      return { data: convert(result.data), metadata: result.metadata, proof: result.proof };
+    }
+    return convert(result);
+  };
+
+  const documentsQueryPayload = () => {
+    const groupBy = toStringArray(n.groupBy);
+    return {
+      dataContractId: n.dataContractId || n.contractId,
+      documentTypeName: n.documentTypeName || n.documentType,
+      where: parseJson(n.where, 'Where'),
+      orderBy: parseJson(n.orderBy, 'Order By'),
+      limit: n.limit ?? undefined,
+      startAfter: n.startAfter ?? undefined,
+      startAt: n.startAt ?? undefined,
+      ...(groupBy.length ? { groupBy } : {}),
+    };
+  };
+
   switch (itemKey) {
     // Identity queries
     case 'getIdentity':
@@ -130,21 +172,42 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
       return useProof ? c.contracts.getManyWithProof(n.ids) : c.contracts.getMany(n.ids);
     // Documents
     case 'getDocuments': {
-      const payload = {
-        dataContractId: n.dataContractId || n.contractId,
-        documentTypeName: n.documentTypeName || n.documentType,
-        where: parseJson(n.where, 'Where'),
-        orderBy: parseJson(n.orderBy, 'Order By'),
-        limit: n.limit ?? undefined,
-        startAfter: n.startAfter ?? undefined,
-        startAt: n.startAt ?? undefined,
-      };
+      const payload = documentsQueryPayload();
       return useProof ? c.documents.queryWithProof(payload) : c.documents.query(payload);
     }
     case 'getDocument':
       return useProof
         ? c.documents.getWithProof(n.dataContractId || n.contractId, n.documentTypeName || n.documentType, n.documentId)
         : c.documents.get(n.dataContractId || n.contractId, n.documentTypeName || n.documentType, n.documentId);
+    case 'getDocumentCount': {
+      const payload = documentsQueryPayload();
+      return useProof ? c.documents.countWithProof(payload) : c.documents.count(payload);
+    }
+    case 'getDocumentSum': {
+      if (!n.sumProperty) {
+        throw new Error('Sum property is required.');
+      }
+      const payload = documentsQueryPayload();
+      return useProof ? c.documents.sumWithProof(payload, n.sumProperty) : c.documents.sum(payload, n.sumProperty);
+    }
+    case 'getDocumentAverage': {
+      if (!n.averageProperty) {
+        throw new Error('Average property is required.');
+      }
+      const payload = documentsQueryPayload();
+      return useProof ? c.documents.averageWithProof(payload, n.averageProperty) : c.documents.average(payload, n.averageProperty);
+    }
+    case 'getDocumentHistory': {
+      const payload = {
+        dataContractId: n.dataContractId,
+        documentTypeName: n.documentTypeName,
+        documentId: n.documentId,
+        startAtMs: n.startAtMs ?? undefined,
+        limit: n.limit ?? undefined,
+        offset: n.offset ?? undefined,
+      };
+      return useProof ? c.documents.historyWithProof(payload) : c.documents.history(payload);
+    }
     // DPNS
     case 'getDpnsUsername':
       return useProof ? c.dpns.usernameWithProof(n.identityId) : c.dpns.username(n.identityId);
@@ -235,6 +298,10 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
       return useProof ? c.tokens.perpetualDistributionLastClaimWithProof(n.identityId, n.tokenId) : c.tokens.perpetualDistributionLastClaim(n.identityId, n.tokenId);
     case 'getTokenTotalSupply':
       return useProof ? c.tokens.totalSupplyWithProof(n.tokenId) : c.tokens.totalSupply(n.tokenId);
+    case 'getTokenBalancesForIdentity': {
+      const tokenIds = toStringArray(n.tokenIds);
+      return useProof ? c.tokens.identityBalancesWithProof(n.identityId, tokenIds) : c.tokens.identityBalances(n.identityId, tokenIds);
+    }
     case 'getTokenPriceByContract': {
       const contractId = n.dataContractId || n.contractId;
       const tokenPosition = toNumber(n.tokenPosition, 0);
@@ -434,6 +501,39 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
     case 'getPlatformAddresses': {
       const addresses = toStringArray(n.addresses);
       return useProof ? c.addresses.getManyWithProof(addresses) : c.addresses.getMany(addresses);
+    }
+
+    // Shielded pool queries
+    case 'getShieldedPoolState':
+      return useProof ? c.shielded.poolStateWithProof() : c.shielded.poolState();
+    case 'getShieldedEncryptedNotes': {
+      const startIndexRaw = (n.startIndex === undefined || n.startIndex === null || n.startIndex === '')
+        ? '0'
+        : String(n.startIndex).trim();
+      if (!/^\d+$/.test(startIndexRaw)) {
+        throw new Error('Start index must be a non-negative integer.');
+      }
+      const count = toNumber(n.count);
+      if (count === null || !Number.isInteger(count) || count <= 0) {
+        throw new Error('Count must be a positive integer.');
+      }
+      const startIndex = BigInt(startIndexRaw);
+      return useProof ? c.shielded.encryptedNotesWithProof(startIndex, count) : c.shielded.encryptedNotes(startIndex, count);
+    }
+    case 'getShieldedAnchors': {
+      const result = useProof ? await c.shielded.anchorsWithProof() : await c.shielded.anchors();
+      return anchorsToHex(result);
+    }
+    case 'getShieldedMostRecentAnchor': {
+      const result = useProof ? await c.shielded.mostRecentAnchorWithProof() : await c.shielded.mostRecentAnchor();
+      return anchorsToHex(result);
+    }
+    case 'getShieldedNullifiers': {
+      const nullifiers = toStringArray(n.nullifiers).map((value, i) => hexToBytes(value, `nullifier #${i + 1}`));
+      if (!nullifiers.length) {
+        throw new Error('At least one nullifier is required.');
+      }
+      return useProof ? c.shielded.nullifiersWithProof(nullifiers) : c.shielded.nullifiers(nullifiers);
     }
 
     default:

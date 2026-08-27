@@ -70,6 +70,11 @@ describe('formatResult — Map handling', () => {
     const m = new Map([['bal', 5n]]);
     expect(formatResult(m)).toBe('{\n  "bal": "5"\n}');
   });
+
+  it('stringifies bigint Map keys (documents.history shape)', () => {
+    const m = new Map([[18446744073709551615n, { revision: 1 }]]);
+    expect(formatResult(m)).toBe('{\n  "18446744073709551615": {\n    "revision": 1\n  }\n}');
+  });
 });
 
 describe('formatResult — circular references', () => {

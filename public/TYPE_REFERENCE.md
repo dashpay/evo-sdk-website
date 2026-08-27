@@ -699,6 +699,48 @@ export interface DocumentDeleteOptions {
 }
 ```
 
+<a id="type-documenthistoryquery"></a>
+## `DocumentHistoryQuery`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface DocumentHistoryQuery {
+    /**
+     * Data contract identifier.
+     */
+    dataContractId: IdentifierLike
+
+    /**
+     * Document type name.
+     */
+    documentTypeName: string;
+
+    /**
+     * Document identifier.
+     */
+    documentId: IdentifierLike
+
+    /**
+     * Millisecond timestamp (exclusive) to start after.
+     * @default 0
+     */
+    startAtMs?: number;
+
+    /**
+     * Maximum number of entries to return.
+     * @default undefined
+     */
+    limit?: number;
+
+    /**
+     * Offset for pagination through the document history.
+     * @default undefined
+     */
+    offset?: number;
+}
+```
+
 <a id="type-documentorderbyclause"></a>
 ## `DocumentOrderByClause`
 
@@ -2872,6 +2914,46 @@ export class RewardDistributionMoment {
      * Returns the timestamp in ms (only valid when type is "time")
      */
     readonly timestampMs: bigint | undefined;
+}
+```
+
+<a id="type-shieldedencryptednote"></a>
+## `ShieldedEncryptedNote`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class ShieldedEncryptedNote {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    static fromJSON(js: object): ShieldedEncryptedNote;
+    static fromObject(obj: object): ShieldedEncryptedNote;
+    toJSON(): any;
+    toObject(): any;
+    readonly cmx: Uint8Array;
+    readonly cvNet: Uint8Array;
+    readonly encryptedNote: Uint8Array;
+    readonly nullifier: Uint8Array;
+}
+```
+
+<a id="type-shieldednullifierstatus"></a>
+## `ShieldedNullifierStatus`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class ShieldedNullifierStatus {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    static fromJSON(js: object): ShieldedNullifierStatus;
+    static fromObject(obj: object): ShieldedNullifierStatus;
+    toJSON(): any;
+    toObject(): any;
+    readonly isSpent: boolean;
+    readonly nullifier: Uint8Array;
 }
 ```
 

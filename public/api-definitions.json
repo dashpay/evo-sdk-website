@@ -485,6 +485,237 @@
             }
           ],
           "sdk_method": "documents.get"
+        },
+        "getDocumentCount": {
+          "label": "Get Document Count",
+          "description": "Count documents matching a query. Requires an index declaring countable on the queried properties. Returns a map of group key to count; without groupBy the map has a single aggregate entry.",
+          "inputs": [
+            {
+              "name": "dataContractId",
+              "type": "text",
+              "label": "Data Contract ID",
+              "required": true,
+              "placeholder": "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP"
+            },
+            {
+              "name": "documentTypeName",
+              "type": "text",
+              "label": "Document Type",
+              "required": true,
+              "placeholder": "review"
+            },
+            {
+              "name": "where",
+              "type": "json",
+              "label": "Where Clause (JSON)",
+              "placeholder": "[[\"resourceId\", \"==\", \"identities-names\"], [\"rating\", \"between\", [1, 5]]]"
+            },
+            {
+              "name": "orderBy",
+              "type": "json",
+              "label": "Order By (JSON)",
+              "placeholder": "[[\"rating\", \"asc\"]]"
+            },
+            {
+              "name": "groupBy",
+              "type": "array",
+              "label": "Group By",
+              "placeholder": "[\"rating\"]",
+              "help": "Optional GROUP BY field list. Omit for a single aggregate row; name a field matched by an In or range constraint for per-value rows."
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "label": "Limit"
+            },
+            {
+              "name": "startAfter",
+              "type": "text",
+              "label": "Start After",
+              "help": "Document ID or index value to resume from."
+            },
+            {
+              "name": "startAt",
+              "type": "text",
+              "label": "Start At",
+              "help": "Explicit starting index value (JSON string)."
+            }
+          ],
+          "sdk_method": "documents.count"
+        },
+        "getDocumentSum": {
+          "label": "Get Document Sum",
+          "description": "Sum a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to sum.",
+          "inputs": [
+            {
+              "name": "dataContractId",
+              "type": "text",
+              "label": "Data Contract ID",
+              "required": true,
+              "placeholder": "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP"
+            },
+            {
+              "name": "documentTypeName",
+              "type": "text",
+              "label": "Document Type",
+              "required": true,
+              "placeholder": "review"
+            },
+            {
+              "name": "sumProperty",
+              "type": "text",
+              "label": "Sum Property",
+              "required": true,
+              "placeholder": "rating",
+              "help": "Name of the numeric document property to sum."
+            },
+            {
+              "name": "where",
+              "type": "json",
+              "label": "Where Clause (JSON)",
+              "placeholder": "[[\"resourceId\", \"==\", \"identities-names\"], [\"rating\", \"between\", [1, 5]]]"
+            },
+            {
+              "name": "orderBy",
+              "type": "json",
+              "label": "Order By (JSON)",
+              "placeholder": "[[\"rating\", \"asc\"]]"
+            },
+            {
+              "name": "groupBy",
+              "type": "array",
+              "label": "Group By",
+              "placeholder": "[\"rating\"]",
+              "help": "Optional GROUP BY field list. Omit for a single aggregate row; name a field matched by an In or range constraint for per-value rows."
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "label": "Limit"
+            },
+            {
+              "name": "startAfter",
+              "type": "text",
+              "label": "Start After",
+              "help": "Document ID or index value to resume from."
+            },
+            {
+              "name": "startAt",
+              "type": "text",
+              "label": "Start At",
+              "help": "Explicit starting index value (JSON string)."
+            }
+          ],
+          "sdk_method": "documents.sum"
+        },
+        "getDocumentAverage": {
+          "label": "Get Document Average",
+          "description": "Aggregate a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to {count, sum} - divide sum by count to obtain the average.",
+          "inputs": [
+            {
+              "name": "dataContractId",
+              "type": "text",
+              "label": "Data Contract ID",
+              "required": true,
+              "placeholder": "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP"
+            },
+            {
+              "name": "documentTypeName",
+              "type": "text",
+              "label": "Document Type",
+              "required": true,
+              "placeholder": "review"
+            },
+            {
+              "name": "averageProperty",
+              "type": "text",
+              "label": "Average Property",
+              "required": true,
+              "placeholder": "rating",
+              "help": "Name of the numeric document property to aggregate."
+            },
+            {
+              "name": "where",
+              "type": "json",
+              "label": "Where Clause (JSON)",
+              "placeholder": "[[\"resourceId\", \"==\", \"identities-names\"], [\"rating\", \"between\", [1, 5]]]"
+            },
+            {
+              "name": "orderBy",
+              "type": "json",
+              "label": "Order By (JSON)",
+              "placeholder": "[[\"rating\", \"asc\"]]"
+            },
+            {
+              "name": "groupBy",
+              "type": "array",
+              "label": "Group By",
+              "placeholder": "[\"rating\"]",
+              "help": "Optional GROUP BY field list. Omit for a single aggregate row; name a field matched by an In or range constraint for per-value rows."
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "label": "Limit"
+            },
+            {
+              "name": "startAfter",
+              "type": "text",
+              "label": "Start After",
+              "help": "Document ID or index value to resume from."
+            },
+            {
+              "name": "startAt",
+              "type": "text",
+              "label": "Start At",
+              "help": "Explicit starting index value (JSON string)."
+            }
+          ],
+          "sdk_method": "documents.average"
+        },
+        "getDocumentHistory": {
+          "label": "Get Document History",
+          "description": "Fetch historical revisions of a document. Requires a document type with history retention enabled (documentsKeepHistory).",
+          "inputs": [
+            {
+              "name": "dataContractId",
+              "type": "text",
+              "label": "Data Contract ID",
+              "required": true,
+              "placeholder": "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP"
+            },
+            {
+              "name": "documentTypeName",
+              "type": "text",
+              "label": "Document Type",
+              "required": true,
+              "placeholder": "review"
+            },
+            {
+              "name": "documentId",
+              "type": "text",
+              "label": "Document ID",
+              "required": true,
+              "placeholder": "2kWsepFc3PoHEee97xpJQTfbXtaDU9RHB4KdH52wk8f4"
+            },
+            {
+              "name": "startAtMs",
+              "type": "number",
+              "label": "Start At (ms)",
+              "help": "Millisecond timestamp; only revisions strictly after this time are returned."
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "label": "Limit"
+            },
+            {
+              "name": "offset",
+              "type": "number",
+              "label": "Offset"
+            }
+          ],
+          "sdk_method": "documents.history"
         }
       }
     },
@@ -1109,6 +1340,27 @@
           ],
           "sdk_method": "tokens.totalSupply"
         },
+        "getTokenBalancesForIdentity": {
+          "label": "Get Token Balances for Identity",
+          "description": "Fetch one identity's balances across multiple tokens. The result map is keyed by token ID (unlike Get Identities Token Balances, which is keyed by identity ID).",
+          "inputs": [
+            {
+              "name": "identityId",
+              "type": "text",
+              "label": "Identity ID",
+              "required": true,
+              "placeholder": "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk"
+            },
+            {
+              "name": "tokenIds",
+              "type": "array",
+              "label": "Token IDs",
+              "required": true,
+              "placeholder": "[\"Hqyu7v6mLQTKBLCE6qzquZWLGZapAcnPuYGZDLGoDyxV\"]"
+            }
+          ],
+          "sdk_method": "tokens.identityBalances"
+        },
         "getTokenPriceByContract": {
           "label": "Get Token Price by Contract",
           "description": "Retrieve the price details for a token indexed by contract position.",
@@ -1469,6 +1721,66 @@
             }
           ],
           "sdk_method": "addresses.getMany"
+        }
+      }
+    },
+    "shielded": {
+      "label": "Shielded Queries",
+      "queries": {
+        "getShieldedPoolState": {
+          "label": "Get Shielded Pool State",
+          "description": "Fetch the total balance of the shielded pool in credits. Returns nothing if the pool is empty.",
+          "inputs": [],
+          "sdk_method": "shielded.poolState"
+        },
+        "getShieldedEncryptedNotes": {
+          "label": "Get Shielded Encrypted Notes",
+          "description": "Fetch a page of encrypted shielded notes by global note index.",
+          "inputs": [
+            {
+              "name": "startIndex",
+              "type": "text",
+              "label": "Start Index",
+              "value": "0",
+              "help": "Global note index to start from (non-negative integer)."
+            },
+            {
+              "name": "count",
+              "type": "number",
+              "label": "Count",
+              "required": true,
+              "placeholder": "10",
+              "help": "Number of notes to fetch."
+            }
+          ],
+          "sdk_method": "shielded.encryptedNotes"
+        },
+        "getShieldedAnchors": {
+          "label": "Get Shielded Anchors",
+          "description": "Fetch all valid anchors for building Orchard spend proofs. The SDK returns 32-byte Uint8Array values; this page displays them hex-encoded.",
+          "inputs": [],
+          "sdk_method": "shielded.anchors"
+        },
+        "getShieldedMostRecentAnchor": {
+          "label": "Get Most Recent Shielded Anchor",
+          "description": "Fetch the most recent shielded anchor. The SDK returns a 32-byte Uint8Array, or nothing if no anchor exists yet; this page displays it hex-encoded.",
+          "inputs": [],
+          "sdk_method": "shielded.mostRecentAnchor"
+        },
+        "getShieldedNullifiers": {
+          "label": "Get Shielded Nullifier Statuses",
+          "description": "Check whether shielded nullifiers have been spent.",
+          "inputs": [
+            {
+              "name": "nullifiers",
+              "type": "array",
+              "label": "Nullifiers",
+              "required": true,
+              "placeholder": "[\"a3f1c2d4e5b60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90\"]",
+              "help": "Hex-encoded 32-byte nullifiers (64 hex characters each; optional 0x prefix)."
+            }
+          ],
+          "sdk_method": "shielded.nullifiers"
         }
       }
     }

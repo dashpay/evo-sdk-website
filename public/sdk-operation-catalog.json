@@ -771,6 +771,374 @@
       ]
     },
     {
+      "key": "getDocumentCount",
+      "group": "queries",
+      "category": "document",
+      "sdkMethod": "documents.count",
+      "label": "Get Document Count",
+      "description": "Count documents matching a query. Requires an index declaring countable on the queried properties. Returns a map of group key to count; without groupBy the map has a single aggregate entry.",
+      "disabled": null,
+      "signature": "count(query: wasm.DocumentsQuery): Promise<Map<string, bigint>>",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "references": []
+    },
+    {
+      "key": "getDocumentSum",
+      "group": "queries",
+      "category": "document",
+      "sdkMethod": "documents.sum",
+      "label": "Get Document Sum",
+      "description": "Sum a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to sum.",
+      "disabled": null,
+      "signature": "sum(query: wasm.DocumentsQuery, sumProperty: string): Promise<Map<string, bigint>>",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        },
+        {
+          "name": "sumProperty",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "references": []
+    },
+    {
+      "key": "getDocumentAverage",
+      "group": "queries",
+      "category": "document",
+      "sdkMethod": "documents.average",
+      "label": "Get Document Average",
+      "description": "Aggregate a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to {count, sum} - divide sum by count to obtain the average.",
+      "disabled": null,
+      "signature": "average(query: wasm.DocumentsQuery, averageProperty: string): Promise<Map<string, { count: bigint; sum: bigint; }>>",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        },
+        {
+          "name": "averageProperty",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, { count: bigint; sum: bigint; }>>",
+      "references": []
+    },
+    {
+      "key": "getDocumentHistory",
+      "group": "queries",
+      "category": "document",
+      "sdkMethod": "documents.history",
+      "label": "Get Document History",
+      "description": "Fetch historical revisions of a document. Requires a document type with history retention enabled (documentsKeepHistory).",
+      "disabled": null,
+      "signature": "history(query: wasm.DocumentHistoryQuery): Promise<Map<bigint, wasm.Document>>",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentHistoryQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentHistoryQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "documentId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Document identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAtMs",
+              "type": "number",
+              "optional": true,
+              "description": "Millisecond timestamp (exclusive) to start after.",
+              "references": []
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of entries to return.",
+              "references": []
+            },
+            {
+              "name": "offset",
+              "type": "number",
+              "optional": true,
+              "description": "Offset for pagination through the document history.",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<Map<bigint, wasm.Document>>",
+      "references": [
+        "wasm.Document"
+      ]
+    },
+    {
       "key": "getDpnsUsername",
       "group": "queries",
       "category": "dpns",
@@ -1832,6 +2200,42 @@
       ]
     },
     {
+      "key": "getTokenBalancesForIdentity",
+      "group": "queries",
+      "category": "token",
+      "sdkMethod": "tokens.identityBalances",
+      "label": "Get Token Balances for Identity",
+      "description": "Fetch one identity's balances across multiple tokens. The result map is keyed by token ID (unlike Get Identities Token Balances, which is keyed by identity ID).",
+      "disabled": null,
+      "signature": "identityBalances(identityId: wasm.IdentifierLike, tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, bigint>>",
+      "parameters": [
+        {
+          "name": "identityId",
+          "type": "wasm.IdentifierLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.IdentifierLike"
+          ],
+          "properties": []
+        },
+        {
+          "name": "tokenIds",
+          "type": "wasm.IdentifierLikeArray",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.IdentifierLikeArray"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "references": []
+    },
+    {
       "key": "getTokenPriceByContract",
       "group": "queries",
       "category": "token",
@@ -2428,6 +2832,104 @@
       "returnType": "Promise<Map<string, wasm.PlatformAddressInfo | undefined>>",
       "references": [
         "wasm.PlatformAddressInfo"
+      ]
+    },
+    {
+      "key": "getShieldedPoolState",
+      "group": "queries",
+      "category": "shielded",
+      "sdkMethod": "shielded.poolState",
+      "label": "Get Shielded Pool State",
+      "description": "Fetch the total balance of the shielded pool in credits. Returns nothing if the pool is empty.",
+      "disabled": null,
+      "signature": "poolState(): Promise<bigint | undefined>",
+      "parameters": [],
+      "returnType": "Promise<bigint | undefined>",
+      "references": []
+    },
+    {
+      "key": "getShieldedEncryptedNotes",
+      "group": "queries",
+      "category": "shielded",
+      "sdkMethod": "shielded.encryptedNotes",
+      "label": "Get Shielded Encrypted Notes",
+      "description": "Fetch a page of encrypted shielded notes by global note index.",
+      "disabled": null,
+      "signature": "encryptedNotes(startIndex: bigint, count: number): Promise<wasm.ShieldedEncryptedNote[]>",
+      "parameters": [
+        {
+          "name": "startIndex",
+          "type": "bigint",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.ShieldedEncryptedNote[]>",
+      "references": [
+        "wasm.ShieldedEncryptedNote"
+      ]
+    },
+    {
+      "key": "getShieldedAnchors",
+      "group": "queries",
+      "category": "shielded",
+      "sdkMethod": "shielded.anchors",
+      "label": "Get Shielded Anchors",
+      "description": "Fetch all valid anchors for building Orchard spend proofs. The SDK returns 32-byte Uint8Array values; this page displays them hex-encoded.",
+      "disabled": null,
+      "signature": "anchors(): Promise<Uint8Array[]>",
+      "parameters": [],
+      "returnType": "Promise<Uint8Array[]>",
+      "references": []
+    },
+    {
+      "key": "getShieldedMostRecentAnchor",
+      "group": "queries",
+      "category": "shielded",
+      "sdkMethod": "shielded.mostRecentAnchor",
+      "label": "Get Most Recent Shielded Anchor",
+      "description": "Fetch the most recent shielded anchor. The SDK returns a 32-byte Uint8Array, or nothing if no anchor exists yet; this page displays it hex-encoded.",
+      "disabled": null,
+      "signature": "mostRecentAnchor(): Promise<Uint8Array | undefined>",
+      "parameters": [],
+      "returnType": "Promise<Uint8Array | undefined>",
+      "references": []
+    },
+    {
+      "key": "getShieldedNullifiers",
+      "group": "queries",
+      "category": "shielded",
+      "sdkMethod": "shielded.nullifiers",
+      "label": "Get Shielded Nullifier Statuses",
+      "description": "Check whether shielded nullifiers have been spent.",
+      "disabled": null,
+      "signature": "nullifiers(nullifiers: Uint8Array[]): Promise<wasm.ShieldedNullifierStatus[]>",
+      "parameters": [
+        {
+          "name": "nullifiers",
+          "type": "Uint8Array[]",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.ShieldedNullifierStatus[]>",
+      "references": [
+        "wasm.ShieldedNullifierStatus"
       ]
     },
     {
@@ -5989,6 +6491,392 @@
       ],
       "source": "dist/documents/facade.d.ts"
     },
+    "documents.count": {
+      "sdkMethod": "documents.count",
+      "signature": "count(query: wasm.DocumentsQuery): Promise<Map<string, bigint>>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getDocumentCount",
+          "group": "queries",
+          "category": "document"
+        }
+      ],
+      "source": "dist/documents/facade.d.ts"
+    },
+    "documents.sum": {
+      "sdkMethod": "documents.sum",
+      "signature": "sum(query: wasm.DocumentsQuery, sumProperty: string): Promise<Map<string, bigint>>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        },
+        {
+          "name": "sumProperty",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getDocumentSum",
+          "group": "queries",
+          "category": "document"
+        }
+      ],
+      "source": "dist/documents/facade.d.ts"
+    },
+    "documents.average": {
+      "sdkMethod": "documents.average",
+      "signature": "average(query: wasm.DocumentsQuery, averageProperty: string): Promise<Map<string, { count: bigint; sum: bigint; }>>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentsQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentsQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "where",
+              "type": "DocumentWhereClause[]",
+              "optional": true,
+              "description": "Optional filter clauses expressed as [field, operator, value].",
+              "references": [
+                "DocumentWhereClause"
+              ]
+            },
+            {
+              "name": "orderBy",
+              "type": "DocumentOrderByClause[]",
+              "optional": true,
+              "description": "Optional sorting clauses expressed as [field, direction].",
+              "references": [
+                "DocumentOrderByClause"
+              ]
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of documents to return.",
+              "references": []
+            },
+            {
+              "name": "startAfter",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Exclusive document ID to resume from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAt",
+              "type": "IdentifierLike",
+              "optional": true,
+              "description": "Inclusive document ID to start from.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "groupBy",
+              "type": "string[]",
+              "optional": true,
+              "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            }
+          ]
+        },
+        {
+          "name": "averageProperty",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, { count: bigint; sum: bigint; }>>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getDocumentAverage",
+          "group": "queries",
+          "category": "document"
+        }
+      ],
+      "source": "dist/documents/facade.d.ts"
+    },
+    "documents.history": {
+      "sdkMethod": "documents.history",
+      "signature": "history(query: wasm.DocumentHistoryQuery): Promise<Map<bigint, wasm.Document>>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "wasm.DocumentHistoryQuery",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.DocumentHistoryQuery"
+          ],
+          "properties": [
+            {
+              "name": "dataContractId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Data contract identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "documentTypeName",
+              "type": "string",
+              "optional": false,
+              "description": "Document type name.",
+              "references": []
+            },
+            {
+              "name": "documentId",
+              "type": "IdentifierLike",
+              "optional": false,
+              "description": "Document identifier.",
+              "references": [
+                "IdentifierLike"
+              ]
+            },
+            {
+              "name": "startAtMs",
+              "type": "number",
+              "optional": true,
+              "description": "Millisecond timestamp (exclusive) to start after.",
+              "references": []
+            },
+            {
+              "name": "limit",
+              "type": "number",
+              "optional": true,
+              "description": "Maximum number of entries to return.",
+              "references": []
+            },
+            {
+              "name": "offset",
+              "type": "number",
+              "optional": true,
+              "description": "Offset for pagination through the document history.",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<Map<bigint, wasm.Document>>",
+      "returnReferences": [
+        "wasm.Document"
+      ],
+      "references": [
+        "wasm.Document"
+      ],
+      "variants": [
+        {
+          "key": "getDocumentHistory",
+          "group": "queries",
+          "category": "document"
+        }
+      ],
+      "source": "dist/documents/facade.d.ts"
+    },
     "dpns.username": {
       "sdkMethod": "dpns.username",
       "signature": "username(identityId: wasm.IdentifierLike): Promise<string | undefined>",
@@ -7184,6 +8072,46 @@
       ],
       "source": "dist/tokens/facade.d.ts"
     },
+    "tokens.identityBalances": {
+      "sdkMethod": "tokens.identityBalances",
+      "signature": "identityBalances(identityId: wasm.IdentifierLike, tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, bigint>>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "identityId",
+          "type": "wasm.IdentifierLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.IdentifierLike"
+          ],
+          "properties": []
+        },
+        {
+          "name": "tokenIds",
+          "type": "wasm.IdentifierLikeArray",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.IdentifierLikeArray"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Map<string, bigint>>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getTokenBalancesForIdentity",
+          "group": "queries",
+          "category": "token"
+        }
+      ],
+      "source": "dist/tokens/facade.d.ts"
+    },
     "tokens.priceByContract": {
       "sdkMethod": "tokens.priceByContract",
       "signature": "priceByContract(contractId: wasm.IdentifierLike, tokenPosition: number): Promise<wasm.TokenPriceInfo>",
@@ -7872,6 +8800,128 @@
         }
       ],
       "source": "dist/addresses/facade.d.ts"
+    },
+    "shielded.poolState": {
+      "sdkMethod": "shielded.poolState",
+      "signature": "poolState(): Promise<bigint | undefined>",
+      "description": "",
+      "parameters": [],
+      "returnType": "Promise<bigint | undefined>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getShieldedPoolState",
+          "group": "queries",
+          "category": "shielded"
+        }
+      ],
+      "source": "dist/shielded/facade.d.ts"
+    },
+    "shielded.encryptedNotes": {
+      "sdkMethod": "shielded.encryptedNotes",
+      "signature": "encryptedNotes(startIndex: bigint, count: number): Promise<wasm.ShieldedEncryptedNote[]>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "startIndex",
+          "type": "bigint",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.ShieldedEncryptedNote[]>",
+      "returnReferences": [
+        "wasm.ShieldedEncryptedNote"
+      ],
+      "references": [
+        "wasm.ShieldedEncryptedNote"
+      ],
+      "variants": [
+        {
+          "key": "getShieldedEncryptedNotes",
+          "group": "queries",
+          "category": "shielded"
+        }
+      ],
+      "source": "dist/shielded/facade.d.ts"
+    },
+    "shielded.anchors": {
+      "sdkMethod": "shielded.anchors",
+      "signature": "anchors(): Promise<Uint8Array[]>",
+      "description": "",
+      "parameters": [],
+      "returnType": "Promise<Uint8Array[]>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getShieldedAnchors",
+          "group": "queries",
+          "category": "shielded"
+        }
+      ],
+      "source": "dist/shielded/facade.d.ts"
+    },
+    "shielded.mostRecentAnchor": {
+      "sdkMethod": "shielded.mostRecentAnchor",
+      "signature": "mostRecentAnchor(): Promise<Uint8Array | undefined>",
+      "description": "",
+      "parameters": [],
+      "returnType": "Promise<Uint8Array | undefined>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "getShieldedMostRecentAnchor",
+          "group": "queries",
+          "category": "shielded"
+        }
+      ],
+      "source": "dist/shielded/facade.d.ts"
+    },
+    "shielded.nullifiers": {
+      "sdkMethod": "shielded.nullifiers",
+      "signature": "nullifiers(nullifiers: Uint8Array[]): Promise<wasm.ShieldedNullifierStatus[]>",
+      "description": "Each nullifier must be a `Uint8Array` of exactly 32 bytes; otherwise\nthe underlying call rejects with `InvalidArgument`.",
+      "parameters": [
+        {
+          "name": "nullifiers",
+          "type": "Uint8Array[]",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.ShieldedNullifierStatus[]>",
+      "returnReferences": [
+        "wasm.ShieldedNullifierStatus"
+      ],
+      "references": [
+        "wasm.ShieldedNullifierStatus"
+      ],
+      "variants": [
+        {
+          "key": "getShieldedNullifiers",
+          "group": "queries",
+          "category": "shielded"
+        }
+      ],
+      "source": "dist/shielded/facade.d.ts"
     },
     "identities.create": {
       "sdkMethod": "identities.create",
@@ -11574,6 +12624,63 @@
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
+    "DocumentHistoryQuery": {
+      "kind": "InterfaceDeclaration",
+      "anchor": "type-documenthistoryquery",
+      "declaration": "export interface DocumentHistoryQuery {\n    /**\n     * Data contract identifier.\n     */\n    dataContractId: IdentifierLike\n\n    /**\n     * Document type name.\n     */\n    documentTypeName: string;\n\n    /**\n     * Document identifier.\n     */\n    documentId: IdentifierLike\n\n    /**\n     * Millisecond timestamp (exclusive) to start after.\n     * @default 0\n     */\n    startAtMs?: number;\n\n    /**\n     * Maximum number of entries to return.\n     * @default undefined\n     */\n    limit?: number;\n\n    /**\n     * Offset for pagination through the document history.\n     * @default undefined\n     */\n    offset?: number;\n}",
+      "properties": [
+        {
+          "name": "dataContractId",
+          "type": "IdentifierLike",
+          "optional": false,
+          "description": "Data contract identifier.",
+          "references": [
+            "IdentifierLike"
+          ]
+        },
+        {
+          "name": "documentTypeName",
+          "type": "string",
+          "optional": false,
+          "description": "Document type name.",
+          "references": []
+        },
+        {
+          "name": "documentId",
+          "type": "IdentifierLike",
+          "optional": false,
+          "description": "Document identifier.",
+          "references": [
+            "IdentifierLike"
+          ]
+        },
+        {
+          "name": "startAtMs",
+          "type": "number",
+          "optional": true,
+          "description": "Millisecond timestamp (exclusive) to start after.",
+          "references": []
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "optional": true,
+          "description": "Maximum number of entries to return.",
+          "references": []
+        },
+        {
+          "name": "offset",
+          "type": "number",
+          "optional": true,
+          "description": "Offset for pagination through the document history.",
+          "references": []
+        }
+      ],
+      "references": [
+        "IdentifierLike"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
     "DocumentOrderByClause": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-documentorderbyclause",
@@ -14688,6 +15795,70 @@
         }
       ],
       "references": [],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
+    "ShieldedEncryptedNote": {
+      "kind": "ClassDeclaration",
+      "anchor": "type-shieldedencryptednote",
+      "declaration": "export class ShieldedEncryptedNote {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static fromJSON(js: object): ShieldedEncryptedNote;\n    static fromObject(obj: object): ShieldedEncryptedNote;\n    toJSON(): any;\n    toObject(): any;\n    readonly cmx: Uint8Array;\n    readonly cvNet: Uint8Array;\n    readonly encryptedNote: Uint8Array;\n    readonly nullifier: Uint8Array;\n}",
+      "properties": [
+        {
+          "name": "cmx",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "cvNet",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "encryptedNote",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "nullifier",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        }
+      ],
+      "references": [
+        "ShieldedEncryptedNote"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
+    "ShieldedNullifierStatus": {
+      "kind": "ClassDeclaration",
+      "anchor": "type-shieldednullifierstatus",
+      "declaration": "export class ShieldedNullifierStatus {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static fromJSON(js: object): ShieldedNullifierStatus;\n    static fromObject(obj: object): ShieldedNullifierStatus;\n    toJSON(): any;\n    toObject(): any;\n    readonly isSpent: boolean;\n    readonly nullifier: Uint8Array;\n}",
+      "properties": [
+        {
+          "name": "isSpent",
+          "type": "boolean",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "nullifier",
+          "type": "Uint8Array",
+          "optional": false,
+          "description": "",
+          "references": []
+        }
+      ],
+      "references": [
+        "ShieldedNullifierStatus"
+      ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
     "StateTransitionResult": {

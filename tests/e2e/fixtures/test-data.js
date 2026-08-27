@@ -247,6 +247,53 @@ const testData = {
             documentId: "7NYmEKQsYtniQRUmxwdPGeVcirMoPh5ZPyAKz8BWFy3r"
           }
         ]
+      },
+      // DashRate demo contract: review type has countable indices on
+      // [resourceId] and [resourceId, rating] plus documentsKeepHistory.
+      getDocumentCount: {
+        testnet: [
+          {
+            dataContractId: "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP",
+            documentTypeName: "review",
+            where: '[["resourceId", "==", "identities-names"]]',
+            orderBy: '[["resourceId", "asc"]]'
+          }
+        ]
+      },
+      // sum/average require an index declaring `summable` for the property;
+      // no known testnet contract has one (see dashpay/platform#3960), so the
+      // spec skips these until such a contract exists.
+      getDocumentSum: {
+        testnet: [
+          {
+            dataContractId: "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP",
+            documentTypeName: "review",
+            where: '[["resourceId", "==", "identities-names"]]',
+            orderBy: '[["resourceId", "asc"]]',
+            sumProperty: "rating"
+          }
+        ]
+      },
+      getDocumentAverage: {
+        testnet: [
+          {
+            dataContractId: "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP",
+            documentTypeName: "review",
+            where: '[["resourceId", "==", "identities-names"]]',
+            orderBy: '[["resourceId", "asc"]]',
+            averageProperty: "rating"
+          }
+        ]
+      },
+      getDocumentHistory: {
+        testnet: [
+          {
+            dataContractId: "BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP",
+            documentTypeName: "review",
+            documentId: "2kWsepFc3PoHEee97xpJQTfbXtaDU9RHB4KdH52wk8f4",
+            limit: 5
+          }
+        ]
       }
     },
 
@@ -445,6 +492,14 @@ const testData = {
           }
         ]
       },
+      getTokenBalancesForIdentity: {
+        testnet: [
+          {
+            identityId: "5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk",
+            tokenIds: ["Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv"]
+          }
+        ]
+      },
       getTokenPriceByContract: {
         testnet: [
           {
@@ -595,6 +650,34 @@ const testData = {
           {
             // Valid bech32m platform addresses (tdash prefix for testnet)
             addresses: ["tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf"]
+          }
+        ]
+      }
+    },
+
+    shielded: {
+      getShieldedPoolState: {
+        testnet: [{}] // No parameters needed
+      },
+      getShieldedEncryptedNotes: {
+        testnet: [
+          {
+            startIndex: "0",
+            count: 5
+          }
+        ]
+      },
+      getShieldedAnchors: {
+        testnet: [{}]
+      },
+      getShieldedMostRecentAnchor: {
+        testnet: [{}]
+      },
+      getShieldedNullifiers: {
+        testnet: [
+          {
+            // Any well-formed 32-byte value works; unspent ones return isSpent: false
+            nullifiers: ["0000000000000000000000000000000000000000000000000000000000000000"]
           }
         ]
       }

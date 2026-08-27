@@ -534,6 +534,238 @@ const result = await sdk.documents.get(
 );
 ```
 
+**Get Document Count** - `documents.count`
+*Count documents matching a query. Requires an index declaring countable on the queried properties. Returns a map of group key to count; without groupBy the map has a single aggregate entry.*
+
+Signature: `count(query: wasm.DocumentsQuery): Promise<Map<string, bigint>>`
+
+Parameters:
+- `query`: `wasm.DocumentsQuery` (required)
+  - Type declarations: [`wasm.DocumentsQuery`](TYPE_REFERENCE.md#type-documentsquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type name.
+  - `where`: `DocumentWhereClause[]` (optional)
+    - Optional filter clauses expressed as [field, operator, value].
+  - Type declarations: [`DocumentWhereClause`](TYPE_REFERENCE.md#type-documentwhereclause)
+  - `orderBy`: `DocumentOrderByClause[]` (optional)
+    - Optional sorting clauses expressed as [field, direction].
+  - Type declarations: [`DocumentOrderByClause`](TYPE_REFERENCE.md#type-documentorderbyclause)
+  - `limit`: `number` (optional)
+    - Maximum number of documents to return.
+  - `startAfter`: `IdentifierLike` (optional)
+    - Exclusive document ID to resume from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAt`: `IdentifierLike` (optional)
+    - Inclusive document ID to start from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupBy`: `string[]` (optional)
+    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored
+by the regular document-fetch path.
+
+- `[]` or omitted → aggregate count (a single row).
+- `["<in_field>"]` where `<in_field>` matches an `In`
+  constraint → per-`In`-value entries (PerInValue).
+- `["<range_field>"]` where `<range_field>` matches a range
+  constraint → per-distinct-value entries within the range
+  (RangeDistinct).
+- `["<in_field>", "<range_field>"]` for compound `In + range`
+  queries → compound distinct entries.
+
+Entry direction comes from the first `orderBy` clause's
+direction (which also drives walk order on the materialize +
+prove path); set `orderBy: [["<range_field>", "asc"|"desc"]]`
+alongside `groupBy: ["<range_field>"]` to control sort.
+
+Returns:
+
+- `Promise<Map<string, bigint>>`
+
+Example:
+```javascript
+// Requires an index declaring countable on the queried properties.
+const result = await sdk.documents.count({
+    dataContractId: 'BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP',
+    documentTypeName: 'review',
+    where: [["resourceId", "==", "identities-names"]],
+    orderBy: [["resourceId", "asc"]]
+});
+```
+
+**Get Document Sum** - `documents.sum`
+*Sum a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to sum.*
+
+Signature: `sum(query: wasm.DocumentsQuery, sumProperty: string): Promise<Map<string, bigint>>`
+
+Parameters:
+- `query`: `wasm.DocumentsQuery` (required)
+  - Type declarations: [`wasm.DocumentsQuery`](TYPE_REFERENCE.md#type-documentsquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type name.
+  - `where`: `DocumentWhereClause[]` (optional)
+    - Optional filter clauses expressed as [field, operator, value].
+  - Type declarations: [`DocumentWhereClause`](TYPE_REFERENCE.md#type-documentwhereclause)
+  - `orderBy`: `DocumentOrderByClause[]` (optional)
+    - Optional sorting clauses expressed as [field, direction].
+  - Type declarations: [`DocumentOrderByClause`](TYPE_REFERENCE.md#type-documentorderbyclause)
+  - `limit`: `number` (optional)
+    - Maximum number of documents to return.
+  - `startAfter`: `IdentifierLike` (optional)
+    - Exclusive document ID to resume from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAt`: `IdentifierLike` (optional)
+    - Inclusive document ID to start from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupBy`: `string[]` (optional)
+    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored
+by the regular document-fetch path.
+
+- `[]` or omitted → aggregate count (a single row).
+- `["<in_field>"]` where `<in_field>` matches an `In`
+  constraint → per-`In`-value entries (PerInValue).
+- `["<range_field>"]` where `<range_field>` matches a range
+  constraint → per-distinct-value entries within the range
+  (RangeDistinct).
+- `["<in_field>", "<range_field>"]` for compound `In + range`
+  queries → compound distinct entries.
+
+Entry direction comes from the first `orderBy` clause's
+direction (which also drives walk order on the materialize +
+prove path); set `orderBy: [["<range_field>", "asc"|"desc"]]`
+alongside `groupBy: ["<range_field>"]` to control sort.
+
+- `sumProperty`: `string` (required)
+
+Returns:
+
+- `Promise<Map<string, bigint>>`
+
+Example:
+```javascript
+// The second argument names the numeric document property to sum.
+// Requires an index declaring summable for that property; no known
+// testnet contract has one yet, so this call shape is illustrative
+// and the server will reject it against this contract.
+const result = await sdk.documents.sum({
+    dataContractId: 'BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP',
+    documentTypeName: 'review',
+    where: [["resourceId", "==", "identities-names"]],
+    orderBy: [["resourceId", "asc"]]
+}, 'rating');
+```
+
+**Get Document Average** - `documents.average`
+*Aggregate a numeric document property across documents matching a query. Requires an index declaring summable for the property. Returns a map of group key to {count, sum} - divide sum by count to obtain the average.*
+
+Signature: `average(query: wasm.DocumentsQuery, averageProperty: string): Promise<Map<string, { count: bigint; sum: bigint; }>>`
+
+Parameters:
+- `query`: `wasm.DocumentsQuery` (required)
+  - Type declarations: [`wasm.DocumentsQuery`](TYPE_REFERENCE.md#type-documentsquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type name.
+  - `where`: `DocumentWhereClause[]` (optional)
+    - Optional filter clauses expressed as [field, operator, value].
+  - Type declarations: [`DocumentWhereClause`](TYPE_REFERENCE.md#type-documentwhereclause)
+  - `orderBy`: `DocumentOrderByClause[]` (optional)
+    - Optional sorting clauses expressed as [field, direction].
+  - Type declarations: [`DocumentOrderByClause`](TYPE_REFERENCE.md#type-documentorderbyclause)
+  - `limit`: `number` (optional)
+    - Maximum number of documents to return.
+  - `startAfter`: `IdentifierLike` (optional)
+    - Exclusive document ID to resume from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAt`: `IdentifierLike` (optional)
+    - Inclusive document ID to start from.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `groupBy`: `string[]` (optional)
+    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored
+by the regular document-fetch path.
+
+- `[]` or omitted → aggregate count (a single row).
+- `["<in_field>"]` where `<in_field>` matches an `In`
+  constraint → per-`In`-value entries (PerInValue).
+- `["<range_field>"]` where `<range_field>` matches a range
+  constraint → per-distinct-value entries within the range
+  (RangeDistinct).
+- `["<in_field>", "<range_field>"]` for compound `In + range`
+  queries → compound distinct entries.
+
+Entry direction comes from the first `orderBy` clause's
+direction (which also drives walk order on the materialize +
+prove path); set `orderBy: [["<range_field>", "asc"|"desc"]]`
+alongside `groupBy: ["<range_field>"]` to control sort.
+
+- `averageProperty`: `string` (required)
+
+Returns:
+
+- `Promise<Map<string, { count: bigint; sum: bigint; }>>`
+
+Example:
+```javascript
+// Returns { count, sum } per entry - divide sum by count for the average.
+// Requires an index declaring summable for the aggregated property; no
+// known testnet contract has one yet, so this call shape is illustrative
+// and the server will reject it against this contract.
+const result = await sdk.documents.average({
+    dataContractId: 'BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP',
+    documentTypeName: 'review',
+    where: [["resourceId", "==", "identities-names"]],
+    orderBy: [["resourceId", "asc"]]
+}, 'rating');
+```
+
+**Get Document History** - `documents.history`
+*Fetch historical revisions of a document. Requires a document type with history retention enabled (documentsKeepHistory).*
+
+Signature: `history(query: wasm.DocumentHistoryQuery): Promise<Map<bigint, wasm.Document>>`
+
+Parameters:
+- `query`: `wasm.DocumentHistoryQuery` (required)
+  - Type declarations: [`wasm.DocumentHistoryQuery`](TYPE_REFERENCE.md#type-documenthistoryquery)
+  - `dataContractId`: `IdentifierLike` (required)
+    - Data contract identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `documentTypeName`: `string` (required)
+    - Document type name.
+  - `documentId`: `IdentifierLike` (required)
+    - Document identifier.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+  - `startAtMs`: `number` (optional)
+    - Millisecond timestamp (exclusive) to start after.
+  - `limit`: `number` (optional)
+    - Maximum number of entries to return.
+  - `offset`: `number` (optional)
+    - Offset for pagination through the document history.
+
+Returns:
+
+- `Promise<Map<bigint, wasm.Document>>`
+  - Type declarations: [`wasm.Document`](TYPE_REFERENCE.md#type-document)
+
+Example:
+```javascript
+// Requires a document type with history retention (documentsKeepHistory).
+const result = await sdk.documents.history({
+    dataContractId: 'BdgTqaTAPYMyhp1WdeWdcvYSgoD7AuJ7tVCaCSXyQgyP',
+    documentTypeName: 'review',
+    documentId: '2kWsepFc3PoHEee97xpJQTfbXtaDU9RHB4KdH52wk8f4',
+    limit: 10
+});
+```
+
 #### DPNS Queries
 
 **Get Primary Username** - `dpns.username`
@@ -1191,6 +1423,28 @@ Example:
 const result = await sdk.tokens.totalSupply('Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv');
 ```
 
+**Get Token Balances for Identity** - `tokens.identityBalances`
+*Fetch one identity's balances across multiple tokens. The result map is keyed by token ID (unlike Get Identities Token Balances, which is keyed by identity ID).*
+
+Signature: `identityBalances(identityId: wasm.IdentifierLike, tokenIds: wasm.IdentifierLikeArray): Promise<Map<string, bigint>>`
+
+Parameters:
+- `identityId`: `wasm.IdentifierLike` (required)
+  - Type declarations: [`wasm.IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
+
+- `tokenIds`: `wasm.IdentifierLikeArray` (required)
+  - Type declarations: [`wasm.IdentifierLikeArray`](TYPE_REFERENCE.md#type-identifierlikearray)
+
+Returns:
+
+- `Promise<Map<string, bigint>>`
+
+Example:
+```javascript
+// The result map is keyed by token ID.
+const result = await sdk.tokens.identityBalances('5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk', ['Hqyu8WcRwXCTwbNxdga4CN5gsVEGc67wng4TFzceyLUv']);
+```
+
 **Get Token Price by Contract** - `tokens.priceByContract`
 *Retrieve the price details for a token indexed by contract position.*
 
@@ -1557,6 +1811,99 @@ Returns:
 Example:
 ```javascript
 const result = await sdk.addresses.getMany(['tdash1krt0z5hrcaphyuraxmk2h2ff8nyv5fmncsgf7evf']);
+```
+
+#### Shielded Queries
+
+**Get Shielded Pool State** - `shielded.poolState`
+*Fetch the total balance of the shielded pool in credits. Returns nothing if the pool is empty.*
+
+Signature: `poolState(): Promise<bigint | undefined>`
+
+No parameters required.
+
+Returns:
+
+- `Promise<bigint | undefined>`
+
+Example:
+```javascript
+// Total shielded pool balance in credits (undefined if the pool is empty).
+const result = await sdk.shielded.poolState();
+```
+
+**Get Shielded Encrypted Notes** - `shielded.encryptedNotes`
+*Fetch a page of encrypted shielded notes by global note index.*
+
+Signature: `encryptedNotes(startIndex: bigint, count: number): Promise<wasm.ShieldedEncryptedNote[]>`
+
+Parameters:
+- `startIndex`: `bigint` (required)
+
+- `count`: `number` (required)
+
+Returns:
+
+- `Promise<wasm.ShieldedEncryptedNote[]>`
+  - Type declarations: [`wasm.ShieldedEncryptedNote`](TYPE_REFERENCE.md#type-shieldedencryptednote)
+
+Example:
+```javascript
+const result = await sdk.shielded.encryptedNotes(0n, 10);
+```
+
+**Get Shielded Anchors** - `shielded.anchors`
+*Fetch all valid anchors for building Orchard spend proofs. The SDK returns 32-byte Uint8Array values; this page displays them hex-encoded.*
+
+Signature: `anchors(): Promise<Uint8Array[]>`
+
+No parameters required.
+
+Returns:
+
+- `Promise<Uint8Array[]>`
+
+Example:
+```javascript
+// Each anchor is a 32-byte Uint8Array.
+const result = await sdk.shielded.anchors();
+```
+
+**Get Most Recent Shielded Anchor** - `shielded.mostRecentAnchor`
+*Fetch the most recent shielded anchor. The SDK returns a 32-byte Uint8Array, or nothing if no anchor exists yet; this page displays it hex-encoded.*
+
+Signature: `mostRecentAnchor(): Promise<Uint8Array | undefined>`
+
+No parameters required.
+
+Returns:
+
+- `Promise<Uint8Array | undefined>`
+
+Example:
+```javascript
+// 32-byte Uint8Array, or undefined if no anchor exists yet.
+const result = await sdk.shielded.mostRecentAnchor();
+```
+
+**Get Shielded Nullifier Statuses** - `shielded.nullifiers`
+*Check whether shielded nullifiers have been spent.*
+
+Signature: `nullifiers(nullifiers: Uint8Array[]): Promise<wasm.ShieldedNullifierStatus[]>`
+
+Parameters:
+- `nullifiers`: `Uint8Array[]` (required)
+
+Returns:
+
+- `Promise<wasm.ShieldedNullifierStatus[]>`
+  - Type declarations: [`wasm.ShieldedNullifierStatus`](TYPE_REFERENCE.md#type-shieldednullifierstatus)
+
+Example:
+```javascript
+// Each nullifier must be exactly 32 bytes.
+const nullifier = new Uint8Array(32);
+return await sdk.shielded.nullifiers([nullifier]);
 ```
 
 ## State Transition Operations
