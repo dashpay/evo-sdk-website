@@ -1090,7 +1090,18 @@ const testData = {
     signMessage: {
       message: 'Hello Dash',
       // Deterministic ECDSA (RFC 6979) compact signature, hex-encoded
-      expectedSignature: 'b8cc0d9b97f6c7e5c044dd777c7cdd891ac335b33d96ad7c8fc2a7a91038d8a46451cfffdbf57b2579c0f6ef91925526d30fe0d7d20f558c28b8defec40878fb'
+      expectedSignature: 'b8cc0d9b97f6c7e5c044dd777c7cdd891ac335b33d96ad7c8fc2a7a91038d8a46451cfffdbf57b2579c0f6ef91925526d30fe0d7d20f558c28b8defec40878fb',
+      // The same message with surrounding whitespace signs to a DIFFERENT
+      // value: whitespace is part of the signed data and must not be trimmed.
+      paddedMessage: '  Hello Dash  ',
+      expectedPaddedSignature: '468989af5298c9fff9d1b476889d56298bf01aaa9839e68ae8a1533c250dab78029d30faaee09227f8f0d2aceaaca7b1514e29f6319fa609314d5ea1af2b626b'
+    },
+    // Spanish (es) BIP39 wordlist fixtures. validateMnemonic without a
+    // language uses parse_normalized, which does NOT accept this phrase —
+    // the language code must be supplied explicitly.
+    spanish: {
+      languageCode: 'es',
+      mnemonic: 'ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco abierto'
     }
   },
 

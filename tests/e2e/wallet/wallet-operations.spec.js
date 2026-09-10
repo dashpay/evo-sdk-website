@@ -164,6 +164,47 @@ test.describe('Wallet operations', () => {
     expect(result.replace(/^"|"$/g, '').trim()).toBe(wallet.signMessage.expectedSignature);
   });
 
+  test('generateMnemonic and validateMnemonic honour a non-English wordlist', async () => {
+    // The language dropdown's option values must match the codes the wasm
+    // runtime accepts; an unsupported code is a hard error there, so this
+    // guards the dropdown set against drift from the SDK.
+    const generated = await runWalletOperation(evoSdkPage, 'walletGenerateMnemonic', {
+      wordCount: '12',
+      languageCode: wallet.spanish.languageCode
+    });
+    expect(generated.hasError).toBe(false);
+    expect(generated.result.replace(/^"|"$/g, '').trim().split(/\s+/)).toHaveLength(12);
+
+    // A known Spanish phrase validates under 'es' but not under 'en'.
+    const asSpanish = await runWalletOperation(evoSdkPage, 'walletValidateMnemonic', {
+      mnemonic: wallet.spanish.mnemonic,
+      languageCode: wallet.spanish.languageCode
+    });
+    expect(asSpanish.hasError).toBe(false);
+    expect(asSpanish.result.trim()).toBe('true');
+
+    const asEnglish = await runWalletOperation(evoSdkPage, 'walletValidateMnemonic', {
+      mnemonic: wallet.spanish.mnemonic,
+      languageCode: 'en'
+    });
+    expect(asEnglish.hasError).toBe(false);
+    expect(asEnglish.result.trim()).toBe('false');
+  });
+
+  test('signMessage signs surrounding whitespace as part of the message', async () => {
+    // Proves the whole chain — textarea -> collectArgs -> callEvo -> wasm —
+    // preserves whitespace: the padded message must produce a different,
+    // specific signature rather than the trimmed message's.
+    const { result, hasError } = await runWalletOperation(evoSdkPage, 'walletSignMessage', {
+      message: wallet.signMessage.paddedMessage,
+      privateKeyWif: wallet.testnet.privateKeyWif
+    });
+    expect(hasError).toBe(false);
+    const signature = result.replace(/^"|"$/g, '').trim();
+    expect(signature).toBe(wallet.signMessage.expectedPaddedSignature);
+    expect(signature).not.toBe(wallet.signMessage.expectedSignature);
+  });
+
   test('wallet UI shows no proof toggle and no authentication section', async ({ page }) => {
     await evoSdkPage.setupQuery(CATEGORY, 'walletGenerateKeyPair', {}, { operationType: 'wallet' });
     await expect(page.locator('#proofToggleContainer')).toBeHidden();

@@ -3688,7 +3688,7 @@ const mnemonic = await wallet.generateMnemonic({ wordCount: 12 });
 ```
 
 **Validate Mnemonic** - `wallet.validateMnemonic`
-*Check whether a BIP39 mnemonic seed phrase is valid. Without a language, all supported wordlists are tried.*
+*Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.*
 
 Signature: `validateMnemonic(mnemonic: string, languageCode?: string): Promise<boolean>`
 

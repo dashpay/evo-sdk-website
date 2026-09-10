@@ -170,7 +170,7 @@ export const WALLET_CATEGORY_DEFINITIONS = {
       },
       walletValidateMnemonic: {
         label: 'Validate Mnemonic',
-        description: 'Check whether a BIP39 mnemonic seed phrase is valid. Without a language, all supported wordlists are tried.',
+        description: 'Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.',
         inputs: [
           { name: 'mnemonic', label: 'Mnemonic Seed Phrase', type: 'password', required: true },
           { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_LANGUAGE_OPTIONS },
