@@ -130,6 +130,113 @@ export const DPNS_CATEGORY_DEFINITIONS = {
   */
 };
 
+const WALLET_LANGUAGE_OPTIONS = [
+  { value: '', label: 'Default (English)' },
+  { value: 'en', label: 'English (en)' },
+  { value: 'zh-cn', label: 'Chinese, Simplified (zh-cn)' },
+  { value: 'zh-tw', label: 'Chinese, Traditional (zh-tw)' },
+  { value: 'cs', label: 'Czech (cs)' },
+  { value: 'fr', label: 'French (fr)' },
+  { value: 'it', label: 'Italian (it)' },
+  { value: 'ja', label: 'Japanese (ja)' },
+  { value: 'ko', label: 'Korean (ko)' },
+  { value: 'pt', label: 'Portuguese (pt)' },
+  { value: 'es', label: 'Spanish (es)' },
+];
+
+const WALLET_SAFETY_HELP = 'Generated key material is for testing only — never use it to store real funds.';
+
+// Wallet helpers run locally in the wasm runtime and never contact the
+// platform; network-dependent operations read the site's network selector.
+// Keep these in sync with the queries.wallet entries in api-definitions.json
+// (the docs/catalog source), mirroring the DPNS two-source arrangement.
+export const WALLET_CATEGORY_DEFINITIONS = {
+  keyGeneration: {
+    label: 'Key Generation & Utilities',
+    operations: {
+      walletGenerateMnemonic: {
+        label: 'Generate Mnemonic',
+        description: `Generate a random BIP39 mnemonic seed phrase. ${WALLET_SAFETY_HELP}`,
+        inputs: [
+          { name: 'wordCount', label: 'Word Count', type: 'select', value: '12', options: [
+            { value: '12', label: '12 words' },
+            { value: '15', label: '15 words' },
+            { value: '18', label: '18 words' },
+            { value: '21', label: '21 words' },
+            { value: '24', label: '24 words' },
+          ] },
+          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_LANGUAGE_OPTIONS },
+        ],
+      },
+      walletValidateMnemonic: {
+        label: 'Validate Mnemonic',
+        description: 'Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.',
+        inputs: [
+          { name: 'mnemonic', label: 'Mnemonic Seed Phrase', type: 'password', required: true },
+          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_LANGUAGE_OPTIONS },
+        ],
+      },
+      walletMnemonicToSeed: {
+        label: 'Mnemonic to Seed',
+        description: 'Derive the 64-byte BIP39 seed (hex-encoded) from a mnemonic seed phrase and optional passphrase.',
+        inputs: [
+          { name: 'mnemonic', label: 'Mnemonic Seed Phrase', type: 'password', required: true },
+          // BIP39 passphrase whitespace is significant — it changes the seed.
+          { name: 'passphrase', label: 'Passphrase (optional)', type: 'password', preserveWhitespace: true, help: 'Whitespace is significant and changes the derived seed; the passphrase is used exactly as entered.' },
+        ],
+      },
+      walletGenerateKeyPair: {
+        label: 'Generate Key Pair',
+        description: `Generate a random private key with its public key and address for the selected network. ${WALLET_SAFETY_HELP}`,
+        inputs: [],
+      },
+      walletGenerateKeyPairs: {
+        label: 'Generate Key Pairs',
+        description: `Generate multiple random key pairs at once for the selected network. ${WALLET_SAFETY_HELP}`,
+        inputs: [
+          { name: 'count', label: 'Count', type: 'number', required: true, min: 1, max: 100, value: 1 },
+        ],
+      },
+      walletKeyPairFromWif: {
+        label: 'Key Pair from WIF',
+        description: 'Import a private key from WIF and show its public key and address.',
+        inputs: [
+          { name: 'privateKeyWif', label: 'Private Key (WIF)', type: 'password', required: true, help: 'The WIF version prefix determines the network; the network selector does not affect this operation.' },
+        ],
+      },
+      walletKeyPairFromHex: {
+        label: 'Key Pair from Hex',
+        description: 'Import a raw 32-byte private key (64 hex characters) and show its WIF, public key, and address for the selected network.',
+        inputs: [
+          { name: 'privateKeyHex', label: 'Private Key (hex)', type: 'password', required: true },
+        ],
+      },
+      walletPubkeyToAddress: {
+        label: 'Public Key to Address',
+        description: 'Convert a compressed public key (hex) to a Dash address for the selected network.',
+        inputs: [
+          { name: 'pubkeyHex', label: 'Public Key (hex)', type: 'text', required: true, placeholder: '0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71' },
+        ],
+      },
+      walletValidateAddress: {
+        label: 'Validate Address',
+        description: 'Check whether a Dash address is valid for the selected network.',
+        inputs: [
+          { name: 'address', label: 'Address', type: 'text', required: true, placeholder: 'yXSSUfQ8AFeWVionamYzedYSf3PANMazbw' },
+        ],
+      },
+      walletSignMessage: {
+        label: 'Sign Message',
+        description: 'Sign an arbitrary message with a private key (WIF) using deterministic ECDSA. The message is signed exactly as entered, including whitespace.',
+        inputs: [
+          { name: 'message', label: 'Message', type: 'textarea', required: true, preserveWhitespace: true },
+          { name: 'privateKeyWif', label: 'Private Key (WIF)', type: 'password', required: true },
+        ],
+      },
+    },
+  },
+};
+
 export const PROOF_CAPABLE = new Set([
   // Identity
   'getIdentity', 'getIdentityKeys', 'getIdentitiesContractKeys', 'getIdentityNonce', 'getIdentityContractNonce',
@@ -305,6 +412,7 @@ export const TYPE_CONFIG = {
   queries: { definitionKey: 'queries', itemsKey: 'queries', allowProof: true },
   transitions: { definitionKey: 'transitions', itemsKey: 'transitions', allowProof: false },
   dpns: { definitionKey: 'dpns', itemsKey: 'operations', allowProof: true },
+  wallet: { definitionKey: 'wallet', itemsKey: 'operations', allowProof: false },
 };
 
 export function filterDefinitions(source, entriesKey, allowSet) {

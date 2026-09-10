@@ -1063,6 +1063,48 @@ const testData = {
     }
   },
 
+  // Wallet helper fixtures: throwaway, deliberately public key material
+  // (BIP39 reference vector + a key derived from a fixed hex private key).
+  // Never use for real funds. Expected values were produced with
+  // @dashevo/evo-sdk wallet.* and match the published BIP39 test vectors.
+  wallet: {
+    mnemonic: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+    invalidMnemonic: 'not a real mnemonic phrase at all',
+    // BIP39 seed for the mnemonic above with an empty passphrase
+    seedHex: '5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4',
+    // BIP39 seed for the mnemonic above with passphrase 'TREZOR'
+    seedHexTrezor: 'c55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04',
+    // BIP39 seed for passphrase ' TREZOR ' (padded): passphrase whitespace is
+    // significant and must reach the SDK untrimmed
+    seedHexTrezorPadded: 'c3e2744f57e3f6e362753a4a240fa209988f367d09b2d77b05b62ced64c7f175ebebd7bfa2d424260697eafa26991241992d6627d64f4b4eba2d178db20a0275',
+    privateKeyHex: 'c4bbcb1fbec99d65bf59d85c8cb62ee2db963f0fe106f483d9afa73bd4e39a8a',
+    publicKeyHex: '0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71',
+    testnet: {
+      privateKeyWif: 'cUB8G5cFtxc4usfgfovqRgCo8qTQUJtctLV8t6YYNfULg3GtehdX',
+      address: 'yXSSUfQ8AFeWVionamYzedYSf3PANMazbw'
+    },
+    mainnet: {
+      privateKeyWif: 'XHt4FRzmmaYFomCoKA7aZatkRdRaFfQBBsgaJCREBv6RpTM62nzK',
+      address: 'XmoqTiKgihzS9ytF1vEbcc86NktnqvCjih'
+    },
+    signMessage: {
+      message: 'Hello Dash',
+      // Deterministic ECDSA (RFC 6979) compact signature, hex-encoded
+      expectedSignature: 'b8cc0d9b97f6c7e5c044dd777c7cdd891ac335b33d96ad7c8fc2a7a91038d8a46451cfffdbf57b2579c0f6ef91925526d30fe0d7d20f558c28b8defec40878fb',
+      // The same message with surrounding whitespace signs to a DIFFERENT
+      // value: whitespace is part of the signed data and must not be trimmed.
+      paddedMessage: '  Hello Dash  ',
+      expectedPaddedSignature: '468989af5298c9fff9d1b476889d56298bf01aaa9839e68ae8a1533c250dab78029d30faaee09227f8f0d2aceaaca7b1514e29f6319fa609314d5ea1af2b626b'
+    },
+    // Spanish (es) BIP39 wordlist fixtures. validateMnemonic without a
+    // language uses parse_normalized, which does NOT accept this phrase —
+    // the language code must be supplied explicitly.
+    spanish: {
+      languageCode: 'es',
+      mnemonic: 'ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco ábaco abierto'
+    }
+  },
+
   // Common where clauses for document queries
   whereClausesExamples: {
     dpnsDomain: [

@@ -65,7 +65,7 @@ export default defineConfig({
     },
     {
       name: 'parallel-e2e-tests',
-      testMatch: ['tests/e2e/queries/*.spec.js'],
+      testMatch: ['tests/e2e/queries/*.spec.js', 'tests/e2e/wallet/*.spec.js'],
       fullyParallel: true,
       // workers: process.env.CI ? 1 : undefined,
       use: {

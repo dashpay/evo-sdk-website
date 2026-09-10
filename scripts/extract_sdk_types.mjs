@@ -12,6 +12,10 @@ const BUILT_INS = new Set([
   'Pick', 'Omit', 'Exclude', 'Extract', 'NonNullable', 'Uint8Array', 'Date',
 ]);
 const NAMESPACE_DIRS = { stateTransitions: 'state-transitions' };
+// Package-level namespaces whose declarations are namespace functions in the
+// named file rather than class methods in facade.d.ts. Their sdk_examples call
+// the namespace directly (`wallet.method()`) instead of through an instance.
+const NAMESPACE_FILES = { wallet: 'functions.d.ts' };
 // Upstream 4.0.0 declarations refer to the public pooling enum by its Rust
 // name in one high-level options interface, while exporting it as PoolingWasm.
 const DECLARATION_ALIASES = { Pooling: 'PoolingWasm' };
@@ -45,7 +49,7 @@ function parseFile(file) {
 function methodDeclarations(source, methodName) {
   const matches = [];
   function visit(node) {
-    if ((ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) && node.name?.getText(source) === methodName) matches.push(node);
+    if ((ts.isMethodDeclaration(node) || ts.isMethodSignature(node) || ts.isFunctionDeclaration(node)) && node.name?.getText(source) === methodName) matches.push(node);
     ts.forEachChild(node, visit);
   }
   visit(source);
@@ -182,11 +186,18 @@ function validateSdkExample(entry, method) {
   const source = ts.createSourceFile('example.ts', entry.sdkExample, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const [expectedNamespace, expectedMethod] = entry.sdkMethod.split('.');
   let matchingCalls = 0;
+  // Instance-method examples must use the three-part `sdk.namespace.method()`
+  // shape; only package-level namespaces (NAMESPACE_FILES) may call the
+  // namespace identifier directly (`wallet.method()`), so a stray two-part
+  // call on any other namespace still fails validation.
+  const packageLevel = Object.prototype.hasOwnProperty.call(NAMESPACE_FILES, expectedNamespace);
   function visit(node) {
     if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
       && node.expression.name.text === expectedMethod
-      && ts.isPropertyAccessExpression(node.expression.expression)
-      && node.expression.expression.name.text === expectedNamespace) {
+      && ((ts.isPropertyAccessExpression(node.expression.expression)
+        && node.expression.expression.name.text === expectedNamespace)
+        || (packageLevel && ts.isIdentifier(node.expression.expression)
+          && node.expression.expression.text === expectedNamespace))) {
       matchingCalls += 1;
       const argument = node.arguments[0];
       const options = method.parameters[0];
@@ -219,8 +230,8 @@ export function extractTypes({ apiFile, packageRoot }) {
   for (const entry of documentedMethods(api)) {
     const [namespace, methodName, ...extra] = entry.sdkMethod.split('.');
     if (!namespace || !methodName || extra.length) fail(`Invalid sdk_method: ${entry.sdkMethod}`);
-    const facadeFile = path.join(dist, NAMESPACE_DIRS[namespace] || namespace, 'facade.d.ts');
-    if (!fs.existsSync(facadeFile)) fail(`No facade declaration for ${entry.sdkMethod}: ${facadeFile}`);
+    const facadeFile = path.join(dist, NAMESPACE_DIRS[namespace] || namespace, NAMESPACE_FILES[namespace] || 'facade.d.ts');
+    if (!fs.existsSync(facadeFile)) fail(`No declaration file for ${entry.sdkMethod}: ${facadeFile}`);
     const source = parseFile(facadeFile);
     const declarations = methodDeclarations(source, methodName);
     if (declarations.length !== 1) fail(`${entry.sdkMethod} resolved to ${declarations.length} declarations in ${facadeFile}`);

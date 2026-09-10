@@ -4,8 +4,14 @@ import { elements, state } from './state.js';
 import { setStatus } from './ui.js';
 import { buildVersionDisplayModel } from './version-display.js';
 
+// Mainnet is the checked default at init (main.js), so the fallback only
+// applies before initialization or if no radio exists.
+export function getSelectedNetwork() {
+  return elements.networkRadios.find(r => r.checked)?.value || 'mainnet';
+}
+
 export function updateNetworkIndicator() {
-  const selected = elements.networkRadios.find(r => r.checked)?.value || 'testnet';
+  const selected = getSelectedNetwork();
   if (!elements.networkIndicator) return;
   elements.networkIndicator.textContent = selected.toUpperCase();
   elements.networkIndicator.classList.toggle('mainnet', selected === 'mainnet');
@@ -13,9 +19,8 @@ export function updateNetworkIndicator() {
 }
 
 export function buildClientOptions() {
-  const selectedNetwork = elements.networkRadios.find(r => r.checked)?.value || 'mainnet';
   const trusted = !!(elements.trustedMode && elements.trustedMode.checked);
-  return assembleClientOptions(selectedNetwork, trusted, state.advancedOptions);
+  return assembleClientOptions(getSelectedNetwork(), trusted, state.advancedOptions);
 }
 
 export async function ensureClient(force = false) {

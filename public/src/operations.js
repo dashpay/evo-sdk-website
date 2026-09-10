@@ -1,4 +1,5 @@
 import { namedArgs } from './form/collect.js';
+import { getSelectedNetwork, wallet } from './sdk-client.js';
 import { executeTransitionOperation } from './transitions/registry.js';
 
 export async function callEvo(client, groupKey, itemKey, defs, args, useProof, extraArgs = {}) {
@@ -52,6 +53,12 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
   };
 
   const bytesToHex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+
+  const requireTrimmed = (value, label) => {
+    const trimmed = String(value ?? '').trim();
+    if (!trimmed) throw new Error(`${label} is required`);
+    return trimmed;
+  };
 
   // Anchors arrive as raw 32-byte values (a single one for mostRecentAnchor,
   // an array for anchors); hex-encode them for display while keeping proof
@@ -227,6 +234,49 @@ export async function callEvo(client, groupKey, itemKey, defs, args, useProof, e
       return c.dpns.isValidUsername(n.label);
     case 'dpnsIsContestedUsername':
       return c.dpns.isContestedUsername(n.label);
+
+    // Wallet helpers: local wasm operations that must never touch the
+    // platform client (executeSelected passes client = null for them).
+    case 'walletGenerateMnemonic': {
+      const wordCount = toNumber(n.wordCount, 12);
+      if (![12, 15, 18, 21, 24].includes(wordCount)) {
+        throw new Error('Word count must be 12, 15, 18, 21, or 24');
+      }
+      const params = { wordCount };
+      if (n.languageCode) params.languageCode = n.languageCode;
+      return wallet.generateMnemonic(params);
+    }
+    case 'walletValidateMnemonic':
+      return wallet.validateMnemonic(requireTrimmed(n.mnemonic, 'Mnemonic'), n.languageCode || undefined);
+    case 'walletMnemonicToSeed': {
+      const seed = await wallet.mnemonicToSeed(requireTrimmed(n.mnemonic, 'Mnemonic'), n.passphrase || undefined);
+      return bytesToHex(seed);
+    }
+    case 'walletGenerateKeyPair':
+      return wallet.generateKeyPair(getSelectedNetwork());
+    case 'walletGenerateKeyPairs': {
+      const count = toNumber(n.count);
+      if (!Number.isInteger(count) || count < 1 || count > 100) {
+        throw new Error('Count must be an integer between 1 and 100');
+      }
+      return wallet.generateKeyPairs(getSelectedNetwork(), count);
+    }
+    case 'walletKeyPairFromWif':
+      return wallet.keyPairFromWif(requireTrimmed(n.privateKeyWif, 'Private key WIF'));
+    case 'walletKeyPairFromHex':
+      return wallet.keyPairFromHex(requireTrimmed(n.privateKeyHex, 'Private key hex'), getSelectedNetwork());
+    case 'walletPubkeyToAddress':
+      return wallet.pubkeyToAddress(requireTrimmed(n.pubkeyHex, 'Public key hex'), getSelectedNetwork());
+    case 'walletValidateAddress':
+      return wallet.validateAddress(requireTrimmed(n.address, 'Address'), getSelectedNetwork());
+    case 'walletSignMessage': {
+      // Whitespace is legitimate signed data: require a non-empty message but
+      // pass it through exactly as entered, without trimming.
+      if (typeof n.message !== 'string' || n.message.length === 0) {
+        throw new Error('Message is required');
+      }
+      return wallet.signMessage(n.message, requireTrimmed(n.privateKeyWif, 'Private key WIF'));
+    }
     case 'dpnsRegisterName': {
       if (!n.label) {
         throw new Error('Label is required for DPNS registration.');

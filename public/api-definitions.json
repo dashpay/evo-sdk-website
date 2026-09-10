@@ -1783,6 +1783,302 @@
           "sdk_method": "shielded.nullifiers"
         }
       }
+    },
+    "wallet": {
+      "label": "Wallet Utilities",
+      "description": "Wallet helpers run locally in the WebAssembly runtime and never contact Dash Platform — no connection is created or required. Operations that take a network use the value selected in the site's network selector.",
+      "queries": {
+        "walletGenerateMnemonic": {
+          "label": "Generate Mnemonic",
+          "description": "Generate a random BIP39 mnemonic seed phrase. Generated key material is for testing only — never use it to store real funds.",
+          "inputs": [
+            {
+              "name": "wordCount",
+              "type": "select",
+              "label": "Word Count",
+              "options": [
+                {
+                  "value": "12",
+                  "label": "12 words"
+                },
+                {
+                  "value": "15",
+                  "label": "15 words"
+                },
+                {
+                  "value": "18",
+                  "label": "18 words"
+                },
+                {
+                  "value": "21",
+                  "label": "21 words"
+                },
+                {
+                  "value": "24",
+                  "label": "24 words"
+                }
+              ],
+              "value": "12",
+              "sdk_property": "params.wordCount"
+            },
+            {
+              "name": "languageCode",
+              "type": "select",
+              "label": "Language",
+              "options": [
+                {
+                  "value": "",
+                  "label": "Default (English)"
+                },
+                {
+                  "value": "en",
+                  "label": "English (en)"
+                },
+                {
+                  "value": "zh-cn",
+                  "label": "Chinese, Simplified (zh-cn)"
+                },
+                {
+                  "value": "zh-tw",
+                  "label": "Chinese, Traditional (zh-tw)"
+                },
+                {
+                  "value": "cs",
+                  "label": "Czech (cs)"
+                },
+                {
+                  "value": "fr",
+                  "label": "French (fr)"
+                },
+                {
+                  "value": "it",
+                  "label": "Italian (it)"
+                },
+                {
+                  "value": "ja",
+                  "label": "Japanese (ja)"
+                },
+                {
+                  "value": "ko",
+                  "label": "Korean (ko)"
+                },
+                {
+                  "value": "pt",
+                  "label": "Portuguese (pt)"
+                },
+                {
+                  "value": "es",
+                  "label": "Spanish (es)"
+                }
+              ],
+              "help": "Optional BIP39 wordlist language. Supported codes: en, zh-cn, zh-tw, cs, fr, it, ja, ko, pt, es.",
+              "sdk_property": "params.languageCode"
+            }
+          ],
+          "sdk_method": "wallet.generateMnemonic",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst mnemonic = await wallet.generateMnemonic({ wordCount: 12 });"
+        },
+        "walletValidateMnemonic": {
+          "label": "Validate Mnemonic",
+          "description": "Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.",
+          "inputs": [
+            {
+              "name": "mnemonic",
+              "type": "password",
+              "label": "Mnemonic Seed Phrase",
+              "required": true,
+              "sdk_parameter": "mnemonic"
+            },
+            {
+              "name": "languageCode",
+              "type": "select",
+              "label": "Language",
+              "options": [
+                {
+                  "value": "",
+                  "label": "Default (English)"
+                },
+                {
+                  "value": "en",
+                  "label": "English (en)"
+                },
+                {
+                  "value": "zh-cn",
+                  "label": "Chinese, Simplified (zh-cn)"
+                },
+                {
+                  "value": "zh-tw",
+                  "label": "Chinese, Traditional (zh-tw)"
+                },
+                {
+                  "value": "cs",
+                  "label": "Czech (cs)"
+                },
+                {
+                  "value": "fr",
+                  "label": "French (fr)"
+                },
+                {
+                  "value": "it",
+                  "label": "Italian (it)"
+                },
+                {
+                  "value": "ja",
+                  "label": "Japanese (ja)"
+                },
+                {
+                  "value": "ko",
+                  "label": "Korean (ko)"
+                },
+                {
+                  "value": "pt",
+                  "label": "Portuguese (pt)"
+                },
+                {
+                  "value": "es",
+                  "label": "Spanish (es)"
+                }
+              ],
+              "help": "Optional BIP39 wordlist language. Supported codes: en, zh-cn, zh-tw, cs, fr, it, ja, ko, pt, es.",
+              "sdk_parameter": "languageCode"
+            }
+          ],
+          "sdk_method": "wallet.validateMnemonic",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst isValid = await wallet.validateMnemonic('your seed phrase here …');"
+        },
+        "walletMnemonicToSeed": {
+          "label": "Mnemonic to Seed",
+          "description": "Derive the 64-byte BIP39 seed (hex-encoded) from a mnemonic seed phrase and optional passphrase.",
+          "inputs": [
+            {
+              "name": "mnemonic",
+              "type": "password",
+              "label": "Mnemonic Seed Phrase",
+              "required": true,
+              "sdk_parameter": "mnemonic"
+            },
+            {
+              "name": "passphrase",
+              "type": "password",
+              "label": "Passphrase (optional)",
+              "sdk_parameter": "passphrase",
+              "preserveWhitespace": true,
+              "help": "Whitespace is significant and changes the derived seed; the passphrase is used exactly as entered."
+            }
+          ],
+          "sdk_method": "wallet.mnemonicToSeed",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst seedBytes = await wallet.mnemonicToSeed('your seed phrase here …');"
+        },
+        "walletGenerateKeyPair": {
+          "label": "Generate Key Pair",
+          "description": "Generate a random private key with its public key and address. The network comes from the site's network selector. Generated key material is for testing only — never use it to store real funds.",
+          "inputs": [],
+          "sdk_method": "wallet.generateKeyPair",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst keyPair = await wallet.generateKeyPair('testnet');"
+        },
+        "walletGenerateKeyPairs": {
+          "label": "Generate Key Pairs",
+          "description": "Generate multiple random key pairs at once. The network comes from the site's network selector. Generated key material is for testing only — never use it to store real funds.",
+          "inputs": [
+            {
+              "name": "count",
+              "type": "number",
+              "label": "Count",
+              "required": true,
+              "min": 1,
+              "max": 100,
+              "value": 1,
+              "sdk_parameter": "count"
+            }
+          ],
+          "sdk_method": "wallet.generateKeyPairs",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst keyPairs = await wallet.generateKeyPairs('testnet', 3);"
+        },
+        "walletKeyPairFromWif": {
+          "label": "Key Pair from WIF",
+          "description": "Import a private key from WIF and show its public key and address. The WIF version prefix determines the network, so the site's network selector does not affect this operation.",
+          "inputs": [
+            {
+              "name": "privateKeyWif",
+              "type": "password",
+              "label": "Private Key (WIF)",
+              "required": true,
+              "sdk_parameter": "privateKeyWif"
+            }
+          ],
+          "sdk_method": "wallet.keyPairFromWif",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst keyPair = await wallet.keyPairFromWif('cYourTestnetPrivateKeyWif…');"
+        },
+        "walletKeyPairFromHex": {
+          "label": "Key Pair from Hex",
+          "description": "Import a raw 32-byte private key (64 hex characters) and show its WIF, public key, and address. The network comes from the site's network selector.",
+          "inputs": [
+            {
+              "name": "privateKeyHex",
+              "type": "password",
+              "label": "Private Key (hex)",
+              "required": true,
+              "sdk_parameter": "privateKeyHex"
+            }
+          ],
+          "sdk_method": "wallet.keyPairFromHex",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst keyPair = await wallet.keyPairFromHex('c4bb… (64 hex chars)', 'testnet');"
+        },
+        "walletPubkeyToAddress": {
+          "label": "Public Key to Address",
+          "description": "Convert a compressed public key (hex) to a Dash address. The network comes from the site's network selector.",
+          "inputs": [
+            {
+              "name": "pubkeyHex",
+              "type": "text",
+              "label": "Public Key (hex)",
+              "required": true,
+              "placeholder": "0378d430274f8c5ec1321338151e9f27f4c676a008bdf8638d07c0b6be9ab35c71",
+              "sdk_parameter": "pubkeyHex"
+            }
+          ],
+          "sdk_method": "wallet.pubkeyToAddress",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst address = await wallet.pubkeyToAddress('0378d4…', 'testnet');"
+        },
+        "walletValidateAddress": {
+          "label": "Validate Address",
+          "description": "Check whether a Dash address is valid for a network. The network comes from the site's network selector.",
+          "inputs": [
+            {
+              "name": "address",
+              "type": "text",
+              "label": "Address",
+              "required": true,
+              "placeholder": "yXSSUfQ8AFeWVionamYzedYSf3PANMazbw",
+              "sdk_parameter": "address"
+            }
+          ],
+          "sdk_method": "wallet.validateAddress",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst isValid = await wallet.validateAddress('yXSSUfQ8AFeWVionamYzedYSf3PANMazbw', 'testnet');"
+        },
+        "walletSignMessage": {
+          "label": "Sign Message",
+          "description": "Sign an arbitrary message with a private key (WIF) using deterministic ECDSA. The message is signed exactly as entered.",
+          "inputs": [
+            {
+              "name": "message",
+              "type": "textarea",
+              "label": "Message",
+              "required": true,
+              "sdk_parameter": "message"
+            },
+            {
+              "name": "privateKeyWif",
+              "type": "password",
+              "label": "Private Key (WIF)",
+              "required": true,
+              "sdk_parameter": "privateKeyWif"
+            }
+          ],
+          "sdk_method": "wallet.signMessage",
+          "sdk_example": "import { wallet } from '@dashevo/evo-sdk';\nconst signature = await wallet.signMessage('Hello Dash', 'cYourPrivateKeyWif…');"
+        }
+      }
     }
   },
   "transitions": {

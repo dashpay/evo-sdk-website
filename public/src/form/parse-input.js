@@ -57,7 +57,9 @@ export function parseInputValue(type, def, control) {
     case 'password':
     case 'text':
     default: {
-      const raw = control.value.trim();
+      // preserveWhitespace inputs (e.g. a message to sign) pass through
+      // exactly as entered; only a fully empty value counts as missing.
+      const raw = def.preserveWhitespace ? control.value : control.value.trim();
       if (!raw && def.required) {
         throw new Error(`${def.label || def.name} is required`);
       }

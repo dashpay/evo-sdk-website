@@ -2933,6 +2933,334 @@
       ]
     },
     {
+      "key": "walletGenerateMnemonic",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.generateMnemonic",
+      "label": "Generate Mnemonic",
+      "description": "Generate a random BIP39 mnemonic seed phrase. Generated key material is for testing only \u2014 never use it to store real funds.",
+      "disabled": null,
+      "signature": "generateMnemonic(params?: wasm.GenerateMnemonicParams): Promise<string>",
+      "parameters": [
+        {
+          "name": "params",
+          "type": "wasm.GenerateMnemonicParams",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.GenerateMnemonicParams"
+          ],
+          "properties": [
+            {
+              "name": "wordCount",
+              "type": "number",
+              "optional": true,
+              "description": "",
+              "references": []
+            },
+            {
+              "name": "languageCode",
+              "type": "string",
+              "optional": true,
+              "description": "",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<string>",
+      "references": []
+    },
+    {
+      "key": "walletValidateMnemonic",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.validateMnemonic",
+      "label": "Validate Mnemonic",
+      "description": "Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.",
+      "disabled": null,
+      "signature": "validateMnemonic(mnemonic: string, languageCode?: string): Promise<boolean>",
+      "parameters": [
+        {
+          "name": "mnemonic",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "languageCode",
+          "type": "string",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<boolean>",
+      "references": []
+    },
+    {
+      "key": "walletMnemonicToSeed",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.mnemonicToSeed",
+      "label": "Mnemonic to Seed",
+      "description": "Derive the 64-byte BIP39 seed (hex-encoded) from a mnemonic seed phrase and optional passphrase.",
+      "disabled": null,
+      "signature": "mnemonicToSeed(mnemonic: string, passphrase?: string): Promise<Uint8Array>",
+      "parameters": [
+        {
+          "name": "mnemonic",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "passphrase",
+          "type": "string",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Uint8Array>",
+      "references": []
+    },
+    {
+      "key": "walletGenerateKeyPair",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.generateKeyPair",
+      "label": "Generate Key Pair",
+      "description": "Generate a random private key with its public key and address. The network comes from the site's network selector. Generated key material is for testing only \u2014 never use it to store real funds.",
+      "disabled": null,
+      "signature": "generateKeyPair(network: NetworkLike): Promise<wasm.KeyPair>",
+      "parameters": [
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "references": [
+        "wasm.KeyPair"
+      ]
+    },
+    {
+      "key": "walletGenerateKeyPairs",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.generateKeyPairs",
+      "label": "Generate Key Pairs",
+      "description": "Generate multiple random key pairs at once. The network comes from the site's network selector. Generated key material is for testing only \u2014 never use it to store real funds.",
+      "disabled": null,
+      "signature": "generateKeyPairs(network: NetworkLike, count: number): Promise<wasm.KeyPair[]>",
+      "parameters": [
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair[]>",
+      "references": [
+        "wasm.KeyPair"
+      ]
+    },
+    {
+      "key": "walletKeyPairFromWif",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.keyPairFromWif",
+      "label": "Key Pair from WIF",
+      "description": "Import a private key from WIF and show its public key and address. The WIF version prefix determines the network, so the site's network selector does not affect this operation.",
+      "disabled": null,
+      "signature": "keyPairFromWif(privateKeyWif: string): Promise<wasm.KeyPair>",
+      "parameters": [
+        {
+          "name": "privateKeyWif",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "references": [
+        "wasm.KeyPair"
+      ]
+    },
+    {
+      "key": "walletKeyPairFromHex",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.keyPairFromHex",
+      "label": "Key Pair from Hex",
+      "description": "Import a raw 32-byte private key (64 hex characters) and show its WIF, public key, and address. The network comes from the site's network selector.",
+      "disabled": null,
+      "signature": "keyPairFromHex(privateKeyHex: string, network: NetworkLike): Promise<wasm.KeyPair>",
+      "parameters": [
+        {
+          "name": "privateKeyHex",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "references": [
+        "wasm.KeyPair"
+      ]
+    },
+    {
+      "key": "walletPubkeyToAddress",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.pubkeyToAddress",
+      "label": "Public Key to Address",
+      "description": "Convert a compressed public key (hex) to a Dash address. The network comes from the site's network selector.",
+      "disabled": null,
+      "signature": "pubkeyToAddress(pubkeyHex: string, network: NetworkLike): Promise<string>",
+      "parameters": [
+        {
+          "name": "pubkeyHex",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<string>",
+      "references": []
+    },
+    {
+      "key": "walletValidateAddress",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.validateAddress",
+      "label": "Validate Address",
+      "description": "Check whether a Dash address is valid for a network. The network comes from the site's network selector.",
+      "disabled": null,
+      "signature": "validateAddress(address: string, network: NetworkLike): Promise<boolean>",
+      "parameters": [
+        {
+          "name": "address",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<boolean>",
+      "references": []
+    },
+    {
+      "key": "walletSignMessage",
+      "group": "queries",
+      "category": "wallet",
+      "sdkMethod": "wallet.signMessage",
+      "label": "Sign Message",
+      "description": "Sign an arbitrary message with a private key (WIF) using deterministic ECDSA. The message is signed exactly as entered.",
+      "disabled": null,
+      "signature": "signMessage(message: string, privateKeyWif: string): Promise<string>",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "privateKeyWif",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<string>",
+      "references": []
+    },
+    {
       "key": "identityCreate",
       "group": "transitions",
       "category": "identity",
@@ -8923,6 +9251,382 @@
       ],
       "source": "dist/shielded/facade.d.ts"
     },
+    "wallet.generateMnemonic": {
+      "sdkMethod": "wallet.generateMnemonic",
+      "signature": "generateMnemonic(params?: wasm.GenerateMnemonicParams): Promise<string>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "params",
+          "type": "wasm.GenerateMnemonicParams",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [
+            "wasm.GenerateMnemonicParams"
+          ],
+          "properties": [
+            {
+              "name": "wordCount",
+              "type": "number",
+              "optional": true,
+              "description": "",
+              "references": []
+            },
+            {
+              "name": "languageCode",
+              "type": "string",
+              "optional": true,
+              "description": "",
+              "references": []
+            }
+          ]
+        }
+      ],
+      "returnType": "Promise<string>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletGenerateMnemonic",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.validateMnemonic": {
+      "sdkMethod": "wallet.validateMnemonic",
+      "signature": "validateMnemonic(mnemonic: string, languageCode?: string): Promise<boolean>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "mnemonic",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "languageCode",
+          "type": "string",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<boolean>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletValidateMnemonic",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.mnemonicToSeed": {
+      "sdkMethod": "wallet.mnemonicToSeed",
+      "signature": "mnemonicToSeed(mnemonic: string, passphrase?: string): Promise<Uint8Array>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "mnemonic",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "passphrase",
+          "type": "string",
+          "optional": true,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<Uint8Array>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletMnemonicToSeed",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.generateKeyPair": {
+      "sdkMethod": "wallet.generateKeyPair",
+      "signature": "generateKeyPair(network: NetworkLike): Promise<wasm.KeyPair>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "returnReferences": [
+        "wasm.KeyPair"
+      ],
+      "references": [
+        "wasm.KeyPair"
+      ],
+      "variants": [
+        {
+          "key": "walletGenerateKeyPair",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.generateKeyPairs": {
+      "sdkMethod": "wallet.generateKeyPairs",
+      "signature": "generateKeyPairs(network: NetworkLike, count: number): Promise<wasm.KeyPair[]>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair[]>",
+      "returnReferences": [
+        "wasm.KeyPair"
+      ],
+      "references": [
+        "wasm.KeyPair"
+      ],
+      "variants": [
+        {
+          "key": "walletGenerateKeyPairs",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.keyPairFromWif": {
+      "sdkMethod": "wallet.keyPairFromWif",
+      "signature": "keyPairFromWif(privateKeyWif: string): Promise<wasm.KeyPair>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "privateKeyWif",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "returnReferences": [
+        "wasm.KeyPair"
+      ],
+      "references": [
+        "wasm.KeyPair"
+      ],
+      "variants": [
+        {
+          "key": "walletKeyPairFromWif",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.keyPairFromHex": {
+      "sdkMethod": "wallet.keyPairFromHex",
+      "signature": "keyPairFromHex(privateKeyHex: string, network: NetworkLike): Promise<wasm.KeyPair>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "privateKeyHex",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<wasm.KeyPair>",
+      "returnReferences": [
+        "wasm.KeyPair"
+      ],
+      "references": [
+        "wasm.KeyPair"
+      ],
+      "variants": [
+        {
+          "key": "walletKeyPairFromHex",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.pubkeyToAddress": {
+      "sdkMethod": "wallet.pubkeyToAddress",
+      "signature": "pubkeyToAddress(pubkeyHex: string, network: NetworkLike): Promise<string>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "pubkeyHex",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<string>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletPubkeyToAddress",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.validateAddress": {
+      "sdkMethod": "wallet.validateAddress",
+      "signature": "validateAddress(address: string, network: NetworkLike): Promise<boolean>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "address",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "network",
+          "type": "NetworkLike",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [
+            "NetworkLike"
+          ],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<boolean>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletValidateAddress",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
+    "wallet.signMessage": {
+      "sdkMethod": "wallet.signMessage",
+      "signature": "signMessage(message: string, privateKeyWif: string): Promise<string>",
+      "description": "",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        },
+        {
+          "name": "privateKeyWif",
+          "type": "string",
+          "optional": false,
+          "rest": false,
+          "description": "",
+          "references": [],
+          "properties": []
+        }
+      ],
+      "returnType": "Promise<string>",
+      "returnReferences": [],
+      "references": [],
+      "variants": [
+        {
+          "key": "walletSignMessage",
+          "group": "queries",
+          "category": "wallet"
+        }
+      ],
+      "source": "dist/wallet/functions.d.ts"
+    },
     "identities.create": {
       "sdkMethod": "identities.create",
       "signature": "create(options: wasm.IdentityCreateOptions): Promise<void>",
@@ -13563,6 +14267,29 @@
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
+    "GenerateMnemonicParams": {
+      "kind": "InterfaceDeclaration",
+      "anchor": "type-generatemnemonicparams",
+      "declaration": "export interface GenerateMnemonicParams {\n    wordCount?: number;\n    languageCode?: string;\n}",
+      "properties": [
+        {
+          "name": "wordCount",
+          "type": "number",
+          "optional": true,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "languageCode",
+          "type": "string",
+          "optional": true,
+          "description": "",
+          "references": []
+        }
+      ],
+      "references": [],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
     "Group": {
       "kind": "ClassDeclaration",
       "anchor": "type-group",
@@ -15096,6 +15823,52 @@
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
+    "KeyPair": {
+      "kind": "ClassDeclaration",
+      "anchor": "type-keypair",
+      "declaration": "export class KeyPair {\n    private constructor();\n    free(): void;\n    [Symbol.dispose](): void;\n    static fromJSON(js: object): KeyPair;\n    static fromObject(obj: object): KeyPair;\n    toJSON(): any;\n    toObject(): any;\n    address: string;\n    network: string;\n    privateKeyHex: string;\n    privateKeyWif: string;\n    publicKey: string;\n}",
+      "properties": [
+        {
+          "name": "address",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "network",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "privateKeyHex",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "privateKeyWif",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        },
+        {
+          "name": "publicKey",
+          "type": "string",
+          "optional": false,
+          "description": "",
+          "references": []
+        }
+      ],
+      "references": [
+        "KeyPair"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
     "MasternodeVoteOptions": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-masternodevoteoptions",
@@ -15163,6 +15936,16 @@
         "PutSettings",
         "ResourceVoteChoice",
         "VotePoll"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
+    "NetworkLike": {
+      "kind": "TypeAliasDeclaration",
+      "anchor": "type-networklike",
+      "declaration": "export type NetworkLike = Network | \"mainnet\" | \"testnet\" | \"devnet\" | \"regtest\" | 0 | 1 | 2 | 3;",
+      "properties": [],
+      "references": [
+        "Network"
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
@@ -17578,16 +18361,6 @@
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
-    "NetworkLike": {
-      "kind": "TypeAliasDeclaration",
-      "anchor": "type-networklike",
-      "declaration": "export type NetworkLike = Network | \"mainnet\" | \"testnet\" | \"devnet\" | \"regtest\" | 0 | 1 | 2 | 3;",
-      "properties": [],
-      "references": [
-        "Network"
-      ],
-      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
-    },
     "DataContractConfig": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-datacontractconfig",
@@ -19709,6 +20482,14 @@
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
+    "Network": {
+      "kind": "EnumDeclaration",
+      "anchor": "type-network",
+      "declaration": "export enum Network {\n    Mainnet = 0,\n    Testnet = 1,\n    Devnet = 2,\n    Regtest = 3,\n}",
+      "properties": [],
+      "references": [],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
     "GroveElementType": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-groveelementtype",
@@ -20621,14 +21402,6 @@
         "ContestedDocumentVotePollWinnerInfoObject",
         "Identifier"
       ],
-      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
-    },
-    "Network": {
-      "kind": "EnumDeclaration",
-      "anchor": "type-network",
-      "declaration": "export enum Network {\n    Mainnet = 0,\n    Testnet = 1,\n    Devnet = 2,\n    Regtest = 3,\n}",
-      "properties": [],
-      "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
     "PlatformVersion": {

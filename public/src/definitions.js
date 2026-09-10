@@ -2,6 +2,7 @@ import {
   DPNS_CATEGORY_DEFINITIONS,
   SUPPORTED_QUERIES,
   SUPPORTED_TRANSITIONS,
+  WALLET_CATEGORY_DEFINITIONS,
   filterDefinitions,
 } from './definitions-data.js';
 import { EvoSDK } from './sdk-client.js';
@@ -16,6 +17,7 @@ export {
   SUPPORTED_QUERIES,
   SUPPORTED_TRANSITIONS,
   DPNS_CATEGORY_DEFINITIONS,
+  WALLET_CATEGORY_DEFINITIONS,
   PROOF_CAPABLE,
   TRANSITION_AUTH_REQUIREMENTS,
   DPNS_AUTH_REQUIREMENTS,
@@ -37,14 +39,19 @@ export async function loadDefinitions() {
     queries: data.queries || {},
     transitions: data.transitions || {},
     dpns: DPNS_CATEGORY_DEFINITIONS,
+    wallet: WALLET_CATEGORY_DEFINITIONS,
   };
   state.definitions = {
     queries: filterDefinitions(state.rawDefinitions.queries, 'queries', SUPPORTED_QUERIES),
     transitions: filterDefinitions(state.rawDefinitions.transitions, 'transitions', SUPPORTED_TRANSITIONS),
     dpns: JSON.parse(JSON.stringify(DPNS_CATEGORY_DEFINITIONS)),
+    wallet: JSON.parse(JSON.stringify(WALLET_CATEGORY_DEFINITIONS)),
   };
   if (state.definitions.queries?.dpns) {
     delete state.definitions.queries.dpns;
+  }
+  if (state.definitions.queries?.wallet) {
+    delete state.definitions.queries.wallet;
   }
   if (elements.latestVersionInfo) {
     let latestVersion = await EvoSDK.getLatestVersionNumber();

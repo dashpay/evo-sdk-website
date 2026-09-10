@@ -9,20 +9,6 @@ import { getTransitionOperation, renderTransitionCode } from '../transitions/reg
 
 export function populateCategories() {
   const type = elements.operationType.value;
-  if (type === 'wallet') {
-    elements.queryCategory.innerHTML = '<option value="">Wallet helpers are not available in this demo</option>';
-    elements.queryType.innerHTML = '<option value="">Select Operation</option>';
-    elements.queryType.style.display = 'none';
-    if (elements.queryTypeLabel) {
-      elements.queryTypeLabel.style.display = 'none';
-    }
-    hideOperationDetails();
-    setNoProofInfoVisibility(false);
-    setStatus('Wallet helpers are not available with the Evo SDK demo.', 'loading');
-    updateAuthInputsVisibility(null);
-    return;
-  }
-
   const config = getTypeConfig(type) || TYPE_CONFIG.queries;
   if (!config.allowProof) {
     setNoProofInfoVisibility(false);

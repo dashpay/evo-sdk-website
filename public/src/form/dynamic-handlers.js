@@ -628,7 +628,7 @@ export async function generateTestSeed() {
   }
   try {
     await ensureClient();
-    const mnemonic = await wallet.generateMnemonic(12);
+    const mnemonic = await wallet.generateMnemonic({ wordCount: 12 });
     seedInput.value = mnemonic;
     seedInput.dispatchEvent(new Event('input', { bubbles: true }));
     const parent = seedInput.parentElement;

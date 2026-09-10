@@ -16,7 +16,9 @@ export async function executeSelected() {
     const { definition, auth } = state.selected;
     const args = collectArgs(definition);
     const authArgs = collectAuthArgs(auth);
-    const client = await ensureClient();
+    // Wallet helpers run locally in the wasm runtime — never create or
+    // connect a platform client for them.
+    const client = state.selected.type === 'wallet' ? null : await ensureClient();
     const typeConfig = getTypeConfig(state.selected.type);
     const useProof = Boolean(typeConfig?.allowProof
       && elements.proofToggleContainer.style.display !== 'none'

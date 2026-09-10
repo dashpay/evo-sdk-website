@@ -1299,6 +1299,18 @@ export interface FinalizedEpochsQuery {
 }
 ```
 
+<a id="type-generatemnemonicparams"></a>
+## `GenerateMnemonicParams`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface GenerateMnemonicParams {
+    wordCount?: number;
+    languageCode?: string;
+}
+```
+
 <a id="type-group"></a>
 ## `Group`
 
@@ -2410,6 +2422,28 @@ export interface IdentityUpdateOptions {
 }
 ```
 
+<a id="type-keypair"></a>
+## `KeyPair`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class KeyPair {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    static fromJSON(js: object): KeyPair;
+    static fromObject(obj: object): KeyPair;
+    toJSON(): any;
+    toObject(): any;
+    address: string;
+    network: string;
+    privateKeyHex: string;
+    privateKeyWif: string;
+    publicKey: string;
+}
+```
+
 <a id="type-masternodevoteoptions"></a>
 ## `MasternodeVoteOptions`
 
@@ -2452,6 +2486,15 @@ export interface MasternodeVoteOptions {
      */
     settings?: PutSettings;
 }
+```
+
+<a id="type-networklike"></a>
+## `NetworkLike`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type NetworkLike = Network | "mainnet" | "testnet" | "devnet" | "regtest" | 0 | 1 | 2 | 3;
 ```
 
 <a id="type-pathelement"></a>
@@ -4352,15 +4395,6 @@ export class ContestedResourceVoteWinner {
 }
 ```
 
-<a id="type-networklike"></a>
-## `NetworkLike`
-
-Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
-
-```typescript
-export type NetworkLike = Network | "mainnet" | "testnet" | "devnet" | "regtest" | 0 | 1 | 2 | 3;
-```
-
 <a id="type-datacontractconfig"></a>
 ## `DataContractConfig`
 
@@ -5071,6 +5105,20 @@ export interface IdentityPublicKeyInCreationOptions {
 }
 ```
 
+<a id="type-network"></a>
+## `Network`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export enum Network {
+    Mainnet = 0,
+    Testnet = 1,
+    Devnet = 2,
+    Regtest = 3,
+}
+```
+
 <a id="type-groveelementtype"></a>
 ## `GroveElementType`
 
@@ -5611,20 +5659,6 @@ export class ContestedDocumentVotePollWinnerInfo {
     readonly kind: string;
     static readonly __struct: string;
     readonly __type: string;
-}
-```
-
-<a id="type-network"></a>
-## `Network`
-
-Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
-
-```typescript
-export enum Network {
-    Mainnet = 0,
-    Testnet = 1,
-    Devnet = 2,
-    Regtest = 3,
 }
 ```
 

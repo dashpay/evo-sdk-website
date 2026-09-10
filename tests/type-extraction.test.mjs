@@ -21,6 +21,68 @@ function fixture({ method = 'sample', methodDocs = '', parameters = '', returnTy
   return { root, packageRoot, apiFile };
 }
 
+// Package-level namespace fixture: declarations are namespace functions in
+// dist/wallet/functions.d.ts (per NAMESPACE_FILES), not facade class methods.
+function walletFixture({ input = {} } = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'evo-type-test-'));
+  const packageRoot = path.join(root, 'node_modules/@dashevo/evo-sdk');
+  const wasmRoot = path.join(root, 'node_modules/@dashevo/wasm-sdk');
+  fs.mkdirSync(path.join(packageRoot, 'dist/wallet'), { recursive: true });
+  fs.mkdirSync(path.join(wasmRoot, 'dist/raw'), { recursive: true });
+  fs.writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify({ name: '@dashevo/evo-sdk', version: '4.0.0' }));
+  fs.writeFileSync(path.join(wasmRoot, 'package.json'), JSON.stringify({ name: '@dashevo/wasm-sdk', version: '4.0.0' }));
+  fs.writeFileSync(
+    path.join(packageRoot, 'dist/wallet/functions.d.ts'),
+    'export declare namespace wallet {\n    function sample(params?: wasm.SampleParams): Promise<wasm.SampleResult>;\n}\n',
+  );
+  fs.writeFileSync(
+    path.join(wasmRoot, 'dist/raw/wasm_sdk.d.ts'),
+    'export interface SampleParams { wordCount?: number; languageCode?: string; }\nexport interface SampleResult { value: string; }\n',
+  );
+  const apiFile = path.join(root, 'api.json');
+  fs.writeFileSync(apiFile, JSON.stringify({ queries: { wallet: { queries: { operation: { sdk_method: 'wallet.sample', ...input } } } }, transitions: {} }));
+  return { root, packageRoot, apiFile };
+}
+
+test('extracts namespace functions from a NAMESPACE_FILES module with mappings and a package-level example', () => {
+  const fx = walletFixture({
+    input: {
+      inputs: [{ name: 'wordCount', sdk_property: 'params.wordCount' }],
+      sdk_example: "import { wallet } from '@dashevo/evo-sdk';\nconst result = await wallet.sample({ wordCount: 12 });",
+    },
+  });
+  const extracted = extractTypes(fx);
+  const method = extracted.methods['wallet.sample'];
+  assert.equal(method.signature, 'sample(params?: wasm.SampleParams): Promise<wasm.SampleResult>');
+  assert.deepEqual(method.parameters.map(({ name, optional }) => ({ name, optional })), [
+    { name: 'params', optional: true },
+  ]);
+  assert.deepEqual(method.parameters[0].properties.map(({ name }) => name), ['wordCount', 'languageCode']);
+  assert.equal(method.returnType, 'Promise<wasm.SampleResult>');
+  assert.match(extracted.types.SampleResult.declaration, /interface SampleResult/);
+});
+
+test('namespace-function modules still validate sdk_property mappings', () => {
+  const fx = walletFixture({ input: { inputs: [{ name: 'bad', sdk_property: 'params.missing' }] } });
+  assert.throws(() => extractTypes(fx), /unknown SDK property params\.missing/);
+});
+
+test('namespace-function examples reject unknown option keys', () => {
+  const fx = walletFixture({ input: { sdk_example: 'await wallet.sample({ missing: 1 });' } });
+  assert.throws(() => extractTypes(fx), /sdk_example uses unknown SDK property missing/);
+});
+
+test('a two-part call only counts for NAMESPACE_FILES namespaces', () => {
+  // `example` is a facade namespace, so a bare `example.sample()` must NOT
+  // satisfy example validation — only `sdk.example.sample()` does.
+  const fx = fixture({
+    parameters: 'options: wasm.SampleOptions',
+    declarations: 'export interface SampleOptions { value: string; }',
+    input: { sdk_example: 'await example.sample({ value });' },
+  });
+  assert.throws(() => extractTypes(fx), /sdk_example must call example\.sample exactly once/);
+});
+
 test('preserves exact primitive, union, array, nested generic, inline object, and qualified types', () => {
   const returnType = 'Promise<Map<string, wasm.ResultType | undefined> | Array<{ count: bigint; values: string[] }>>';
   const fx = fixture({ returnType, declarations: 'export interface ResultType { value: bigint; }' });

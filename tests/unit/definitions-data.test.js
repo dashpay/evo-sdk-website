@@ -21,8 +21,12 @@ describe('getTypeConfig', () => {
     expect(getTypeConfig('dpns')).toEqual({ definitionKey: 'dpns', itemsKey: 'operations', allowProof: true });
   });
 
+  it('returns the wallet config (operations itemsKey, proof not allowed)', () => {
+    expect(getTypeConfig('wallet')).toEqual({ definitionKey: 'wallet', itemsKey: 'operations', allowProof: false });
+  });
+
   it('returns null for an unknown type', () => {
-    expect(getTypeConfig('wallet')).toBeNull();
+    expect(getTypeConfig('teleporter')).toBeNull();
     expect(getTypeConfig(undefined)).toBeNull();
   });
 });

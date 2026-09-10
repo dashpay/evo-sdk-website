@@ -137,6 +137,18 @@ describe('parseInputValue — text / textarea / default', () => {
     expect(parseInputValue('somethingElse', {}, txt(' x '))).toBe('x');
     expect(parseInputValue('somethingElse', {}, txt(''))).toBeNull();
   });
+
+  it('preserveWhitespace passes the value through untrimmed (message, BIP39 passphrase)', () => {
+    expect(parseInputValue('textarea', { preserveWhitespace: true }, txt('  padded  '))).toBe('  padded  ');
+    expect(parseInputValue('password', { preserveWhitespace: true }, txt(' TREZOR '))).toBe(' TREZOR ');
+    expect(parseInputValue('password', { preserveWhitespace: true }, txt('   '))).toBe('   ');
+  });
+
+  it('preserveWhitespace still treats a fully empty value as missing', () => {
+    expect(parseInputValue('password', { preserveWhitespace: true }, txt(''))).toBeNull();
+    expect(() => parseInputValue('textarea', { preserveWhitespace: true, required: true, label: 'Message' }, txt('')))
+      .toThrow('Message is required');
+  });
 });
 
 describe('namedArgs', () => {
