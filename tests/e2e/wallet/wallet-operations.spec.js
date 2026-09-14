@@ -173,7 +173,15 @@ test.describe('Wallet operations', () => {
       languageCode: wallet.spanish.languageCode
     });
     expect(generated.hasError).toBe(false);
-    expect(generated.result.replace(/^"|"$/g, '').trim().split(/\s+/)).toHaveLength(12);
+    const generatedMnemonic = generated.result.replace(/^"|"$/g, '').trim();
+    expect(generatedMnemonic.split(/\s+/)).toHaveLength(12);
+
+    const generatedAsSpanish = await runWalletOperation(evoSdkPage, 'walletValidateMnemonic', {
+      mnemonic: generatedMnemonic,
+      languageCode: wallet.spanish.languageCode
+    });
+    expect(generatedAsSpanish.hasError).toBe(false);
+    expect(generatedAsSpanish.result.trim()).toBe('true');
 
     // A known Spanish phrase validates under 'es' but not under 'en'.
     const asSpanish = await runWalletOperation(evoSdkPage, 'walletValidateMnemonic', {
