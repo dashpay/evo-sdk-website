@@ -1896,7 +1896,7 @@
               "options": [
                 {
                   "value": "",
-                  "label": "Default (English)"
+                  "label": "Any wordlist (best effort)"
                 },
                 {
                   "value": "en",

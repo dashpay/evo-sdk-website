@@ -130,8 +130,8 @@ export const DPNS_CATEGORY_DEFINITIONS = {
   */
 };
 
-const WALLET_LANGUAGE_OPTIONS = [
-  { value: '', label: 'Default (English)' },
+// Blank language behavior differs between generation and validation.
+const WALLET_LANGUAGE_CODE_OPTIONS = [
   { value: 'en', label: 'English (en)' },
   { value: 'zh-cn', label: 'Chinese, Simplified (zh-cn)' },
   { value: 'zh-tw', label: 'Chinese, Traditional (zh-tw)' },
@@ -142,6 +142,16 @@ const WALLET_LANGUAGE_OPTIONS = [
   { value: 'ko', label: 'Korean (ko)' },
   { value: 'pt', label: 'Portuguese (pt)' },
   { value: 'es', label: 'Spanish (es)' },
+];
+
+const WALLET_GENERATE_LANGUAGE_OPTIONS = [
+  { value: '', label: 'Default (English)' },
+  ...WALLET_LANGUAGE_CODE_OPTIONS,
+];
+
+const WALLET_VALIDATE_LANGUAGE_OPTIONS = [
+  { value: '', label: 'Any wordlist (best effort)' },
+  ...WALLET_LANGUAGE_CODE_OPTIONS,
 ];
 
 const WALLET_SAFETY_HELP = 'Generated key material is for testing only — never use it to store real funds.';
@@ -165,7 +175,7 @@ export const WALLET_CATEGORY_DEFINITIONS = {
             { value: '21', label: '21 words' },
             { value: '24', label: '24 words' },
           ] },
-          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_LANGUAGE_OPTIONS },
+          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_GENERATE_LANGUAGE_OPTIONS },
         ],
       },
       walletValidateMnemonic: {
@@ -173,7 +183,7 @@ export const WALLET_CATEGORY_DEFINITIONS = {
         description: 'Check whether a BIP39 mnemonic seed phrase is valid. Select the matching language for non-English wordlists; the default check does not detect every language.',
         inputs: [
           { name: 'mnemonic', label: 'Mnemonic Seed Phrase', type: 'password', required: true },
-          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_LANGUAGE_OPTIONS },
+          { name: 'languageCode', label: 'Language', type: 'select', options: WALLET_VALIDATE_LANGUAGE_OPTIONS },
         ],
       },
       walletMnemonicToSeed: {

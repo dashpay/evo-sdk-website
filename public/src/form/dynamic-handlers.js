@@ -627,7 +627,7 @@ export async function generateTestSeed() {
     return;
   }
   try {
-    await ensureClient();
+    // Mnemonic generation is local and requires no platform client.
     const mnemonic = await wallet.generateMnemonic({ wordCount: 12 });
     seedInput.value = mnemonic;
     seedInput.dispatchEvent(new Event('input', { bubbles: true }));
