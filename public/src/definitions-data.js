@@ -42,6 +42,19 @@ export const SUPPORTED_TRANSITIONS = new Set([
   'addressTransfer', 'addressTopUpIdentity', 'addressWithdraw', 'addressTransferFromIdentity', 'addressFundFromAssetLock', 'addressCreateIdentity',
 ]);
 
+// Every declaration-backed SDK operation must either be exposed by the main
+// operation UI or be listed here with the reason it is not yet supported. The
+// catalog coverage test keeps this list intentional when the SDK adds methods.
+export const PENDING_OPERATIONS = {
+  queries: {
+    calculateTokenId: 'No operation UI or dispatcher implementation yet.',
+  },
+  transitions: {
+    dpnsRegister: 'Typed v4 registration requires a usable credential fixture.',
+    dpnsUsername: 'Typed v4 masternode voting requires a usable voting-key fixture.',
+  },
+};
+
 export const DPNS_CATEGORY_DEFINITIONS = {
   lookup: {
     label: 'Lookup & Resolve',

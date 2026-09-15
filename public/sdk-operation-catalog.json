@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "sdk": {
     "name": "@dashevo/evo-sdk",
-    "version": "4.1.1",
+    "version": "4.2.0-dev.11",
     "declarationRoot": "dist"
   },
   "operations": [
@@ -714,6 +714,13 @@
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
               "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
+              "references": []
             }
           ]
         }
@@ -855,6 +862,13 @@
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
               "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
+              "references": []
             }
           ]
         }
@@ -946,6 +960,13 @@
               "type": "string[]",
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
               "references": []
             }
           ]
@@ -1047,6 +1068,13 @@
               "type": "string[]",
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
               "references": []
             }
           ]
@@ -3759,7 +3787,7 @@
       "label": "Document Create",
       "description": "Create a new document",
       "disabled": null,
-      "signature": "create(options: wasm.DocumentCreateOptions): Promise<void>",
+      "signature": "create(options: wasm.DocumentCreateOptions): Promise<wasm.Document>",
       "parameters": [
         {
           "name": "options",
@@ -3819,8 +3847,10 @@
           ]
         }
       ],
-      "returnType": "Promise<void>",
-      "references": []
+      "returnType": "Promise<wasm.Document>",
+      "references": [
+        "wasm.Document"
+      ]
     },
     {
       "key": "documentReplace",
@@ -6746,6 +6776,13 @@
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
               "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
+              "references": []
             }
           ]
         }
@@ -6899,6 +6936,13 @@
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
               "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
+              "references": []
             }
           ]
         }
@@ -6994,6 +7038,13 @@
               "type": "string[]",
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
               "references": []
             }
           ]
@@ -7099,6 +7150,13 @@
               "type": "string[]",
               "optional": true,
               "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+              "references": []
+            },
+            {
+              "name": "timeRange",
+              "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+              "optional": true,
+              "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
               "references": []
             }
           ]
@@ -10152,8 +10210,8 @@
     },
     "documents.create": {
       "sdkMethod": "documents.create",
-      "signature": "create(options: wasm.DocumentCreateOptions): Promise<void>",
-      "description": "",
+      "signature": "create(options: wasm.DocumentCreateOptions): Promise<wasm.Document>",
+      "description": "Creates a document and resolves to the confirmed Document as Platform\ncommitted it, consensus-populated system fields included \u2014 keep this\ninstance when you later intend to delete an indexOnly document whose\ntype requires `$createdAt`.",
       "parameters": [
         {
           "name": "options",
@@ -10213,9 +10271,13 @@
           ]
         }
       ],
-      "returnType": "Promise<void>",
-      "returnReferences": [],
-      "references": [],
+      "returnType": "Promise<wasm.Document>",
+      "returnReferences": [
+        "wasm.Document"
+      ],
+      "references": [
+        "wasm.Document"
+      ],
       "variants": [
         {
           "key": "documentCreate",
@@ -13063,7 +13125,7 @@
     "DataContract": {
       "kind": "ClassDeclaration",
       "anchor": "type-datacontract",
-      "declaration": "export class DataContract {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(options: DataContractOptions);\n    static fromBase64(base64: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromBytes(bytes: Uint8Array, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromHex(hex: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromJSON(value: DataContractJSON, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromObject(value: DataContractObject, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static generateId(owner_id: IdentifierLike, identity_nonce: bigint): Identifier;\n    setConfig(config: DataContractConfig, platformVersion: PlatformVersionLike): void;\n    setSchemas(schemas: Record<string, object>, definitions: object | null | undefined, full_validation: boolean, platform_version: PlatformVersionLike): void;\n    toBase64(platformVersion: PlatformVersionLike): string;\n    toBytes(platformVersion: PlatformVersionLike): Uint8Array;\n    toHex(platformVersion: PlatformVersionLike): string;\n    toJSON(platform_version: PlatformVersionLike): DataContractJSON;\n    toObject(platformVersion: PlatformVersionLike): DataContractObject;\n    readonly config: DataContractConfig;\n    groups: Record<number, Group>;\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    get ownerId(): Identifier;\n    set ownerId(value: IdentifierLike);\n    readonly schemas: Record<string, object>;\n    get tokens(): object;\n    set tokens(value: Record<number, TokenConfiguration>);\n    version: number;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
+      "declaration": "export class DataContract {\n    free(): void;\n    [Symbol.dispose](): void;\n    constructor(options: DataContractOptions);\n    /**\n     * All `refersTo` declarations of one document type, in schema property\n     * order.\n     *\n     * Returns an empty array when the document type declares none. Throws\n     * when the contract has no document type by that name \u2014 an empty array\n     * would conflate \"no such type\" with \"no references\".\n     *\n     * Reference declarations are only parsed from protocol version 14\n     * onward. A contract deserialized against an earlier platform version\n     * reports none, which is exactly what consensus enforced at that\n     * version \u2014 but note the trap: `DataContract.fromBytes(bytes, false, 1)`\n     * yields `[]` even for a contract whose raw schema does carry\n     * `refersTo`, and `toJSON()` still shows the raw keyword either way.\n     */\n    documentTypeReferences(documentTypeName: string): Array<DocumentPropertyReference>;\n    static fromBase64(base64: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromBytes(bytes: Uint8Array, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromHex(hex: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromJSON(value: DataContractJSON, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static fromObject(value: DataContractObject, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;\n    static generateId(owner_id: IdentifierLike, identity_nonce: bigint): Identifier;\n    setConfig(config: DataContractConfig, platformVersion: PlatformVersionLike): void;\n    setSchemas(schemas: Record<string, object>, definitions: object | null | undefined, full_validation: boolean, platform_version: PlatformVersionLike): void;\n    toBase64(platformVersion: PlatformVersionLike): string;\n    toBytes(platformVersion: PlatformVersionLike): Uint8Array;\n    toHex(platformVersion: PlatformVersionLike): string;\n    toJSON(platform_version: PlatformVersionLike): DataContractJSON;\n    toObject(platformVersion: PlatformVersionLike): DataContractObject;\n    readonly config: DataContractConfig;\n    /**\n     * Every document type that declares at least one reference, keyed by\n     * document type name.\n     *\n     * Document types with no declarations are omitted, so an empty `Map`\n     * means \"this contract declares no references at all\".\n     */\n    readonly documentReferences: Map<string, Array<DocumentPropertyReference>>;\n    groups: Record<number, Group>;\n    get id(): Identifier;\n    set id(value: IdentifierLike);\n    get ownerId(): Identifier;\n    set ownerId(value: IdentifierLike);\n    readonly schemas: Record<string, object>;\n    get tokens(): object;\n    set tokens(value: Record<number, TokenConfiguration>);\n    version: number;\n    static readonly __struct: string;\n    readonly __type: string;\n}",
       "properties": [
         {
           "name": "config",
@@ -13072,6 +13134,15 @@
           "description": "",
           "references": [
             "DataContractConfig"
+          ]
+        },
+        {
+          "name": "documentReferences",
+          "type": "Map<string, Array<DocumentPropertyReference>>",
+          "optional": false,
+          "description": "Every document type that declares at least one reference, keyed by\ndocument type name.\n\nDocument types with no declarations are omitted, so an empty `Map`\nmeans \"this contract declares no references at all\".",
+          "references": [
+            "DocumentPropertyReference"
           ]
         },
         {
@@ -13118,6 +13189,7 @@
         "DataContractJSON",
         "DataContractObject",
         "DataContractOptions",
+        "DocumentPropertyReference",
         "Group",
         "Identifier",
         "IdentifierLike",
@@ -13731,7 +13803,7 @@
     "DocumentsQuery": {
       "kind": "InterfaceDeclaration",
       "anchor": "type-documentsquery",
-      "declaration": "export interface DocumentsQuery {\n    /**\n     * Data contract identifier.\n     */\n    dataContractId: IdentifierLike\n\n    /**\n     * Document type name.\n     */\n    documentTypeName: string;\n\n    /**\n     * Optional filter clauses expressed as [field, operator, value].\n     * @default []\n     */\n    where?: DocumentWhereClause[];\n\n    /**\n     * Optional sorting clauses expressed as [field, direction].\n     * @default []\n     */\n    orderBy?: DocumentOrderByClause[];\n\n    /**\n     * Maximum number of documents to return.\n     * @default 100\n     */\n    limit?: number;\n\n    /**\n     * Exclusive document ID to resume from.\n     * @default undefined\n     */\n    startAfter?: IdentifierLike\n\n    /**\n     * Inclusive document ID to start from.\n     * @default undefined\n     */\n    startAt?: IdentifierLike\n\n    /**\n     * Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\n     * the v1 wire's `group_by: repeated string` directly. Ignored\n     * by the regular document-fetch path.\n     *\n     * - `[]` or omitted \u2192 aggregate count (a single row).\n     * - `[\"<in_field>\"]` where `<in_field>` matches an `In`\n     *   constraint \u2192 per-`In`-value entries (PerInValue).\n     * - `[\"<range_field>\"]` where `<range_field>` matches a range\n     *   constraint \u2192 per-distinct-value entries within the range\n     *   (RangeDistinct).\n     * - `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n     *   queries \u2192 compound distinct entries.\n     *\n     * Entry direction comes from the first `orderBy` clause's\n     * direction (which also drives walk order on the materialize +\n     * prove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\n     * alongside `groupBy: [\"<range_field>\"]` to control sort.\n     * @default []\n     */\n    groupBy?: string[];\n}",
+      "declaration": "export interface DocumentsQuery {\n    /**\n     * Data contract identifier.\n     */\n    dataContractId: IdentifierLike\n\n    /**\n     * Document type name.\n     */\n    documentTypeName: string;\n\n    /**\n     * Optional filter clauses expressed as [field, operator, value].\n     * @default []\n     */\n    where?: DocumentWhereClause[];\n\n    /**\n     * Optional sorting clauses expressed as [field, direction].\n     * @default []\n     */\n    orderBy?: DocumentOrderByClause[];\n\n    /**\n     * Maximum number of documents to return.\n     * @default 100\n     */\n    limit?: number;\n\n    /**\n     * Exclusive document ID to resume from.\n     * @default undefined\n     */\n    startAfter?: IdentifierLike\n\n    /**\n     * Inclusive document ID to start from.\n     * @default undefined\n     */\n    startAt?: IdentifierLike\n\n    /**\n     * Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\n     * the v1 wire's `group_by: repeated string` directly. Ignored\n     * by the regular document-fetch path.\n     *\n     * - `[]` or omitted \u2192 aggregate count (a single row).\n     * - `[\"<in_field>\"]` where `<in_field>` matches an `In`\n     *   constraint \u2192 per-`In`-value entries (PerInValue).\n     * - `[\"<range_field>\"]` where `<range_field>` matches a range\n     *   constraint \u2192 per-distinct-value entries within the range\n     *   (RangeDistinct).\n     * - `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n     *   queries \u2192 compound distinct entries.\n     *\n     * Entry direction comes from the first `orderBy` clause's\n     * direction (which also drives walk order on the materialize +\n     * prove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\n     * alongside `groupBy: [\"<range_field>\"]` to control sort.\n     * @default []\n     */\n    groupBy?: string[];\n\n    /**\n     * Time-range bucket selections for \"trending\"-style queries. Each entry\n     * picks a single bucket of a timestamp field covered by a `timeRange`\n     * index. For the relative selectors the server resolves the bucket from\n     * the current block time and the proof verifier re-derives it from the\n     * signed response metadata; `\"byStart\"` names the bucket absolutely, so\n     * both sides read it straight from the query. Provable either way.\n     * Requires protocol version 14+ (the first version whose contract\n     * grammar hosts `timeRange` indexes).\n     *\n     * - `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n     *   trailing window of ~`range`; best for \"trending over the last window\").\n     * - `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n     * - `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n     *   window, current or historic. `startMs` is then required and must be a\n     *   window start on the grid (`phase + k * step`, in milliseconds); an\n     *   off-grid start is rejected rather than snapped, and an empty window\n     *   is a provable empty answer. The relative selectors must not carry\n     *   `startMs`.\n     *\n     * `grid` names one of the field's grids in the contract's own declared\n     * seconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\n     * the field with more than one `timeRange` grid, where the bare selector\n     * is ambiguous and rejected. A zero phase is spelled by omission.\n     * @default []\n     */\n    timeRange?: {\n        field: string;\n        selector: \"newest\" | \"oldest\" | \"byStart\";\n        startMs?: number;\n        grid?: { range: number; step: number; phase?: number };\n    }[];\n}",
       "properties": [
         {
           "name": "dataContractId",
@@ -13797,6 +13869,13 @@
           "type": "string[]",
           "optional": true,
           "description": "Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors\nthe v1 wire's `group_by: repeated string` directly. Ignored\nby the regular document-fetch path.\n\n- `[]` or omitted \u2192 aggregate count (a single row).\n- `[\"<in_field>\"]` where `<in_field>` matches an `In`\n  constraint \u2192 per-`In`-value entries (PerInValue).\n- `[\"<range_field>\"]` where `<range_field>` matches a range\n  constraint \u2192 per-distinct-value entries within the range\n  (RangeDistinct).\n- `[\"<in_field>\", \"<range_field>\"]` for compound `In + range`\n  queries \u2192 compound distinct entries.\n\nEntry direction comes from the first `orderBy` clause's\ndirection (which also drives walk order on the materialize +\nprove path); set `orderBy: [[\"<range_field>\", \"asc\"|\"desc\"]]`\nalongside `groupBy: [\"<range_field>\"]` to control sort.",
+          "references": []
+        },
+        {
+          "name": "timeRange",
+          "type": "{ field: string; selector: \"newest\" | \"oldest\" | \"byStart\"; startMs?: number; grid?: { range: number; step: number; phase?: number; }; }[]",
+          "optional": true,
+          "description": "Time-range bucket selections for \"trending\"-style queries. Each entry\npicks a single bucket of a timestamp field covered by a `timeRange`\nindex. For the relative selectors the server resolves the bucket from\nthe current block time and the proof verifier re-derives it from the\nsigned response metadata; `\"byStart\"` names the bucket absolutely, so\nboth sides read it straight from the query. Provable either way.\nRequires protocol version 14+ (the first version whose contract\ngrammar hosts `timeRange` indexes).\n\n- `selector: \"oldest\"` \u2192 the oldest still-active range (a near-full\n  trailing window of ~`range`; best for \"trending over the last window\").\n- `selector: \"newest\"` \u2192 the freshest started range (latest partial slice).\n- `selector: \"byStart\"` \u2192 the range starting exactly at `startMs` \u2014 any\n  window, current or historic. `startMs` is then required and must be a\n  window start on the grid (`phase + k * step`, in milliseconds); an\n  off-grid start is rejected rather than snapped, and an empty window\n  is a provable empty answer. The relative selectors must not carry\n  `startMs`.\n\n`grid` names one of the field's grids in the contract's own declared\nseconds (`{ range, step, phase? }`) \u2014 required when the contract buckets\nthe field with more than one `timeRange` grid, where the bare selector\nis ambiguous and rejected. A zero phase is spelled by omission.",
           "references": []
         }
       ],
@@ -18643,6 +18722,16 @@
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
     },
+    "DocumentPropertyReference": {
+      "kind": "TypeAliasDeclaration",
+      "anchor": "type-documentpropertyreference",
+      "declaration": "export type DocumentPropertyReference = {\n    /**\n     * Dotted path of the declaring property within the document type \u2014 for\n     * example `\"author\"`, or `\"meta.parentId\"` for a nested one.\n     *\n     * This is the same string consensus reports in the `path` field of the\n     * document-write reference errors (codes 40120-40125). Note that contract\n     * *registration* errors prefix it with the document type name\n     * (`\"<documentType>.<path>\"`) while document *write* errors do not.\n     */\n    path: string;\n} & DocumentPropertyReferenceTarget;",
+      "properties": [],
+      "references": [
+        "DocumentPropertyReferenceTarget"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
     "PlatformVersionLike": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-platformversionlike",
@@ -20493,7 +20582,7 @@
     "GroveElementType": {
       "kind": "TypeAliasDeclaration",
       "anchor": "type-groveelementtype",
-      "declaration": "export type GroveElementType =\n| \"item\"\n| \"reference\"\n| \"tree\"\n| \"sumItem\"\n| \"sumTree\"\n| \"bigSumTree\"\n| \"countTree\"\n| \"countSumTree\"\n| \"provableCountTree\"\n| \"itemWithSumItem\"\n| \"referenceWithSumItem\"\n| \"provableCountSumTree\"\n| \"provableCountProvableSumTree\"\n| \"provableSumTree\"\n| \"commitmentTree\"\n| \"mmrTree\"\n| \"bulkAppendTree\"\n| \"denseAppendOnlyFixedSizeTree\"\n| \"nonCountedItem\"\n| \"nonCountedReference\"\n| \"nonCountedTree\"\n| \"nonCountedSumItem\"\n| \"nonCountedSumTree\"\n| \"nonCountedBigSumTree\"\n| \"nonCountedCountTree\"\n| \"nonCountedCountSumTree\"\n| \"nonCountedProvableCountTree\"\n| \"nonCountedItemWithSumItem\"\n| \"nonCountedReferenceWithSumItem\"\n| \"nonCountedProvableCountSumTree\"\n| \"nonCountedProvableCountProvableSumTree\"\n| \"nonCountedProvableSumTree\"\n| \"nonCountedCommitmentTree\"\n| \"nonCountedMmrTree\"\n| \"nonCountedBulkAppendTree\"\n| \"nonCountedDenseAppendOnlyFixedSizeTree\"\n| \"notSummedSumTree\"\n| \"notSummedBigSumTree\"\n| \"notSummedCountSumTree\"\n| \"notSummedProvableCountSumTree\"\n| \"notSummedProvableCountProvableSumTree\"\n| \"notSummedProvableSumTree\"\n| \"notCountedOrSummedSumTree\"\n| \"notCountedOrSummedBigSumTree\"\n| \"notCountedOrSummedCountSumTree\"\n| \"notCountedOrSummedProvableCountSumTree\"\n| \"notCountedOrSummedProvableCountProvableSumTree\"\n| \"notCountedOrSummedProvableSumTree\";",
+      "declaration": "export type GroveElementType =\n| \"item\"\n| \"reference\"\n| \"tree\"\n| \"sumItem\"\n| \"sumTree\"\n| \"bigSumTree\"\n| \"countTree\"\n| \"countSumTree\"\n| \"provableCountTree\"\n| \"itemWithSumItem\"\n| \"referenceWithSumItem\"\n| \"bidirectionalReference\"\n| \"itemWithBackwardsReferences\"\n| \"sumItemWithBackwardsReferences\"\n| \"itemWithSumItemWithBackwardsReferences\"\n| \"provableCountSumTree\"\n| \"provableCountProvableSumTree\"\n| \"provableSumTree\"\n| \"provableSumIndexedTree\"\n| \"provableCountIndexedTree\"\n| \"provableCountProvableSumIndexedTree\"\n| \"commitmentTree\"\n| \"mmrTree\"\n| \"bulkAppendTree\"\n| \"denseAppendOnlyFixedSizeTree\"\n| \"privateDocumentStore\"\n| \"nonCountedItem\"\n| \"nonCountedReference\"\n| \"nonCountedTree\"\n| \"nonCountedSumItem\"\n| \"nonCountedSumTree\"\n| \"nonCountedBigSumTree\"\n| \"nonCountedCountTree\"\n| \"nonCountedCountSumTree\"\n| \"nonCountedProvableCountTree\"\n| \"nonCountedItemWithSumItem\"\n| \"nonCountedReferenceWithSumItem\"\n| \"nonCountedProvableCountSumTree\"\n| \"nonCountedProvableCountProvableSumTree\"\n| \"nonCountedProvableSumTree\"\n| \"nonCountedProvableSumIndexedTree\"\n| \"nonCountedProvableCountIndexedTree\"\n| \"nonCountedProvableCountProvableSumIndexedTree\"\n| \"nonCountedCommitmentTree\"\n| \"nonCountedMmrTree\"\n| \"nonCountedBulkAppendTree\"\n| \"nonCountedDenseAppendOnlyFixedSizeTree\"\n| \"nonCountedPrivateDocumentStore\"\n| \"notSummedSumTree\"\n| \"notSummedBigSumTree\"\n| \"notSummedCountSumTree\"\n| \"notSummedProvableCountSumTree\"\n| \"notSummedProvableCountProvableSumTree\"\n| \"notSummedProvableSumTree\"\n| \"notCountedOrSummedSumTree\"\n| \"notCountedOrSummedBigSumTree\"\n| \"notCountedOrSummedCountSumTree\"\n| \"notCountedOrSummedProvableCountSumTree\"\n| \"notCountedOrSummedProvableCountProvableSumTree\"\n| \"notCountedOrSummedProvableSumTree\";",
       "properties": [],
       "references": [],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
@@ -21400,6 +21489,16 @@
         "ContestedDocumentVotePollWinnerInfo",
         "ContestedDocumentVotePollWinnerInfoJSON",
         "ContestedDocumentVotePollWinnerInfoObject",
+        "Identifier"
+      ],
+      "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"
+    },
+    "DocumentPropertyReferenceTarget": {
+      "kind": "TypeAliasDeclaration",
+      "anchor": "type-documentpropertyreferencetarget",
+      "declaration": "export type DocumentPropertyReferenceTarget =\n| { type: 'identity' }\n| { type: 'contract' }\n| { type: 'token' }\n| {\n    type: 'permanentDocument';\n    /**\n     * The contract the referenced document type lives in.\n     *\n     * Always present. When the schema omits `contractId` the declaration\n     * targets the declaring contract itself, and this field reports the\n     * declaring contract's own id \u2014 consensus resolves the two cases\n     * identically, so a caller never has to special-case an absent value.\n     * `ref.contractId.equals(contract.id)` is the self-reference test.\n     */\n    contractId: Identifier;\n    /**\n     * Name of the referenced document type. It must declare\n     * `canBeDeleted: false`, which is what makes the reference\n     * permanent \u2014 a target that could be deleted would leave the\n     * reference dangling.\n     */\n    documentType: string;\n    /**\n     * Write-time equality bindings between the two documents:\n     * `{ <referring property path>: <referenced property path> }`.\n     * Consensus refuses a write whose referring property does not equal\n     * the referenced document's property (code 40127). Absent \u2014 not\n     * `{}`-valued \u2014 when the declaration carries none.\n     */\n    propertyAgreement?: Record<string, string>;\n}\n| {\n    type: 'identityPublicKey';\n    /**\n     * Property of the same document type whose value carries the\n     * referenced key id. The declaring property's own value carries the\n     * identity id. A dotted path when the property is nested.\n     */\n    keyIdProperty: string;\n};",
+      "properties": [],
+      "references": [
         "Identifier"
       ],
       "source": "wasm-sdk/dist/raw/wasm_sdk.d.ts"

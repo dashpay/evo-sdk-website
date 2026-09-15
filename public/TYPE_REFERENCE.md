@@ -1,6 +1,6 @@
 # Evo SDK Type Reference
 
-Generated from `@dashevo/evo-sdk@4.1.1` published TypeScript declarations under `dist/`.
+Generated from `@dashevo/evo-sdk@4.2.0-dev.11` published TypeScript declarations under `dist/`.
 
 Named types reachable from documented method inputs and outputs are included recursively.
 
@@ -482,6 +482,22 @@ export class DataContract {
     free(): void;
     [Symbol.dispose](): void;
     constructor(options: DataContractOptions);
+    /**
+     * All `refersTo` declarations of one document type, in schema property
+     * order.
+     *
+     * Returns an empty array when the document type declares none. Throws
+     * when the contract has no document type by that name — an empty array
+     * would conflate "no such type" with "no references".
+     *
+     * Reference declarations are only parsed from protocol version 14
+     * onward. A contract deserialized against an earlier platform version
+     * reports none, which is exactly what consensus enforced at that
+     * version — but note the trap: `DataContract.fromBytes(bytes, false, 1)`
+     * yields `[]` even for a contract whose raw schema does carry
+     * `refersTo`, and `toJSON()` still shows the raw keyword either way.
+     */
+    documentTypeReferences(documentTypeName: string): Array<DocumentPropertyReference>;
     static fromBase64(base64: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
     static fromBytes(bytes: Uint8Array, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
     static fromHex(hex: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
@@ -496,6 +512,14 @@ export class DataContract {
     toJSON(platform_version: PlatformVersionLike): DataContractJSON;
     toObject(platformVersion: PlatformVersionLike): DataContractObject;
     readonly config: DataContractConfig;
+    /**
+     * Every document type that declares at least one reference, keyed by
+     * document type name.
+     *
+     * Document types with no declarations are omitted, so an empty `Map`
+     * means "this contract declares no references at all".
+     */
+    readonly documentReferences: Map<string, Array<DocumentPropertyReference>>;
     groups: Record<number, Group>;
     get id(): Identifier;
     set id(value: IdentifierLike);
@@ -1037,6 +1061,39 @@ export interface DocumentsQuery {
      * @default []
      */
     groupBy?: string[];
+
+    /**
+     * Time-range bucket selections for "trending"-style queries. Each entry
+     * picks a single bucket of a timestamp field covered by a `timeRange`
+     * index. For the relative selectors the server resolves the bucket from
+     * the current block time and the proof verifier re-derives it from the
+     * signed response metadata; `"byStart"` names the bucket absolutely, so
+     * both sides read it straight from the query. Provable either way.
+     * Requires protocol version 14+ (the first version whose contract
+     * grammar hosts `timeRange` indexes).
+     *
+     * - `selector: "oldest"` → the oldest still-active range (a near-full
+     *   trailing window of ~`range`; best for "trending over the last window").
+     * - `selector: "newest"` → the freshest started range (latest partial slice).
+     * - `selector: "byStart"` → the range starting exactly at `startMs` — any
+     *   window, current or historic. `startMs` is then required and must be a
+     *   window start on the grid (`phase + k * step`, in milliseconds); an
+     *   off-grid start is rejected rather than snapped, and an empty window
+     *   is a provable empty answer. The relative selectors must not carry
+     *   `startMs`.
+     *
+     * `grid` names one of the field's grids in the contract's own declared
+     * seconds (`{ range, step, phase? }`) — required when the contract buckets
+     * the field with more than one `timeRange` grid, where the bare selector
+     * is ambiguous and rejected. A zero phase is spelled by omission.
+     * @default []
+     */
+    timeRange?: {
+        field: string;
+        selector: "newest" | "oldest" | "byStart";
+        startMs?: number;
+        grid?: { range: number; step: number; phase?: number };
+    }[];
 }
 ```
 
@@ -4468,6 +4525,26 @@ export interface DataContractOptions {
 }
 ```
 
+<a id="type-documentpropertyreference"></a>
+## `DocumentPropertyReference`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyReference = {
+    /**
+     * Dotted path of the declaring property within the document type — for
+     * example `"author"`, or `"meta.parentId"` for a nested one.
+     *
+     * This is the same string consensus reports in the `path` field of the
+     * document-write reference errors (codes 40120-40125). Note that contract
+     * *registration* errors prefix it with the document type name
+     * (`"<documentType>.<path>"`) while document *write* errors do not.
+     */
+    path: string;
+} & DocumentPropertyReferenceTarget;
+```
+
 <a id="type-platformversionlike"></a>
 ## `PlatformVersionLike`
 
@@ -5137,13 +5214,21 @@ export type GroveElementType =
 | "provableCountTree"
 | "itemWithSumItem"
 | "referenceWithSumItem"
+| "bidirectionalReference"
+| "itemWithBackwardsReferences"
+| "sumItemWithBackwardsReferences"
+| "itemWithSumItemWithBackwardsReferences"
 | "provableCountSumTree"
 | "provableCountProvableSumTree"
 | "provableSumTree"
+| "provableSumIndexedTree"
+| "provableCountIndexedTree"
+| "provableCountProvableSumIndexedTree"
 | "commitmentTree"
 | "mmrTree"
 | "bulkAppendTree"
 | "denseAppendOnlyFixedSizeTree"
+| "privateDocumentStore"
 | "nonCountedItem"
 | "nonCountedReference"
 | "nonCountedTree"
@@ -5158,10 +5243,14 @@ export type GroveElementType =
 | "nonCountedProvableCountSumTree"
 | "nonCountedProvableCountProvableSumTree"
 | "nonCountedProvableSumTree"
+| "nonCountedProvableSumIndexedTree"
+| "nonCountedProvableCountIndexedTree"
+| "nonCountedProvableCountProvableSumIndexedTree"
 | "nonCountedCommitmentTree"
 | "nonCountedMmrTree"
 | "nonCountedBulkAppendTree"
 | "nonCountedDenseAppendOnlyFixedSizeTree"
+| "nonCountedPrivateDocumentStore"
 | "notSummedSumTree"
 | "notSummedBigSumTree"
 | "notSummedCountSumTree"
@@ -5660,6 +5749,55 @@ export class ContestedDocumentVotePollWinnerInfo {
     static readonly __struct: string;
     readonly __type: string;
 }
+```
+
+<a id="type-documentpropertyreferencetarget"></a>
+## `DocumentPropertyReferenceTarget`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyReferenceTarget =
+| { type: 'identity' }
+| { type: 'contract' }
+| { type: 'token' }
+| {
+    type: 'permanentDocument';
+    /**
+     * The contract the referenced document type lives in.
+     *
+     * Always present. When the schema omits `contractId` the declaration
+     * targets the declaring contract itself, and this field reports the
+     * declaring contract's own id — consensus resolves the two cases
+     * identically, so a caller never has to special-case an absent value.
+     * `ref.contractId.equals(contract.id)` is the self-reference test.
+     */
+    contractId: Identifier;
+    /**
+     * Name of the referenced document type. It must declare
+     * `canBeDeleted: false`, which is what makes the reference
+     * permanent — a target that could be deleted would leave the
+     * reference dangling.
+     */
+    documentType: string;
+    /**
+     * Write-time equality bindings between the two documents:
+     * `{ <referring property path>: <referenced property path> }`.
+     * Consensus refuses a write whose referring property does not equal
+     * the referenced document's property (code 40127). Absent — not
+     * `{}`-valued — when the declaration carries none.
+     */
+    propertyAgreement?: Record<string, string>;
+}
+| {
+    type: 'identityPublicKey';
+    /**
+     * Property of the same document type whose value carries the
+     * referenced key id. The declaring property's own value carries the
+     * identity id. A dotted path when the property is nested.
+     */
+    keyIdProperty: string;
+};
 ```
 
 <a id="type-platformversion"></a>

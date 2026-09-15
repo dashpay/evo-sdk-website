@@ -405,7 +405,8 @@ test.describe('Query Categories and Types UI Tests', () => {
       'Token Queries',
       'Group Queries',
       'System & Utility',
-      'Platform Address Queries'
+      'Platform Address Queries',
+      'Shielded Queries'
     ];
 
     ensureExactOptions(categories, expected, 'Query categories');
@@ -467,7 +468,11 @@ test.describe('Query Categories and Types UI Tests', () => {
 
     const expected = [
       'Get Documents',
-      'Get Document'
+      'Get Document',
+      'Get Document Count',
+      'Get Document Sum',
+      'Get Document Average',
+      'Get Document History'
     ];
 
     ensureExactOptions(queryTypes, expected, 'Document query types');
@@ -598,6 +603,7 @@ test.describe('Query Categories and Types UI Tests', () => {
       'Get Token Contract Info',
       'Get Token Distribution Last Claim',
       'Get Token Total Supply',
+      'Get Token Balances for Identity',
       'Get Token Price by Contract'
     ];
 

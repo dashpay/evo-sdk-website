@@ -1,9 +1,53 @@
+import fs from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import {
+  DPNS_CATEGORY_DEFINITIONS,
   getTypeConfig,
   filterDefinitions,
+  PENDING_OPERATIONS,
   SUPPORTED_QUERIES,
+  SUPPORTED_TRANSITIONS,
+  WALLET_CATEGORY_DEFINITIONS,
 } from '../../public/src/definitions-data.js';
+
+const catalog = JSON.parse(
+  fs.readFileSync(new URL('../../public/sdk-operation-catalog.json', import.meta.url), 'utf8'),
+);
+
+function operationKeys(categories) {
+  return Object.values(categories).flatMap(category => Object.keys(category.operations || {}));
+}
+
+describe('SDK operation UI coverage', () => {
+  const supported = {
+    queries: new Set([
+      ...SUPPORTED_QUERIES,
+      ...operationKeys(DPNS_CATEGORY_DEFINITIONS),
+      ...operationKeys(WALLET_CATEGORY_DEFINITIONS),
+    ]),
+    transitions: SUPPORTED_TRANSITIONS,
+  };
+
+  it.each(['queries', 'transitions'])('classifies every catalog %s operation', group => {
+    const catalogKeys = catalog.operations
+      .filter(operation => operation.group === group)
+      .map(operation => operation.key);
+    const pendingKeys = Object.keys(PENDING_OPERATIONS[group]);
+    const classified = new Set([...supported[group], ...pendingKeys]);
+
+    expect(catalogKeys.filter(key => !classified.has(key))).toEqual([]);
+    expect([...classified].filter(key => !catalogKeys.includes(key))).toEqual([]);
+    expect(pendingKeys.filter(key => supported[group].has(key))).toEqual([]);
+  });
+
+  it('records a useful reason for every pending operation', () => {
+    for (const pending of Object.values(PENDING_OPERATIONS)) {
+      for (const reason of Object.values(pending)) {
+        expect(reason.trim().length).toBeGreaterThan(10);
+      }
+    }
+  });
+});
 
 // Characterization tests: pin the CURRENT behavior of the pure definition
 // helpers so refactors that change behavior fail loudly.
