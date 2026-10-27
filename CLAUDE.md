@@ -115,6 +115,8 @@ Playwright config defines 4 test projects: `site-tests`, `smoke-tests`, `paralle
 3. Run `yarn generate` to update documentation
 4. Add test parameters to `tests/e2e/fixtures/test-data.js`
 
+Every operation in `sdk-operation-catalog.json` must either be exposed in the UI or listed in `PENDING_OPERATIONS` in `public/src/definitions-data.js` with a reason. `tests/unit/definitions-data.test.js` enforces this, so an SDK upgrade that adds methods fails unit tests until each new method is implemented or recorded as pending.
+
 ### Documentation Generation
 
 Documentation is auto-generated from `api-definitions.json`:
@@ -134,4 +136,4 @@ Always run `yarn generate` after modifying api-definitions.json.
 - Tests run on PR/push to master via GitHub Actions
 - Transition tests are skipped in CI (too slow)
 - Site deploys to GitHub Pages after tests pass
-- SDK version auto-updates daily via workflow
+- SDK version auto-updates daily via workflow (`.github/workflows/update-evo-sdk.yml`). It rejects version specifiers, so keep `@dashevo/evo-sdk` pinned to an exact version in `package.json` (use `yarn add @dashevo/evo-sdk@<version> --exact`)
