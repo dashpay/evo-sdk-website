@@ -50,8 +50,8 @@ export const PENDING_OPERATIONS = {
     calculateTokenId: 'No operation UI or dispatcher implementation yet.',
   },
   transitions: {
-    dpnsRegister: 'Typed v4 registration requires a usable credential fixture.',
-    dpnsUsername: 'Typed v4 masternode voting requires a usable voting-key fixture.',
+    dpnsRegister: 'Typed registration requires a usable credential fixture.',
+    dpnsUsername: 'Typed masternode voting requires a usable voting-key fixture.',
   },
 };
 
