@@ -1,6 +1,6 @@
 # Evo SDK - AI Reference
 
-Return types: generated from `@dashevo/evo-sdk@4.2.0-dev.11` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
+Return types: generated from `@dashevo/evo-sdk@5.0.1` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
 
 ## Overview
 The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. It exposes ergonomic namespaces (identities, documents, contracts, tokens, and more) optimized for automation and AI-assisted workflows.
@@ -472,11 +472,14 @@ Parameters:
     - Inclusive document ID to start from.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
-    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored
-by the regular document-fetch path.
+    - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored by
+the regular document-fetch path.
 
-- `[]` or omitted → aggregate count (a single row).
+- `[]` or omitted → one ungrouped result entry, keyed by the
+  empty string. Its value is the total count for
+  `getDocumentsCount`, total sum for `getDocumentsSum`, or
+  `{count, sum}` for `getDocumentsAverage`.
 - `["<in_field>"]` where `<in_field>` matches an `In`
   constraint → per-`In`-value entries (PerInValue).
 - `["<range_field>"]` where `<range_field>` matches a range
@@ -513,6 +516,20 @@ grammar hosts `timeRange` indexes).
 seconds (`{ range, step, phase? }`) — required when the contract buckets
 the field with more than one `timeRange` grid, where the bare selector
 is ambiguous and rejected. A zero phase is spelled by omission.
+  - `integerRange`: `{ field: string; start: number | string; grid?: { range: number; step: number; phase?: number; }; }[]` (optional)
+    - Integer-range window selections. Each entry picks one window of an
+integer field covered by an `integerRange` index, named by its start:
+`start` must be a window start on the grid (`phase + k * step`, within
+the field's integer type, or the type's minimum for a clamped bottom
+window). An off-grid start is rejected rather than snapped, and an
+empty window is a provable empty answer. The server and the proof
+verifier resolve the same window from the query alone. Requires
+protocol version 14+.
+
+`start` is a number, or a decimal string for values beyond
+`Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
+verbatim (`{ range, step, phase? }`) and is required when the contract
+buckets the field with more than one `integerRange` grid.
 
 Returns:
 
@@ -586,11 +603,14 @@ Parameters:
     - Inclusive document ID to start from.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
-    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored
-by the regular document-fetch path.
+    - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored by
+the regular document-fetch path.
 
-- `[]` or omitted → aggregate count (a single row).
+- `[]` or omitted → one ungrouped result entry, keyed by the
+  empty string. Its value is the total count for
+  `getDocumentsCount`, total sum for `getDocumentsSum`, or
+  `{count, sum}` for `getDocumentsAverage`.
 - `["<in_field>"]` where `<in_field>` matches an `In`
   constraint → per-`In`-value entries (PerInValue).
 - `["<range_field>"]` where `<range_field>` matches a range
@@ -627,6 +647,20 @@ grammar hosts `timeRange` indexes).
 seconds (`{ range, step, phase? }`) — required when the contract buckets
 the field with more than one `timeRange` grid, where the bare selector
 is ambiguous and rejected. A zero phase is spelled by omission.
+  - `integerRange`: `{ field: string; start: number | string; grid?: { range: number; step: number; phase?: number; }; }[]` (optional)
+    - Integer-range window selections. Each entry picks one window of an
+integer field covered by an `integerRange` index, named by its start:
+`start` must be a window start on the grid (`phase + k * step`, within
+the field's integer type, or the type's minimum for a clamped bottom
+window). An off-grid start is rejected rather than snapped, and an
+empty window is a provable empty answer. The server and the proof
+verifier resolve the same window from the query alone. Requires
+protocol version 14+.
+
+`start` is a number, or a decimal string for values beyond
+`Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
+verbatim (`{ range, step, phase? }`) and is required when the contract
+buckets the field with more than one `integerRange` grid.
 
 Returns:
 
@@ -671,11 +705,14 @@ Parameters:
     - Inclusive document ID to start from.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
-    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored
-by the regular document-fetch path.
+    - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored by
+the regular document-fetch path.
 
-- `[]` or omitted → aggregate count (a single row).
+- `[]` or omitted → one ungrouped result entry, keyed by the
+  empty string. Its value is the total count for
+  `getDocumentsCount`, total sum for `getDocumentsSum`, or
+  `{count, sum}` for `getDocumentsAverage`.
 - `["<in_field>"]` where `<in_field>` matches an `In`
   constraint → per-`In`-value entries (PerInValue).
 - `["<range_field>"]` where `<range_field>` matches a range
@@ -712,6 +749,20 @@ grammar hosts `timeRange` indexes).
 seconds (`{ range, step, phase? }`) — required when the contract buckets
 the field with more than one `timeRange` grid, where the bare selector
 is ambiguous and rejected. A zero phase is spelled by omission.
+  - `integerRange`: `{ field: string; start: number | string; grid?: { range: number; step: number; phase?: number; }; }[]` (optional)
+    - Integer-range window selections. Each entry picks one window of an
+integer field covered by an `integerRange` index, named by its start:
+`start` must be a window start on the grid (`phase + k * step`, within
+the field's integer type, or the type's minimum for a clamped bottom
+window). An off-grid start is rejected rather than snapped, and an
+empty window is a provable empty answer. The server and the proof
+verifier resolve the same window from the query alone. Requires
+protocol version 14+.
+
+`start` is a number, or a decimal string for values beyond
+`Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
+verbatim (`{ range, step, phase? }`) and is required when the contract
+buckets the field with more than one `integerRange` grid.
 
 - `sumProperty`: `string` (required)
 
@@ -761,11 +812,14 @@ Parameters:
     - Inclusive document ID to start from.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
-    - Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored
-by the regular document-fetch path.
+    - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
+the v1 wire's `group_by: repeated string` directly. Ignored by
+the regular document-fetch path.
 
-- `[]` or omitted → aggregate count (a single row).
+- `[]` or omitted → one ungrouped result entry, keyed by the
+  empty string. Its value is the total count for
+  `getDocumentsCount`, total sum for `getDocumentsSum`, or
+  `{count, sum}` for `getDocumentsAverage`.
 - `["<in_field>"]` where `<in_field>` matches an `In`
   constraint → per-`In`-value entries (PerInValue).
 - `["<range_field>"]` where `<range_field>` matches a range
@@ -802,6 +856,20 @@ grammar hosts `timeRange` indexes).
 seconds (`{ range, step, phase? }`) — required when the contract buckets
 the field with more than one `timeRange` grid, where the bare selector
 is ambiguous and rejected. A zero phase is spelled by omission.
+  - `integerRange`: `{ field: string; start: number | string; grid?: { range: number; step: number; phase?: number; }; }[]` (optional)
+    - Integer-range window selections. Each entry picks one window of an
+integer field covered by an `integerRange` index, named by its start:
+`start` must be a window start on the grid (`phase + k * step`, within
+the field's integer type, or the type's minimum for a clamped bottom
+window). An off-grid start is rejected rather than snapped, and an
+empty window is a provable empty answer. The server and the proof
+verifier resolve the same window from the query alone. Requires
+protocol version 14+.
+
+`start` is a number, or a decimal string for values beyond
+`Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
+verbatim (`{ range, step, phase? }`) and is required when the contract
+buckets the field with more than one `integerRange` grid.
 
 - `averageProperty`: `string` (required)
 
@@ -1193,11 +1261,12 @@ Signature: `votePollsByEndDate(query?: wasm.VotePollsByEndDateQuery): Promise<wa
 Parameters:
 - `query`: `wasm.VotePollsByEndDateQuery` (optional)
   - Type declarations: [`wasm.VotePollsByEndDateQuery`](TYPE_REFERENCE.md#type-votepollsbyenddatequery)
-  - `startTimeMs`: `number` (optional)
-    - Starting timestamp (milliseconds) to filter polls.
+  - `startTimeMs`: `number | bigint` (optional)
+    - Starting timestamp (milliseconds) to filter polls. Accepts the
+`timestampMs` bigint of a returned entry, for paging.
   - `startTimeIncluded`: `boolean` (optional)
     - Include the `startTimeMs` boundary when true.
-  - `endTimeMs`: `number` (optional)
+  - `endTimeMs`: `number | bigint` (optional)
     - Ending timestamp (milliseconds) to filter polls.
   - `endTimeIncluded`: `boolean` (optional)
     - Include the `endTimeMs` boundary when true.
@@ -2111,7 +2180,9 @@ Parameters:
   - Type declarations: [`Identity`](TYPE_REFERENCE.md#type-identity)
   - `addPublicKeys`: `IdentityPublicKeyInCreation[]` (optional)
     - Array of public keys to add to the identity.
-Use IdentityPublicKeyInCreation to create new keys.
+Use IdentityPublicKeyInCreation to create new keys. A key built with `totalBudget` or
+`expiresAt` is registered with those limits (protocol version 14); the signer must hold
+its private key as well as the master key, since a new key signs its own registration.
   - Type declarations: [`IdentityPublicKeyInCreation`](TYPE_REFERENCE.md#type-identitypublickeyincreation)
   - `disablePublicKeys`: `number[]` (optional)
     - Array of key IDs to disable.
@@ -2368,6 +2439,20 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.create.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `contestFund`: `bigint` (optional)
+    - The most, in credits, the document pays into the contest it joins when its
+document type has a contested index. From protocol version 14 it is charged
+the fund to join the contest, which doubles once the contest holds 250
+contenders and again for every 50 more, and is refused, paid, when that is
+more than this. The identity must hold what it states. Leave it out to state
+the fund to join read just before the document is submitted. A document that
+joins no contest ignores it.
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2419,6 +2504,12 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.replace.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2467,6 +2558,12 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.delete.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2517,6 +2614,12 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.transfer.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2574,6 +2677,12 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.purchase.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2628,6 +2737,12 @@ Use IdentitySigner to add the private key before calling.
   - `tokenPaymentInfo`: `DocumentTokenPaymentInfo` (optional)
     - Optional token payment agreement for document types with tokenCost.update_price.
   - Type declarations: [`DocumentTokenPaymentInfo`](TYPE_REFERENCE.md#type-documenttokenpaymentinfo)
+  - `actionFeeAgreement`: `DocumentActionFeeAgreement` (optional)
+    - The action fee the signer agrees to pay, as the contract shown to the user
+declares it. Required when the document type's `actionFees` charge for this
+action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+builds it from that contract.
+  - Type declarations: [`DocumentActionFeeAgreement`](TYPE_REFERENCE.md#type-documentactionfeeagreement)
   - `settings`: `PutSettings` (optional)
     - Optional settings for the broadcast operation.
 Includes retries, timeouts, userFeeIncrease, etc.
@@ -2684,6 +2799,13 @@ Use IdentitySigner to add the private key before calling.
     - Optional callback called after the preorder document is submitted.
 Receives the preorder Document object.
   - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
+  - `contestFund`: `bigint` (optional)
+    - The most, in credits, the registration pays into the contest a contested
+name joins. From protocol version 14 it is charged the fund to join the
+contest, which doubles once the contest holds 250 contenders and again
+for every 50 more, and is refused, paid, when that is more than this.
+The identity must hold what it states. Leave it out to state the fund to
+join read just before the domain is submitted.
 
 Returns:
 
@@ -2845,8 +2967,8 @@ Parameters:
   - `identityId`: `Identifier` (required)
     - The identity ID claiming the tokens.
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
-  - `distributionType`: `"preProgrammed" | "perpetual"` (required)
-    - The type of distribution to claim from: "preProgrammed" or "perpetual".
+  - `distributionType`: `"preProgrammed" | "perpetual" | "oncePerIdentity"` (required)
+    - The type of distribution to claim from: "preProgrammed", "perpetual" or "oncePerIdentity".
   - `publicNote`: `string` (optional)
     - Optional public note for the claim operation.
   - `identityKey`: `IdentityPublicKey` (required)
@@ -3348,14 +3470,15 @@ await sdk.tokens.destroyFrozen({
 
 **Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
 
-Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
+Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<wasm.Vote>`
 
 Parameters:
 - `options`: `wasm.MasternodeVoteOptions` (required)
   - Type declarations: [`wasm.MasternodeVoteOptions`](TYPE_REFERENCE.md#type-masternodevoteoptions)
-  - `masternodeProTxHash`: `Identifier` (required)
-    - The ProTxHash of the masternode.
-  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `masternodeProTxHash`: `IdentifierLike` (required)
+    - The ProTxHash of the masternode: an Identifier, its 32 bytes, the hex Core's RPC shows,
+or base58.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `votePoll`: `VotePoll` (required)
     - The vote poll to vote on.
 Use VotePoll.createContestedDocumentResourceVotePoll() to create.
@@ -3379,7 +3502,8 @@ Includes retries, timeouts, userFeeIncrease, etc.
 
 Returns:
 
-- `Promise<void>`
+- `Promise<wasm.Vote>`
+  - Type declarations: [`wasm.Vote`](TYPE_REFERENCE.md#type-vote)
 
 Example:
 ```javascript
@@ -3391,14 +3515,15 @@ const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, 
 
 **Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
 
-Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<void>`
+Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<wasm.Vote>`
 
 Parameters:
 - `options`: `wasm.MasternodeVoteOptions` (required)
   - Type declarations: [`wasm.MasternodeVoteOptions`](TYPE_REFERENCE.md#type-masternodevoteoptions)
-  - `masternodeProTxHash`: `Identifier` (required)
-    - The ProTxHash of the masternode.
-  - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
+  - `masternodeProTxHash`: `IdentifierLike` (required)
+    - The ProTxHash of the masternode: an Identifier, its 32 bytes, the hex Core's RPC shows,
+or base58.
+  - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `votePoll`: `VotePoll` (required)
     - The vote poll to vote on.
 Use VotePoll.createContestedDocumentResourceVotePoll() to create.
@@ -3422,7 +3547,8 @@ Includes retries, timeouts, userFeeIncrease, etc.
 
 Returns:
 
-- `Promise<void>`
+- `Promise<wasm.Vote>`
+  - Type declarations: [`wasm.Vote`](TYPE_REFERENCE.md#type-vote)
 
 Example:
 ```javascript

@@ -1,6 +1,6 @@
 # Evo SDK Type Reference
 
-Generated from `@dashevo/evo-sdk@4.2.0-dev.11` published TypeScript declarations under `dist/`.
+Generated from `@dashevo/evo-sdk@5.0.1` published TypeScript declarations under `dist/`.
 
 Named types reachable from documented method inputs and outputs are included recursively.
 
@@ -481,10 +481,111 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 export class DataContract {
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * The first `propertyConstraints` rule `document` breaks, in name order,
+     * evaluated with the same code consensus runs on a create or replace: its
+     * properties, its owner for `$ownerId`, the revision the write records for
+     * `$revision` (below), and for the system times the device clock in place
+     * of the block time the
+     * write will record (the document's stored creation and transfer times
+     * when it has them). A rule reading a block height the write records is
+     * not judged, since the height is unknown until the block, a rule reading
+     * a `countOf` or `sumOf` total, which only the platform reads from state
+     * (a rule's `readsTotals` lists them), or a rule reading a value of the
+     * document a reference points at, which the platform reads with the
+     * reference (a rule's `readsReferenced` lists them).
+     * `undefined` when it meets every rule of its document type.
+     *
+     * `storedDocument` is the stored version the write replaces, which a rule
+     * reads through `$old.` (a rule's `readsStored` says it does): the stored
+     * document for a replace, `null` for a create, which has none, so that
+     * every `$old.` read is absent. Left `undefined`, a rule reading it is not
+     * judged, and neither is one reading `$revision`, which depends on the
+     * write: 1 on a create, one more than the stored on a replace. Given
+     * either, `$revision`, `$ownerId` and the creation and
+     * transfer times are what consensus judges, whatever `document` holds: on
+     * a replace the stored document's owner, creation and transfer and the
+     * revision after its own, the only one consensus accepts on a replace;
+     * on a create revision 1 and the device clock.
+     *
+     * A pre-check, so an app can refuse a document before paying for a
+     * transition consensus would refuse with
+     * `DocumentPropertyConstraintViolatedError` (code 10422). It judges the
+     * rules alone, not the document's JSON schema. Throws when the document
+     * belongs to another contract or names a document type this one lacks,
+     * and when the stored document is not the same document.
+     */
+    checkDocumentPropertyConstraints(document: Document, storedDocument: Document | null | undefined): DocumentPropertyConstraintViolation | undefined;
     constructor(options: DataContractOptions);
     /**
-     * All `refersTo` declarations of one document type, in schema property
-     * order.
+     * The `distinctFrom` declarations of one document type, in schema
+     * property order: each `{ path, distinctFrom }` names an identifier
+     * property and what its value must differ from, `"$ownerId"` or the
+     * dotted path of another identifier property of the same type.
+     *
+     * Empty when the document type declares none (the normal case). Throws
+     * when the contract has no document type by that name, so "no such
+     * type" and "nothing declared" stay distinguishable.
+     *
+     * The keyword is only parsed from protocol version 14 onward. A
+     * contract deserialized against an earlier platform version reports an
+     * empty list, which is exactly what consensus enforced at that version,
+     * while `toJSON()` still shows the raw keyword either way.
+     */
+    documentTypeDistinctFrom(documentTypeName: string): Array<DocumentPropertyDistinctFrom>;
+    /**
+     * All `encryptedFor` declarations of one document type, in schema
+     * property order: which byte array properties are encrypted, for whom,
+     * under which key ids and under which scheme.
+     *
+     * Returns an empty array when the document type declares none. Throws
+     * when the contract has no document type by that name, so "no such
+     * type" and "nothing encrypted" stay distinguishable.
+     *
+     * The keyword is only parsed from protocol version 14 onward. A
+     * contract deserialized against an earlier platform version reports
+     * none, which is exactly what consensus enforced at that version, while
+     * `toJSON()` still shows the raw keyword either way.
+     */
+    documentTypeEncryptedProperties(documentTypeName: string): Array<DocumentPropertyEncryption>;
+    /**
+     * The `immutable` declarations of one document type: `{ immutable:
+     * string[], immutableWhen: Record<string, condition> }`, the properties
+     * frozen at creation and those frozen under a condition, each sorted by
+     * property name.
+     *
+     * Both are empty when the document type declares nothing (the
+     * normal case, and the only case for a type whose documents are not
+     * mutable). Throws when the contract has no document type by that
+     * name, so "no such type" and "nothing frozen" stay distinguishable.
+     *
+     * The keywords are only parsed from protocol version 14 onward. A
+     * contract deserialized against an earlier platform version reports
+     * empty lists, which is exactly what consensus enforced at that
+     * version, while `toJSON()` still shows the raw keywords either way.
+     */
+    documentTypeImmutableProperties(documentTypeName: string): DocumentTypeImmutableProperties;
+    /**
+     * All `propertyConstraints` rules of one document type, in name order,
+     * the order consensus checks them in: each rule's name, the rule as the
+     * schema declares it, every property it reads and how, and whether it
+     * reads `$ownerId` (then a transfer or a purchase is judged against it
+     * too).
+     *
+     * Returns an empty array when the document type declares none. Throws
+     * when the contract has no document type by that name, so "no such
+     * type" and "no rules" stay distinguishable.
+     *
+     * The keyword is only parsed from protocol version 14 onward. A
+     * contract deserialized against an earlier platform version reports
+     * none, which is exactly what consensus enforced at that version, while
+     * `toJSON()` still shows the raw keyword either way.
+     */
+    documentTypePropertyConstraints(documentTypeName: string): Array<DocumentPropertyConstraint>;
+    /**
+     * All `refersTo` declarations of one document type: its `ownerRefersTo`
+     * or `creatorRefersTo` first, at the path `$ownerId` or `$creatorId`,
+     * then the properties' own in schema property order.
      *
      * Returns an empty array when the document type declares none. Throws
      * when the contract has no document type by that name — an empty array
@@ -498,6 +599,21 @@ export class DataContract {
      * `refersTo`, and `toJSON()` still shows the raw keyword either way.
      */
     documentTypeReferences(documentTypeName: string): Array<DocumentPropertyReference>;
+    /**
+     * Every typed array property of one document type (`type: "array"`
+     * with an `items` element schema), in schema property order: `{ path,
+     * items, minItems?, maxItems?, uniqueItems }`.
+     *
+     * Returns an empty array when the document type declares none. Throws
+     * when the contract has no document type by that name, so "no such
+     * type" and "no typed arrays" stay distinguishable.
+     *
+     * Typed arrays are only parsed from protocol version 14 onward. A
+     * contract deserialized against an earlier platform version cannot
+     * carry one: the parsers of those versions refuse an array that is not
+     * a byte array.
+     */
+    documentTypeTypedArrays(documentTypeName: string): Array<DocumentTypedArrayProperty>;
     static fromBase64(base64: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
     static fromBytes(bytes: Uint8Array, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
     static fromHex(hex: string, full_validation: boolean, platform_version: PlatformVersionLike): DataContract;
@@ -513,6 +629,39 @@ export class DataContract {
     toObject(platformVersion: PlatformVersionLike): DataContractObject;
     readonly config: DataContractConfig;
     /**
+     * Every document type that declares at least one `distinctFrom`, keyed
+     * by document type name.
+     *
+     * Document types with no declarations are omitted, so an empty `Map`
+     * means "this contract declares no distinctFrom at all".
+     */
+    readonly documentDistinctFrom: Map<string, Array<DocumentPropertyDistinctFrom>>;
+    /**
+     * Every document type that declares at least one encrypted property,
+     * keyed by document type name.
+     *
+     * Document types with no declarations are omitted, so an empty `Map`
+     * means "this contract declares no encrypted property at all".
+     */
+    readonly documentEncryptedProperties: Map<string, Array<DocumentPropertyEncryption>>;
+    /**
+     * Every document type that freezes at least one property, keyed by
+     * document type name.
+     *
+     * Document types whose `immutable` keyword lists nothing are omitted, so
+     * an empty `Map` means "nothing in this contract is frozen per
+     * property".
+     */
+    readonly documentImmutableProperties: Map<string, DocumentTypeImmutableProperties>;
+    /**
+     * Every document type that declares `propertyConstraints`, keyed by
+     * document type name.
+     *
+     * Document types with no rules are omitted, so an empty `Map` means
+     * "this contract declares no propertyConstraints at all".
+     */
+    readonly documentPropertyConstraints: Map<string, Array<DocumentPropertyConstraint>>;
+    /**
      * Every document type that declares at least one reference, keyed by
      * document type name.
      *
@@ -520,6 +669,14 @@ export class DataContract {
      * means "this contract declares no references at all".
      */
     readonly documentReferences: Map<string, Array<DocumentPropertyReference>>;
+    /**
+     * Every document type that declares at least one typed array property,
+     * keyed by document type name.
+     *
+     * Document types with none are omitted, so an empty `Map` means "this
+     * contract declares no typed arrays at all".
+     */
+    readonly documentTypedArrays: Map<string, Array<DocumentTypedArrayProperty>>;
     groups: Record<number, Group>;
     get id(): Identifier;
     set id(value: IdentifierLike);
@@ -582,7 +739,30 @@ export class Document {
      * Create a Document from a JS object (canonical-tagged shape).
      */
     static fromObject(value: DocumentObject, _platform_version: PlatformVersionLike): Document;
-    static generateId(documentTypeName: string, ownerId: IdentifierLike, dataContractId: IdentifierLike, entropy?: Uint8Array | null): Uint8Array;
+    /**
+     * Derives the id of a document that is about to be created, the way
+     * consensus recomputes it for the create transition.
+     *
+     * From protocol version 14 the id commits to the identity contract
+     * nonce of the create transition, so `identityContractNonce` is
+     * required at that version (and ignored before it). The platform
+     * version defaults to the latest.
+     */
+    static generateId(documentTypeName: string, ownerId: IdentifierLike, dataContractId: IdentifierLike, entropy?: Uint8Array | null, identityContractNonce?: bigint | null, platformVersion?: PlatformVersionLike | null): Uint8Array;
+    /**
+     * Gives the document the id its create transition will carry, derived
+     * from its entropy and the identity contract nonce that transition is
+     * going to use.
+     *
+     * `new DocumentCreateTransition(...)` does this on its own; call it
+     * yourself to know the id before the transition exists (a document that
+     * another document in the same batch references). The transition must
+     * then be built with the same nonce.
+     *
+     * Throws when the document carries no entropy (one read back from
+     * Platform), since only a new document can be created.
+     */
+    setIdForCreation(identityContractNonce: bigint, platformVersion?: PlatformVersionLike | null): void;
     toBase64(data_contract: DataContract, platform_version: PlatformVersionLike): string;
     toBytes(data_contract: DataContract, platform_version: PlatformVersionLike): Uint8Array;
     toHex(data_contract: DataContract, platform_version: PlatformVersionLike): string;
@@ -613,6 +793,16 @@ export class Document {
     set entropy(value: Uint8Array | null | undefined);
     get id(): Identifier;
     set id(value: IdentifierLike);
+    /**
+     * The block time at which a moderator of the contract last wrote the fields the document
+     * type keeps for its moderators (`moderatorAbilities.changeFields`); `undefined` until one
+     * does.
+     */
+    readonly moderatedAt: bigint | undefined;
+    /**
+     * The moderator who last wrote those fields; `undefined` until one does.
+     */
+    readonly moderatedBy: Identifier | undefined;
     get ownerId(): Identifier;
     set ownerId(value: IdentifierLike);
     properties: Record<string, unknown>;
@@ -630,6 +820,39 @@ export class Document {
     set updatedAtBlockHeight(value: bigint | null | undefined);
     get updatedAtCoreBlockHeight(): number | undefined;
     set updatedAtCoreBlockHeight(value: number | null | undefined);
+    static readonly __struct: string;
+    readonly __type: string;
+}
+```
+
+<a id="type-documentactionfeeagreement"></a>
+## `DocumentActionFeeAgreement`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class DocumentActionFeeAgreement {
+    free(): void;
+    [Symbol.dispose](): void;
+    constructor(options: DocumentActionFeeAgreementOptions);
+    /**
+     * The agreement a transition performing `action` on a document of the type
+     * `documentTypeName` of `dataContract` must carry, or `undefined` when the type charges
+     * nothing for it. It names what the contract declares, so it is only as current as
+     * `dataContract`: pass the contract the user was shown. `feeMultiplier` is required for a
+     * fee priced by the fee multiplier; a fixed fee names none, so for one it is only
+     * validated. The Rust SDK's `DocumentActionFeeAgreement::for_document_type_action`.
+     */
+    static forDocumentTypeAction(dataContract: DataContract, documentTypeName: string, action: DocumentActionFeeAction, feeMultiplier?: AgreedFeeMultiplierOptions | null): DocumentActionFeeAgreement | undefined;
+    static fromJSON(js: DocumentActionFeeAgreementJSON): DocumentActionFeeAgreement;
+    static fromObject(obj: DocumentActionFeeAgreementObject): DocumentActionFeeAgreement;
+    toJSON(): DocumentActionFeeAgreementJSON;
+    toObject(): DocumentActionFeeAgreementObject;
+    readonly feeMultiplierIncreaseTolerancePercent: number | undefined;
+    readonly knownFeeMultiplierPermille: bigint | undefined;
+    readonly moderators: bigint;
+    readonly owner: bigint;
+    readonly pricing: string;
     static readonly __struct: string;
     readonly __type: string;
 }
@@ -665,6 +888,25 @@ export interface DocumentCreateOptions {
      * Optional token payment agreement for document types with tokenCost.create.
      */
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
+
+    /**
+     * The most, in credits, the document pays into the contest it joins when its
+     * document type has a contested index. From protocol version 14 it is charged
+     * the fund to join the contest, which doubles once the contest holds 250
+     * contenders and again for every 50 more, and is refused, paid, when that is
+     * more than this. The identity must hold what it states. Leave it out to state
+     * the fund to join read just before the document is submitted. A document that
+     * joins no contest ignores it.
+     */
+    contestFund?: bigint;
+
+    /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
 
     /**
      * Optional settings for the broadcast operation.
@@ -714,6 +956,14 @@ export interface DocumentDeleteOptions {
      * Optional token payment agreement for document types with tokenCost.delete.
      */
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
+
+    /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
 
     /**
      * Optional settings for the broadcast operation.
@@ -816,6 +1066,14 @@ export interface DocumentPurchaseOptions {
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
 
     /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
+
+    /**
      * Optional settings for the broadcast operation.
      * Includes retries, timeouts, userFeeIncrease, etc.
      */
@@ -853,6 +1111,14 @@ export interface DocumentReplaceOptions {
      * Optional token payment agreement for document types with tokenCost.replace.
      */
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
+
+    /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
 
     /**
      * Optional settings for the broadcast operation.
@@ -897,6 +1163,14 @@ export interface DocumentSetPriceOptions {
      * Optional token payment agreement for document types with tokenCost.update_price.
      */
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
+
+    /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
 
     /**
      * Optional settings for the broadcast operation.
@@ -977,6 +1251,14 @@ export interface DocumentTransferOptions {
     tokenPaymentInfo?: DocumentTokenPaymentInfo;
 
     /**
+     * The action fee the signer agrees to pay, as the contract shown to the user
+     * declares it. Required when the document type's `actionFees` charge for this
+     * action (protocol version 14+). `DocumentActionFeeAgreement.forDocumentTypeAction`
+     * builds it from that contract.
+     */
+    actionFeeAgreement?: DocumentActionFeeAgreement;
+
+    /**
      * Optional settings for the broadcast operation.
      * Includes retries, timeouts, userFeeIncrease, etc.
      */
@@ -1041,11 +1323,14 @@ export interface DocumentsQuery {
     startAt?: IdentifierLike
 
     /**
-     * Count-query knob: SQL-shaped `GROUP BY` field list. Mirrors
-     * the v1 wire's `group_by: repeated string` directly. Ignored
-     * by the regular document-fetch path.
+     * Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
+     * the v1 wire's `group_by: repeated string` directly. Ignored by
+     * the regular document-fetch path.
      *
-     * - `[]` or omitted → aggregate count (a single row).
+     * - `[]` or omitted → one ungrouped result entry, keyed by the
+     *   empty string. Its value is the total count for
+     *   `getDocumentsCount`, total sum for `getDocumentsSum`, or
+     *   `{count, sum}` for `getDocumentsAverage`.
      * - `["<in_field>"]` where `<in_field>` matches an `In`
      *   constraint → per-`In`-value entries (PerInValue).
      * - `["<range_field>"]` where `<range_field>` matches a range
@@ -1094,6 +1379,28 @@ export interface DocumentsQuery {
         startMs?: number;
         grid?: { range: number; step: number; phase?: number };
     }[];
+
+    /**
+     * Integer-range window selections. Each entry picks one window of an
+     * integer field covered by an `integerRange` index, named by its start:
+     * `start` must be a window start on the grid (`phase + k * step`, within
+     * the field's integer type, or the type's minimum for a clamped bottom
+     * window). An off-grid start is rejected rather than snapped, and an
+     * empty window is a provable empty answer. The server and the proof
+     * verifier resolve the same window from the query alone. Requires
+     * protocol version 14+.
+     *
+     * `start` is a number, or a decimal string for values beyond
+     * `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
+     * verbatim (`{ range, step, phase? }`) and is required when the contract
+     * buckets the field with more than one `integerRange` grid.
+     * @default []
+     */
+    integerRange?: {
+        field: string;
+        start: number | string;
+        grid?: { range: number; step: number; phase?: number };
+    }[];
 }
 ```
 
@@ -1133,6 +1440,16 @@ export interface DpnsRegisterNameOptions {
      * Receives the preorder Document object.
      */
     preorderCallback?: (preorderDocument: Document) => void;
+
+    /**
+     * The most, in credits, the registration pays into the contest a contested
+     * name joins. From protocol version 14 it is charged the fund to join the
+     * contest, which doubles once the contest holds 250 contenders and again
+     * for every 50 more, and is refused, paid, when that is more than this.
+     * The identity must hold what it states. Leave it out to state the fund to
+     * join read just before the domain is submitted.
+     */
+    contestFund?: bigint;
 }
 ```
 
@@ -2193,6 +2510,15 @@ export class IdentityPublicKey {
     data: string;
     get disabledAt(): bigint | undefined;
     set disabledAt(value: any);
+    /**
+     * The block time in milliseconds from which the key can no longer sign, `undefined` when
+     * it does not expire
+     */
+    get expiresAt(): bigint | undefined;
+    /**
+     * Setting an expiry on a version 0 key makes it a version 1 key
+     */
+    set expiresAt(value: bigint | null | undefined);
     readonly isMaster: boolean;
     isReadOnly: boolean;
     get keyId(): number;
@@ -2206,6 +2532,14 @@ export class IdentityPublicKey {
     get securityLevel(): string;
     set securityLevel(value: SecurityLevelLike);
     readonly securityLevelNumber: SecurityLevel;
+    /**
+     * The total credits the key may spend over its lifetime, `undefined` when it has no budget
+     */
+    get totalBudget(): bigint | undefined;
+    /**
+     * Setting a budget on a version 0 key makes it a version 1 key
+     */
+    set totalBudget(value: bigint | null | undefined);
     static readonly __struct: string;
     readonly __type: string;
 }
@@ -2230,6 +2564,16 @@ export class IdentityPublicKeyInCreation {
     get contractBounds(): ContractBounds | undefined;
     set contractBounds(value: ContractBounds | null | undefined);
     data: Uint8Array;
+    /**
+     * The block time in milliseconds from which the key can no longer sign, `undefined` when
+     * it does not expire
+     */
+    get expiresAt(): bigint | undefined;
+    /**
+     * Setting an expiry on a version 0 key makes it a version 1 key. The key's own signature
+     * no longer covers it afterwards: sign again.
+     */
+    set expiresAt(value: bigint | null | undefined);
     isReadOnly: boolean;
     get keyId(): number;
     set keyId(value: any);
@@ -2240,6 +2584,15 @@ export class IdentityPublicKeyInCreation {
     get securityLevel(): string;
     set securityLevel(value: SecurityLevelLike);
     signature: Uint8Array;
+    /**
+     * The credits the key may spend over its lifetime, `undefined` when it has no budget
+     */
+    get totalBudget(): bigint | undefined;
+    /**
+     * Setting a budget on a version 0 key makes it a version 1 key. The key's own signature
+     * no longer covers it afterwards: sign again.
+     */
+    set totalBudget(value: bigint | null | undefined);
     static readonly __struct: string;
     readonly __type: string;
 }
@@ -2455,7 +2808,9 @@ export interface IdentityUpdateOptions {
 
     /**
      * Array of public keys to add to the identity.
-     * Use IdentityPublicKeyInCreation to create new keys.
+     * Use IdentityPublicKeyInCreation to create new keys. A key built with `totalBudget` or
+     * `expiresAt` is registered with those limits (protocol version 14); the signer must hold
+     * its private key as well as the master key, since a new key signs its own registration.
      */
     addPublicKeys?: IdentityPublicKeyInCreation[];
 
@@ -2509,9 +2864,10 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 ```typescript
 export interface MasternodeVoteOptions {
     /**
-     * The ProTxHash of the masternode.
+     * The ProTxHash of the masternode: an Identifier, its 32 bytes, the hex Core's RPC shows,
+     * or base58.
      */
-    masternodeProTxHash: Identifier;
+    masternodeProTxHash: IdentifierLike;
 
     /**
      * The vote poll to vote on.
@@ -3075,6 +3431,10 @@ export class StateTransitionResult {
     set error(value: string | null | undefined);
     state_transition_hash: string;
     status: string;
+    /**
+     * The credit balance of the transition's owner after it executed, when DAPI reported it.
+     */
+    readonly ownerBalance: bigint | undefined;
 }
 ```
 
@@ -3200,7 +3560,8 @@ export class TokenBurnResult {
      */
     set ownerId(value: Identifier | null | undefined);
     /**
-     * The remaining token balance after burning.
+     * The remaining token balance when supplied by the proof.
+     * Group burn co-signers receive `undefined`, including after the action closes.
      */
     readonly remainingBalance: bigint | undefined;
 }
@@ -3229,9 +3590,9 @@ export interface TokenClaimOptions {
     identityId: Identifier;
 
     /**
-     * The type of distribution to claim from: "preProgrammed" or "perpetual".
+     * The type of distribution to claim from: "preProgrammed", "perpetual" or "oncePerIdentity".
      */
-    distributionType: "preProgrammed" | "perpetual";
+    distributionType: "preProgrammed" | "perpetual" | "oncePerIdentity";
 
     /**
      * Optional public note for the claim operation.
@@ -4189,6 +4550,27 @@ export class TokenUnfreezeResult {
 }
 ```
 
+<a id="type-vote"></a>
+## `Vote`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class Vote {
+    free(): void;
+    [Symbol.dispose](): void;
+    constructor(votePoll: VotePoll, resourceVoteChoice: ResourceVoteChoice);
+    static fromJSON(js: VoteJSON): Vote;
+    static fromObject(obj: VoteObject): Vote;
+    toJSON(): VoteJSON;
+    toObject(): VoteObject;
+    choice: ResourceVoteChoice;
+    poll: VotePoll;
+    static readonly __struct: string;
+    readonly __type: string;
+}
+```
+
 <a id="type-votepoll"></a>
 ## `VotePoll`
 
@@ -4298,10 +4680,11 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 ```typescript
 export interface VotePollsByEndDateQuery {
     /**
-     * Starting timestamp (milliseconds) to filter polls.
+     * Starting timestamp (milliseconds) to filter polls. Accepts the
+     * `timestampMs` bigint of a returned entry, for paging.
      * @default undefined
      */
-    startTimeMs?: number;
+    startTimeMs?: number | bigint;
 
     /**
      * Include the `startTimeMs` boundary when true.
@@ -4313,7 +4696,7 @@ export interface VotePollsByEndDateQuery {
      * Ending timestamp (milliseconds) to filter polls.
      * @default undefined
      */
-    endTimeMs?: number;
+    endTimeMs?: number | bigint;
 
     /**
      * Include the `endTimeMs` boundary when true.
@@ -4467,6 +4850,11 @@ export interface DataContractConfig {
     documentsCanBeDeletedContractDefault: boolean;
     requiresIdentityEncryptionBoundedKey?: number;
     requiresIdentityDecryptionBoundedKey?: number;
+    /**
+     * Contract moderation (protocol version 14): the banlist, suspension list and/or warning
+     * list the contract keeps and who may edit them. Absent for an unmoderated contract.
+     */
+    moderation?: ContractModerationConfig;
 }
 ```
 
@@ -4525,6 +4913,133 @@ export interface DataContractOptions {
 }
 ```
 
+<a id="type-documentpropertyconstraint"></a>
+## `DocumentPropertyConstraint`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyConstraint = {
+    /** The rule's name, its key in `propertyConstraints`. Rules are checked in name order. */
+    name: string;
+    /** The rule as the schema declares it. */
+    rule: PropertyConstraintCondition;
+    /**
+     * Every property of the document type the rule reads, in declared order,
+     * one of the stored version under its `$old.` path; `$ownerId` and
+     * `$old.$ownerId` are no properties and are not listed, and neither is a
+     * value of a referenced document (`readsReferenced`).
+     */
+    reads: Array<{ path: string; kind: PropertyConstraintReadKind }>;
+    /**
+     * Whether the rule reads `$ownerId` or `$old.$ownerId`, or a total that
+     * depends on the owner: then a transfer or a purchase is judged against it
+     * too.
+     */
+    readsOwner: boolean;
+    /**
+     * The system values the rule reads, in declared order, of either version. A
+     * price update is judged against a rule reading the update's, a transfer or
+     * a purchase against one reading the transfer's, and each against one
+     * reading `$revision`.
+     */
+    readsSystem: PropertyConstraintSystemProperty[];
+    /**
+     * Whether the rule reads the stored version of the document through
+     * `$old.`. `checkDocumentPropertyConstraints` judges it only when told what
+     * the stored version is: none for a create, or the stored document.
+     */
+    readsStored: boolean;
+    /**
+     * The `countOf` and `sumOf` totals the rule reads, in declared order, one
+     * read twice listed twice. The pre-check does not judge a rule reading one.
+     */
+    readsTotals: PropertyConstraintTotalRead[];
+    /**
+     * The values the rule reads of the documents the type's references point
+     * at, in declared order, one read twice listed twice. The pre-check does not
+     * judge a rule reading one.
+     */
+    readsReferenced: PropertyConstraintReferencedRead[];
+};
+```
+
+<a id="type-documentpropertyconstraintviolation"></a>
+## `DocumentPropertyConstraintViolation`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyConstraintViolation = {
+    /** The broken rule's name. */
+    rule: string;
+    violation: PropertyConstraintViolationKind;
+    /** A readable reason, as in the consensus error's message. */
+    message: string;
+};
+```
+
+<a id="type-documentpropertydistinctfrom"></a>
+## `DocumentPropertyDistinctFrom`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyDistinctFrom = {
+    /**
+     * Dotted path of the declaring property within the document type, for
+     * example `"delegateId"`, or `"meta.reviewerId"` for a nested one. An
+     * identifier property, or a typed array of identifiers whose `items`
+     * carry the declaration, in which case every element is bound. This is the same string consensus reports in the `property` field
+     * of `DocumentPropertyNotDistinctError` (code 10419).
+     */
+    path: string;
+    /**
+     * What the property's value must differ from: `"$ownerId"` for the
+     * document's owner, or the dotted path of another identifier property of
+     * the same document type. Consensus refuses a create or replace whose two
+     * values are equal; when the named property is absent from the document
+     * there is nothing to differ from, so the write passes.
+     */
+    distinctFrom: string;
+};
+```
+
+<a id="type-documentpropertyencryption"></a>
+## `DocumentPropertyEncryption`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyEncryption = {
+    /**
+     * Dotted path of the declaring byte array property within the document
+     * type, for example `"encryptedMessage"`, or `"meta.blob"` for a nested
+     * one. This is the string consensus reports in the `property` field of
+     * the shape error (code 10420).
+     */
+    path: string;
+    /**
+     * Whose keys decrypt the bytes: the dotted path of an identifier property
+     * of the same document type whose value is the recipient identity's id,
+     * or `"$ownerId"` for a message the writer encrypts to themself.
+     */
+    recipient: string;
+    /**
+     * Dotted path of the integer property of the same document type carrying
+     * the id of the recipient's key.
+     */
+    recipientKey: string;
+    /**
+     * Dotted path of the integer property of the same document type carrying
+     * the id of the sender's key.
+     */
+    senderKey: string;
+    /** How the bytes were produced. */
+    scheme: EncryptionScheme;
+};
+```
+
 <a id="type-documentpropertyreference"></a>
 ## `DocumentPropertyReference`
 
@@ -4534,15 +5049,89 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 export type DocumentPropertyReference = {
     /**
      * Dotted path of the declaring property within the document type — for
-     * example `"author"`, or `"meta.parentId"` for a nested one.
+     * example `"author"`, or `"meta.parentId"` for a nested one. A
+     * declaration on the `items` of a typed array of identifiers, which every
+     * element carries, is listed with the list path of its elements, for
+     * example `"reasons[]"`; its `type` is never `identityPublicKey`, which
+     * an element cannot declare.
+     *
+     * The document type's `ownerRefersTo` declaration, whose value is the
+     * document's `$ownerId`, the writer, is listed first with the path
+     * `"$ownerId"`, which is not a property path: the value it checks is the
+     * document's owner. Consensus checks it with the writer's id when a
+     * document is created, and when a replace changes a property its `findBy`
+     * or `where` reads (every replace for a `deletableDocument` found by
+     * `findBy`, which gates the writer on its document still existing); in its
+     * `findBy`, `'.'` is the writer. Its `type` is `identity`, a
+     * `permanentDocument` or `deletableDocument` with `findBy`, or a
+     * `permanentDocument` with `inList`, the targets a writer can be, on a document type whose
+     * documents can be neither transferred nor traded. On a type whose documents can, a
+     * `creatorRefersTo` declaration takes its place, listed first with the
+     * path `"$creatorId"`: the same, with the document's creator, who never
+     * changes, as the value, and a `deletableDocument` only with a `findBy`
+     * function (see {@link DocumentReferenceFindByFunction}).
      *
      * This is the same string consensus reports in the `path` field of the
-     * document-write reference errors (codes 40120-40125). Note that contract
-     * *registration* errors prefix it with the document type name
-     * (`"<documentType>.<path>"`) while document *write* errors do not.
+     * document-write reference errors (codes 40120-40125, 40131, 40135,
+     * 40136, 40142 and 40149), except that a write error names the failing element by its
+     * index (`"reasons[2]"` for
+     * the third). Note that contract *registration* errors prefix it with the
+     * document type name (`"<documentType>.<path>"`, `"<documentType>.reasons[]"`)
+     * and name one leaf of a reference expression by where it sits
+     * (`"<documentType>.<path>.anyOf[1].allOf[0]"`), while document *write*
+     * errors do neither.
      */
     path: string;
 } & DocumentPropertyReferenceTarget;
+```
+
+<a id="type-documenttypeimmutableproperties"></a>
+## `DocumentTypeImmutableProperties`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeImmutableProperties = {
+    /**
+     * Top-level properties frozen at document creation. A replace that
+     * changes, adds or removes any of them is rejected with consensus code
+     * 40128 (`DocumentImmutabilityErrorCode.DocumentImmutablePropertyChanged`).
+     */
+    immutable: string[];
+    /**
+     * Top-level properties frozen for any replace their condition holds for,
+     * each with the condition as the contract declares it (the grammar of a
+     * `propertyConstraints` rule). It is judged on the document the replace
+     * writes, whose `$updatedAt` is the replace's block time, and reads the
+     * stored document through `$old.` paths: `{ present: "$old.mood" }` lets an
+     * absent `mood` be set once. A replace changing one while its condition
+     * holds is rejected with code 40128 as well. No key is also in `immutable`.
+     */
+    immutableWhen: Record<string, unknown>;
+};
+```
+
+<a id="type-documenttypedarrayproperty"></a>
+## `DocumentTypedArrayProperty`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypedArrayProperty = {
+    /**
+     * Dotted path of the property within the document type, for example
+     * `"reasons"`, or `"team.members"` for one nested in an object.
+     */
+    path: string;
+    /** What every element is. */
+    items: DocumentTypedArrayItem;
+    /** The fewest elements a document may hold; absent when not declared. */
+    minItems?: number;
+    /** The most elements a document may hold; every typed array declares it. */
+    maxItems: number;
+    /** Whether a document repeating an element is refused. */
+    uniqueItems: boolean;
+};
 ```
 
 <a id="type-platformversionlike"></a>
@@ -4573,7 +5162,16 @@ export class TokenConfiguration {
     destroyFrozenFundsRules: ChangeControlRules;
     distributionRules: TokenDistributionRules;
     emergencyActionRules: ChangeControlRules;
+    /**
+     * The token configuration format version: 0 for a transferable token without a shielded
+     * pool, 1 for one with a pool or a non-transferable token.
+     */
+    readonly formatVersion: number;
     freezeRules: ChangeControlRules;
+    /**
+     * Whether the token has its own shielded pool (format version 1 configurations only).
+     */
+    hasShieldedPool: boolean;
     isAllowedTransferToFrozenBalance: boolean;
     isStartedAsPaused: boolean;
     keepsHistory: TokenKeepsHistoryRules;
@@ -4586,6 +5184,21 @@ export class TokenConfiguration {
     get maxSupply(): bigint | undefined;
     set maxSupply(value: any);
     maxSupplyChangeRules: ChangeControlRules;
+    /**
+     * The fewest notes the shielded pool must hold before tokens may leave it. 0 means no
+     * threshold, which is also what every token without a pool reports.
+     */
+    get minimumPoolNotesForOutgoing(): bigint;
+    /**
+     * `undefined` or `null` removes the threshold. Throws for a token that has no shielded
+     * pool, which has no threshold to hold.
+     */
+    set minimumPoolNotesForOutgoing(value: any);
+    /**
+     * Whether holders may move the token to another identity. Always true for format
+     * version 0 configurations.
+     */
+    transferable: boolean;
     unfreezeRules: ChangeControlRules;
     static readonly __struct: string;
     readonly __type: string;
@@ -4611,6 +5224,10 @@ export interface DocumentJSON {
     $createdAtCoreBlockHeight?: number;
     $updatedAtCoreBlockHeight?: number;
     $transferredAtCoreBlockHeight?: number;
+    /** When a moderator last wrote the fields the document type keeps for its moderators */
+    $moderatedAt?: string;
+    /** The moderator who last wrote them */
+    $moderatedBy?: string;
     $dataContractId: string;
     $type: string;
     [key: string]: unknown;
@@ -4636,6 +5253,10 @@ export interface DocumentObject {
     $createdAtCoreBlockHeight?: number;
     $updatedAtCoreBlockHeight?: number;
     $transferredAtCoreBlockHeight?: number;
+    /** When a moderator last wrote the fields the document type keeps for its moderators */
+    $moderatedAt?: bigint;
+    /** The moderator who last wrote them */
+    $moderatedBy?: Identifier;
     $dataContractId: Identifier;
     $type: string;
     [key: string]: unknown;
@@ -4659,10 +5280,97 @@ export interface DocumentOptions {
     ownerId: IdentifierLike;
     /** Document revision (default: 1n) */
     revision?: bigint;
-    /** Document ID (auto-generated if not provided) */
+    /**
+     * Document ID. Derived when not provided (see `identityContractNonce`).
+     * Together with `identityContractNonce` it must equal the derived id, or
+     * the constructor throws: the nonce fixes the id, and a different explicit
+     * one could only be referenced, never created. Whatever is given here is
+     * replaced by `new DocumentCreateTransition(...)`, which can only carry the
+     * id consensus recomputes.
+     */
     id?: IdentifierLike;
     /** Entropy bytes (32 bytes, auto-generated if not provided) */
     entropy?: Uint8Array;
+    /**
+     * Identity contract nonce the create transition of this document is going
+     * to use. From protocol version 14 the id of a new document commits to
+     * that nonce, so without it the derived `id` is a placeholder that
+     * `new DocumentCreateTransition(...)` replaces (and mirrors back onto this
+     * document). Pass the nonce here, or call `setIdForCreation`, to have the
+     * final id from the start.
+     */
+    identityContractNonce?: bigint;
+    /** Platform version the id is derived for (default: latest) */
+    platformVersion?: PlatformVersionLike;
+}
+```
+
+<a id="type-agreedfeemultiplieroptions"></a>
+## `AgreedFeeMultiplierOptions`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface AgreedFeeMultiplierOptions {
+    knownPermille: bigint;
+    increaseTolerancePercent: number;
+}
+```
+
+<a id="type-documentactionfeeaction"></a>
+## `DocumentActionFeeAction`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentActionFeeAction =
+| 'create'
+| 'replace'
+| 'delete'
+| 'transfer'
+| 'purchase'
+| 'updatePrice'
+| BatchType;
+```
+
+<a id="type-documentactionfeeagreementjson"></a>
+## `DocumentActionFeeAgreementJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface DocumentActionFeeAgreementJSON {
+    $formatVersion: string;
+    owner: number | string;
+    moderators: number | string;
+    feeMultiplier: AgreedFeeMultiplierJSON | null;
+}
+```
+
+<a id="type-documentactionfeeagreementobject"></a>
+## `DocumentActionFeeAgreementObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface DocumentActionFeeAgreementObject {
+    $formatVersion: string;
+    owner: bigint;
+    moderators: bigint;
+    feeMultiplier: AgreedFeeMultiplierObject | null;
+}
+```
+
+<a id="type-documentactionfeeagreementoptions"></a>
+## `DocumentActionFeeAgreementOptions`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface DocumentActionFeeAgreementOptions {
+    owner?: bigint;
+    moderators?: bigint;
+    feeMultiplier?: AgreedFeeMultiplierOptions;
 }
 ```
 
@@ -4696,7 +5404,11 @@ export type DocumentWhereOperator =
 | 'in'
 | 'In'
 | 'startsWith'
-| 'StartsWith';
+| 'StartsWith'
+| 'contains'
+| 'Contains'
+| 'containsAny'
+| 'ContainsAny';
 ```
 
 <a id="type-extendedepochinfojson"></a>
@@ -4981,6 +5693,10 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 export class ContractBounds {
     free(): void;
     [Symbol.dispose](): void;
+    /**
+     * Bounds to every member of a contract group. Only authentication keys may carry them.
+     */
+    static ContractGroup(contractGroupId: IdentifierLike): ContractBounds;
     static SingleContract(contractId: IdentifierLike): ContractBounds;
     static SingleContractDocumentType(contractId: IdentifierLike, documentTypeName: string): ContractBounds;
     constructor(contractId: IdentifierLike, documentTypeName?: string | null);
@@ -4990,8 +5706,15 @@ export class ContractBounds {
     toObject(): ContractBoundsObject;
     readonly contractBoundsType: string;
     readonly contractBoundsTypeNumber: number;
+    /**
+     * The contract group id, for `contractGroup` bounds only.
+     */
+    readonly contractGroupId: Identifier | undefined;
     get documentTypeName(): string | undefined;
     set documentTypeName(value: string);
+    /**
+     * The contract id, or the contract group id for `contractGroup` bounds.
+     */
     get identifier(): Identifier;
     set identifier(value: IdentifierLike);
     static readonly __struct: string;
@@ -5015,6 +5738,8 @@ export interface IdentityPublicKeyJSON {
     readOnly: boolean;
     data: string;
     disabledAt?: number;
+    totalBudget?: number | string;
+    expiresAt?: number | string;
 }
 ```
 
@@ -5034,6 +5759,8 @@ export interface IdentityPublicKeyObject {
     readOnly: boolean;
     data: Uint8Array;
     disabledAt?: bigint;
+    totalBudget?: bigint;
+    expiresAt?: bigint;
 }
 ```
 
@@ -5052,6 +5779,10 @@ export interface IdentityPublicKeyOptions {
     data: Uint8Array;
     disabledAt?: number;
     contractBounds?: ContractBounds;
+    /** Credits the key may spend over its lifetime (protocol version 14); makes it a version 1 key */
+    totalBudget?: bigint;
+    /** Block time in milliseconds from which the key can no longer sign; makes it a version 1 key */
+    expiresAt?: bigint;
 }
 ```
 
@@ -5135,6 +5866,7 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface IdentityPublicKeyInCreationJSON {
+    $formatVersion: string;
     keyId: number;
     purpose: string;
     securityLevel: string;
@@ -5143,6 +5875,8 @@ export interface IdentityPublicKeyInCreationJSON {
     data: string;
     signature?: string;
     contractBounds?: ContractBoundsJSON;
+    totalBudget?: number | string;
+    expiresAt?: number | string;
 }
 ```
 
@@ -5153,6 +5887,7 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface IdentityPublicKeyInCreationObject {
+    $formatVersion: string;
     keyId: number;
     purpose: Purpose;
     securityLevel: SecurityLevel;
@@ -5161,6 +5896,8 @@ export interface IdentityPublicKeyInCreationObject {
     data: Uint8Array;
     signature?: Uint8Array;
     contractBounds?: ContractBoundsObject;
+    totalBudget?: bigint;
+    expiresAt?: bigint;
 }
 ```
 
@@ -5179,6 +5916,8 @@ export interface IdentityPublicKeyInCreationOptions {
     data: Uint8Array;
     signature?: Uint8Array;
     contractBounds?: ContractBounds;
+    totalBudget?: bigint;
+    expiresAt?: bigint;
 }
 ```
 
@@ -5610,6 +6349,34 @@ export class TokenPricingSchedule {
 }
 ```
 
+<a id="type-votejson"></a>
+## `VoteJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface VoteJSON {
+    $type: "resourceVote";
+    $formatVersion: string;
+    votePoll: VotePollJSON;
+    resourceVoteChoice: ResourceVoteChoiceJSON;
+}
+```
+
+<a id="type-voteobject"></a>
+## `VoteObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface VoteObject {
+    $type: "resourceVote";
+    $formatVersion: string;
+    votePoll: VotePollObject;
+    resourceVoteChoice: ResourceVoteChoiceObject;
+}
+```
+
 <a id="type-votepolljson"></a>
 ## `VotePollJSON`
 
@@ -5751,6 +6518,126 @@ export class ContestedDocumentVotePollWinnerInfo {
 }
 ```
 
+<a id="type-contractmoderationconfig"></a>
+## `ContractModerationConfig`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface ContractModerationConfig {
+    banlist: boolean;
+    suspensions: boolean;
+    /** The contract keeps a warning list: warnings bar nothing and accumulate until cleared. */
+    warnings: boolean;
+    moderators: ContractModerators;
+}
+```
+
+<a id="type-propertyconstraintcondition"></a>
+## `PropertyConstraintCondition`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintCondition =
+| { equal: [PropertyConstraintExpression, PropertyConstraintExpression] | [PropertyConstraintEqualityOperand, PropertyConstraintEqualityOperand] }
+| { notEqual: [PropertyConstraintExpression, PropertyConstraintExpression] | [PropertyConstraintEqualityOperand, PropertyConstraintEqualityOperand] }
+| { lessThan: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { lessThanOrEqual: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { greaterThan: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { greaterThanOrEqual: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { in: [PropertyConstraintExpression, Array<number | bigint>] | [PropertyConstraintPath | { ifAbsent: [path: PropertyConstraintPath, value: string] }, string[]] }
+| { notIn: [PropertyConstraintExpression, Array<number | bigint>] | [PropertyConstraintPath | { ifAbsent: [path: PropertyConstraintPath, value: string] }, string[]] }
+| { startsWith: [PropertyConstraintEqualityOperand, PropertyConstraintEqualityOperand] }
+| { endsWith: [PropertyConstraintEqualityOperand, PropertyConstraintEqualityOperand] }
+| { contains: [path: PropertyConstraintPath, PropertyConstraintExpression | PropertyConstraintEqualityOperand] }
+| { present: PropertyConstraintPath }
+| { absent: PropertyConstraintPath }
+| { anyOf: PropertyConstraintCondition[] }
+| { allOf: PropertyConstraintCondition[] }
+| { not: PropertyConstraintCondition }
+| { ifThen: [PropertyConstraintCondition, PropertyConstraintCondition] }
+| { ifThenElse: [PropertyConstraintCondition, PropertyConstraintCondition, PropertyConstraintCondition] };
+```
+
+<a id="type-propertyconstraintreadkind"></a>
+## `PropertyConstraintReadKind`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintReadKind =
+| 'value'
+| 'presence'
+| 'text'
+| 'identifier'
+| 'length'
+| 'count'
+| 'elements'
+| 'bytes';
+```
+
+<a id="type-propertyconstraintreferencedread"></a>
+## `PropertyConstraintReferencedRead`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintReferencedRead = {
+    reference: string;
+    path: string;
+    kind: PropertyConstraintReadKind;
+};
+```
+
+<a id="type-propertyconstraintsystemproperty"></a>
+## `PropertyConstraintSystemProperty`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintSystemProperty =
+| PropertyConstraintSystemValue
+| `$old.${PropertyConstraintSystemValue}`;
+```
+
+<a id="type-propertyconstrainttotalread"></a>
+## `PropertyConstraintTotalRead`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintTotalRead = {
+    kind: 'countOf' | 'sumOf';
+    documentType: string;
+    property?: string;
+    filter: string[];
+};
+```
+
+<a id="type-propertyconstraintviolationkind"></a>
+## `PropertyConstraintViolationKind`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintViolationKind =
+| 'NotMet'
+| 'Overflow'
+| 'DivisionByZero'
+| 'NegativeExponent'
+| 'NotAnInteger';
+```
+
+<a id="type-encryptionscheme"></a>
+## `EncryptionScheme`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type EncryptionScheme = 'ecdh-secp256k1-aes256-cbc';
+```
+
 <a id="type-documentpropertyreferencetarget"></a>
 ## `DocumentPropertyReferenceTarget`
 
@@ -5759,7 +6646,37 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 ```typescript
 export type DocumentPropertyReferenceTarget =
 | { type: 'identity' }
-| { type: 'contract' }
+| {
+    type: 'contract';
+    /**
+     * What the referenced contract must declare beyond existing, checked
+     * by consensus when the referring document is written against the
+     * contract fetched for the existence check and the block time:
+     * `moderation: 'elected'` requires an elected moderation team and
+     * `'electionOpen'` one whose own `electionDelay` has passed since the
+     * contract's creation (or which declares none),
+     * `minimumAgeSeconds` requires the contract's recorded creation time
+     * to be at least that many seconds before the block time of the write,
+     * and `minimumSecondsSinceUpdate` the same of the later of its creation
+     * and last update times, and `owner: 'self'` requires the contract to
+     * be owned by the writer of the referring document (its `$ownerId`),
+     * `'other'` by anyone else; `readonly: true` requires a read-only
+     * contract (one that can never be updated again), `keepsHistory: true`
+     * one keeping its history, and `ownerProtected` an elected moderation
+     * declaration whose owner protection flag has that value (code 40135
+     * when any is unmet). Absent when the declaration carries no
+     * requirement.
+     */
+    contractRequirements?: {
+        moderation?: 'elected' | 'electionOpen';
+        minimumAgeSeconds?: number;
+        minimumSecondsSinceUpdate?: number;
+        owner?: 'self' | 'other';
+        readonly?: true;
+        keepsHistory?: true;
+        ownerProtected?: boolean;
+    };
+}
 | { type: 'token' }
 | {
     type: 'permanentDocument';
@@ -5781,13 +6698,35 @@ export type DocumentPropertyReferenceTarget =
      */
     documentType: string;
     /**
-     * Write-time equality bindings between the two documents:
-     * `{ <referring property path>: <referenced property path> }`.
-     * Consensus refuses a write whose referring property does not equal
-     * the referenced document's property (code 40127). Absent — not
-     * `{}`-valued — when the declaration carries none.
+     * How the referenced document is found when the property's value is
+     * not its id. See {@link DocumentReferenceFindBy}. Absent when the
+     * value is the referenced document's `$id`.
      */
-    propertyAgreement?: Record<string, string>;
+    findBy?: DocumentReferenceFindBy;
+    /**
+     * What the referenced document must hold once found. See
+     * {@link DocumentReferenceWhere}. Absent — not `{}`-valued — when the
+     * declaration compares nothing.
+     */
+    where?: DocumentReferenceWhere;
+    /**
+     * Beside `findBy`: what the document `findBy` finds must meet when the
+     * referring document is created. See {@link DocumentReferenceConstraints}.
+     */
+    constraints?: DocumentReferenceConstraints;
+    /**
+     * A list the value must be in: the value (on a typed array, every
+     * element) must be one of the identifiers the typed array `inList`
+     * holds, a dotted path on `documentType`, on the document `findBy`
+     * names by `{ $id: <property> }`, the identifier property holding its
+     * id. Consensus fetches that document, checks `where` against it, and
+     * refuses a value its list does not hold, or one set while that
+     * property is not (code 40120). The list's document can never be
+     * deleted and the list never changes, so a value accepted once stays an
+     * element. To resolve it yourself, fetch the document by that id and
+     * look in `inList`.
+     */
+    inList?: string;
 }
 | {
     type: 'identityPublicKey';
@@ -5797,6 +6736,160 @@ export type DocumentPropertyReferenceTarget =
      * identity id. A dotted path when the property is nested.
      */
     keyIdProperty: string;
+    identityProperty?: never;
+    /**
+     * What the referenced key must be beyond existing and not being
+     * disabled, checked by consensus when the referring document is
+     * written against the key fetched for the existence check:
+     * `purpose` requires the key's purpose to be the named one, and
+     * `boundTo` requires the key's contract bounds to be exactly the
+     * declaring contract and the named document type of it; a
+     * whole-contract or contract group bound never meets it (code 40136
+     * when either is unmet). Absent when the declaration carries no
+     * requirement.
+     */
+    keyRequirements?: IdentityKeyReferenceRequirements;
+}
+| {
+    /**
+     * The inverse form, declared on the key id property itself: the
+     * declaring property (an integer from 0 to 4294967295) carries the
+     * key id, and `identityProperty` names whose key it is: `'$ownerId'`,
+     * the document's owner, `'$creatorId'`, its creator (only on a
+     * document type that records creator ids), or the dotted path of an
+     * identifier property of the same document type. Consensus fetches
+     * only the key (codes 40123 when it does not exist, 40124 when it is
+     * disabled; 40125 when a key id is set while the named property is
+     * not), and checks `keyRequirements` against it exactly as for the
+     * identifier form.
+     */
+    type: 'identityPublicKey';
+    identityProperty: '$ownerId' | '$creatorId' | (string & {});
+    keyIdProperty?: never;
+    /**
+     * What the referenced key must be beyond existing and not being
+     * disabled, checked by consensus when the referring document is
+     * written against the key fetched for the existence check:
+     * `purpose` requires the key's purpose to be the named one, and
+     * `boundTo` requires the key's contract bounds to be exactly the
+     * declaring contract and the named document type of it; a
+     * whole-contract or contract group bound never meets it (code 40136
+     * when either is unmet). Absent when the declaration carries no
+     * requirement.
+     */
+    keyRequirements?: IdentityKeyReferenceRequirements;
+}
+| {
+    /**
+     * A document of a type whose documents CAN be deleted (the
+     * counterpart of `permanentDocument`, disjoint from it). The
+     * referenced document must exist, and every `where` entry must
+     * hold, when the referring document is written; it may be
+     * deleted afterwards, so a reader must expect the reference to
+     * resolve to nothing. Every replace of the referring document
+     * re-validates it: a dead reference has to be repointed at an
+     * existing document or cleared.
+     */
+    type: 'deletableDocument';
+    /**
+     * The contract the referenced document type lives in. Always
+     * present, resolved exactly as for `permanentDocument`.
+     */
+    contractId: Identifier;
+    /** Name of the referenced document type; it must allow deletion. */
+    documentType: string;
+    /**
+     * How the referenced document is found when the property's value is
+     * not its id. See {@link DocumentReferenceFindBy}. Absent when the
+     * value is the referenced document's `$id`. With `findBy` the
+     * reference means "a document with this key exists now": once the one
+     * it found is deleted the key may find another, and every replace
+     * re-validates it, unless a `findBy` function computes the key: that
+     * commitment is judged when the document is created only.
+     */
+    findBy?: DocumentReferenceFindBy;
+    /**
+     * What the referenced document must hold once found, exactly as for
+     * `permanentDocument`. Absent — not `{}`-valued — when the declaration
+     * compares nothing.
+     */
+    where?: DocumentReferenceWhere;
+    /**
+     * Beside `findBy`: what the document `findBy` finds must meet when the
+     * referring document is created. See {@link DocumentReferenceConstraints}.
+     */
+    constraints?: DocumentReferenceConstraints;
+    /**
+     * Beside `findBy`, on a reference judged on the create alone (a `findBy`
+     * function, or a document type whose documents are never replaced): the create deletes the document
+     * `findBy` finds, the writer's own commitment, in the same state
+     * transition.
+     */
+    consume?: true;
+}
+| {
+    /**
+     * A document of a type whose documents leave state only when the
+     * contract's moderators remove them, each removal leaving a removal
+     * record under the contract (`canBeDeleted: false`, no `ttl`, and
+     * `moderatorAbilities.delete` keeping records). Between
+     * `permanentDocument` and `deletableDocument`, disjoint from both. The
+     * referenced document must exist, and every `where` entry must hold,
+     * when the referring document is written; afterwards the reference
+     * resolves to the document or, once a moderator removed it, to its
+     * removal record, which a restore can bring the document back from. A
+     * replace keeps it, re-validating it only when the value or a property
+     * `where` reads changes, as for `permanentDocument`; on every replace
+     * for a `where` value `$ownerId`, a `notEqual` bounded by `$ownerId`,
+     * an ordering bounded by `$updatedAt` or `$transferredAt` (or their
+     * heights), and a reference a `propertyConstraints` rule reads through,
+     * which checks its whole `where`.
+     */
+    type: 'moderatedDocument';
+    /**
+     * The contract the referenced document type lives in. Always
+     * present, resolved exactly as for `permanentDocument`.
+     */
+    contractId: Identifier;
+    /**
+     * Name of the referenced document type; its documents must leave
+     * state only through a moderator's recorded removal.
+     */
+    documentType: string;
+    /**
+     * What the referenced document must hold, exactly as for
+     * `permanentDocument`. Absent — not `{}`-valued — when the declaration
+     * compares nothing.
+     */
+    where?: DocumentReferenceWhere;
+}
+| DocumentPropertyReferenceExpression;
+```
+
+<a id="type-documenttypedarrayitem"></a>
+## `DocumentTypedArrayItem`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypedArrayItem =
+| { type: 'integer'; minimum?: number; maximum?: number; enum?: number[] }
+| { type: 'number'; minimum?: number; maximum?: number; enum?: number[] }
+| { type: 'boolean'; enum?: boolean[] }
+| { type: 'string'; minLength?: number; maxLength?: number; enum?: string[] }
+| { type: 'byteArray'; minItems?: number; maxItems?: number }
+| {
+    type: 'identifier';
+    /**
+     * The `refersTo` declaration every element carries, when the `items`
+     * schema declares one: consensus checks each element as a single
+     * reference when a document is created or replaced, and a write error
+     * names the failing element by its list path (`"reasons[2]"`). Never
+     * `identityPublicKey`; a reference expression, which each element must
+     * meet on its own. The same declaration is listed by
+     * `documentTypeReferences` at the path `"<path>[]"`.
+     */
+    refersTo?: DocumentPropertyReferenceTarget;
 };
 ```
 
@@ -5905,6 +6998,37 @@ export interface TokenConfigurationOptions {
     mainControlGroup?: number;
     mainControlGroupCanBeModified: AuthorizedActionTakers;
     description?: string;
+    /**
+     * Give the token its own shielded pool (protocol version 14+). Produces a
+     * format-version-1 token configuration; the flag cannot change after creation, and
+     * freezeRules, unfreezeRules and destroyFrozenFundsRules must then authorize no one
+     * (no action takers and no admins): shielded notes cannot be frozen or destroyed.
+     */
+    hasShieldedPool?: boolean;
+    /**
+     * The fewest notes the token's shielded pool must hold before tokens may leave it for a
+     * visible destination: unshielding to an identity, burning from the pool, or paying a
+     * document's token cost out of the pool. Transfers that stay inside the pool are never
+     * held back. Requires hasShieldedPool.
+     *
+     * What is counted is note commitments, not depositors, and one bundle carries several of
+     * them, so a single depositor can reach a threshold alone: it says how busy the pool
+     * should be before anyone leaves it, and guarantees no anonymity set. Omitted, or
+     * undefined, means no threshold, which is the default because any threshold above 0 keeps
+     * a new pool's first depositors from leaving until enough notes accumulate. A contract
+     * create refuses a threshold above the protocol's maximum of 250. The issuer changes it
+     * afterwards with a TokenConfigUpdate, under its own change control rules.
+     */
+    minimumPoolNotesForOutgoing?: bigint;
+    /**
+     * Whether holders may move the token to another identity (protocol version 14+).
+     * Defaults to true. false produces a format-version-1 token configuration and cannot
+     * change after creation: every TokenTransfer is refused, a document type may charge the
+     * token only by burning it (so only its own contract's document types can use it), and
+     * the token cannot have a shielded pool. Minting, claims, direct purchases, burns and
+     * freezes work as configured.
+     */
+    transferable?: boolean;
 }
 ```
 
@@ -5924,6 +7048,8 @@ export class TokenDistributionRules {
     get newTokensDestinationIdentity(): Identifier | undefined;
     set newTokensDestinationIdentity(value: IdentifierLikeOrUndefined);
     newTokensDestinationIdentityRules: ChangeControlRules;
+    get oncePerIdentityDistribution(): TokenOncePerIdentityDistribution | undefined;
+    set oncePerIdentityDistribution(value: any);
     get perpetualDistribution(): TokenPerpetualDistribution | undefined;
     set perpetualDistribution(value: any);
     perpetualDistributionRules: ChangeControlRules;
@@ -5969,6 +7095,48 @@ export class TokenMarketplaceRules {
     tradeModeChangeRules: ChangeControlRules;
     static readonly __struct: string;
     readonly __type: string;
+}
+```
+
+<a id="type-batchtype"></a>
+## `BatchType`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export enum BatchType {
+    Create = 0,
+    Replace = 1,
+    Delete = 2,
+    Transfer = 3,
+    Purchase = 4,
+    UpdatePrice = 5,
+    IgnoreWhileBumpingRevision = 6,
+    IndexOnlyDelete = 7,
+}
+```
+
+<a id="type-agreedfeemultiplierjson"></a>
+## `AgreedFeeMultiplierJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface AgreedFeeMultiplierJSON {
+    knownPermille: number | string;
+    increaseTolerancePercent: number;
+}
+```
+
+<a id="type-agreedfeemultiplierobject"></a>
+## `AgreedFeeMultiplierObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface AgreedFeeMultiplierObject {
+    knownPermille: bigint;
+    increaseTolerancePercent: number;
 }
 ```
 
@@ -6063,9 +7231,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface ContractBoundsJSON {
-    identifier: string;
+    $type: ContractBoundsType;
+    id: string;
     documentTypeName?: string;
-    contractBoundsType: "SingleContract" | "SingleContractDocumentType";
 }
 ```
 
@@ -6076,9 +7244,9 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export interface ContractBoundsObject {
-    identifier: Uint8Array;
+    $type: ContractBoundsType;
+    id: Uint8Array;
     documentTypeName?: string;
-    contractBoundsType: "SingleContract" | "SingleContractDocumentType";
 }
 ```
 
@@ -6213,6 +7381,173 @@ export type ContestedDocumentVotePollWinnerInfoObject =
 | { $type: "wonByIdentity"; identity: Uint8Array };
 ```
 
+<a id="type-contractmoderators"></a>
+## `ContractModerators`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type ContractModerators =
+| { $type: "contractOwner" }
+| { $type: "appointedModerators"; identities: string[] }
+| ({
+    $type: "elected";
+    joinWindow?: number;
+    voteWindow?: number;
+    /**
+     * Seconds after the contract's creation before the first charter may be filed
+     * against it, unbounded; the election may be called at once when left out. A
+     * reference requiring `moderation: 'electionOpen'` reads it.
+     */
+    electionDelay?: number;
+    /**
+     * How many members a seated team's leader may add after the election, each one an
+     * identity that asked to join the team's proposal; 0 when left out, at most 15.
+     */
+    maxAddedModerators?: number;
+    /**
+     * The moderated document types of the contract, each with the non-empty abilities a
+     * charter may claim on it: `ban`, `suspend` and `warn` need the list the contract
+     * keeps, `deleteDocuments` the type setting `moderatorAbilities.delete`,
+     * `changeDocumentFields` the type listing `moderatorAbilities.changeFields`. The lists stay
+     * contract-wide. A charter does not price actions: a type's `actionFees.moderators`
+     * amount is the most a team may charge.
+     */
+    moderatedDocumentTypes: Record<string, ModerationAbility[]>;
+    interim: InterimModerators;
+    /** Whether the owner is protected from the team; false when left out. */
+    ownerProtected?: boolean;
+} & ElectedModerationSeat);
+```
+
+<a id="type-propertyconstraintequalityoperand"></a>
+## `PropertyConstraintEqualityOperand`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintEqualityOperand =
+| string
+| PropertyConstraintReferenced
+| { const: string }
+| { ifAbsent: [path: PropertyConstraintPath, value: string] };
+```
+
+<a id="type-propertyconstraintexpression"></a>
+## `PropertyConstraintExpression`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintExpression =
+| number
+| bigint
+| string
+| PropertyConstraintReferenced
+| { ifAbsent: [path: PropertyConstraintPath, value: number | bigint] }
+| { add: PropertyConstraintExpression[] }
+| { multiply: PropertyConstraintExpression[] }
+| { subtract: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { divide: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { modulo: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { power: [PropertyConstraintExpression, PropertyConstraintExpression] }
+| { min: PropertyConstraintExpression[] }
+| { max: PropertyConstraintExpression[] }
+| { abs: PropertyConstraintExpression }
+| { length: PropertyConstraintPath }
+| { byteLength: PropertyConstraintPath }
+| { count: PropertyConstraintPath }
+| { countPresent: PropertyConstraintPath[] }
+| { byteAt: [path: PropertyConstraintPath, index: number] }
+| { countOf: [documentType: string] | [documentType: string, filter: PropertyConstraintAggregateFilter] }
+| {
+    sumOf:
+    | [documentType: string, property: string]
+    | [documentType: string, property: string, filter: PropertyConstraintAggregateFilter]
+};
+```
+
+<a id="type-propertyconstraintpath"></a>
+## `PropertyConstraintPath`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintPath = string | PropertyConstraintReferenced;
+```
+
+<a id="type-propertyconstraintsystemvalue"></a>
+## `PropertyConstraintSystemValue`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintSystemValue =
+| '$createdAt'
+| '$updatedAt'
+| '$transferredAt'
+| '$createdAtBlockHeight'
+| '$updatedAtBlockHeight'
+| '$transferredAtBlockHeight'
+| '$createdAtCoreBlockHeight'
+| '$updatedAtCoreBlockHeight'
+| '$transferredAtCoreBlockHeight'
+| '$revision';
+```
+
+<a id="type-documentpropertyreferenceexpression"></a>
+## `DocumentPropertyReferenceExpression`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyReferenceExpression =
+| { type: 'anyOf'; anyOf: Array<DocumentPropertyReferenceOperand> }
+| { type: 'allOf'; allOf: Array<DocumentPropertyReferenceOperand> };
+```
+
+<a id="type-documentreferenceconstraints"></a>
+## `DocumentReferenceConstraints`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceConstraints = {
+    minimumAgeBlocks?: number;
+    chooseFirst?: DocumentReferenceChooseFirst;
+};
+```
+
+<a id="type-documentreferencefindby"></a>
+## `DocumentReferenceFindBy`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceFindBy = Record<string, string | DocumentReferenceFindByFunction>;
+```
+
+<a id="type-documentreferencewhere"></a>
+## `DocumentReferenceWhere`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceWhere = Record<string, string | DocumentReferenceWhereCondition>;
+```
+
+<a id="type-identitykeyreferencerequirements"></a>
+## `IdentityKeyReferenceRequirements`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type IdentityKeyReferenceRequirements = {
+    purpose?: 'authentication' | 'encryption' | 'decryption' | 'transfer' | 'voting' | 'owner';
+    boundTo?: string;
+};
+```
+
 <a id="type-canchangeadminactiontakersoptions"></a>
 ## `CanChangeAdminActionTakersOptions`
 
@@ -6290,6 +7625,28 @@ export interface TokenDistributionRulesOptions {
     mintingAllowChoosingDestination: boolean;
     mintingAllowChoosingDestinationRules: ChangeControlRules;
     changeDirectPurchasePricingRules: ChangeControlRules;
+    /**
+     * A fixed amount every identity may claim exactly once. Setting it makes the rules
+     * serialize as format version 1, which needs protocol version 14.
+     */
+    oncePerIdentityDistribution?: TokenOncePerIdentityDistribution;
+}
+```
+
+<a id="type-tokenonceperidentitydistribution"></a>
+## `TokenOncePerIdentityDistribution`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class TokenOncePerIdentityDistribution {
+    free(): void;
+    [Symbol.dispose](): void;
+    constructor(amount: any);
+    get amount(): bigint;
+    set amount(value: any);
+    static readonly __struct: string;
+    readonly __type: string;
 }
 ```
 
@@ -6401,7 +7758,23 @@ export enum TokenEventVariant {
     ConfigUpdate = 8,
     ChangePriceForDirectPurchase = 9,
     DirectPurchase = 10,
+    Shield = 11,
+    Unshield = 12,
+    ShieldedTransfer = 13,
+    MintToPool = 14,
+    BurnFromPool = 15,
+    ClaimToPool = 16,
+    DirectPurchaseToPool = 17,
 }
+```
+
+<a id="type-contractboundstype"></a>
+## `ContractBoundsType`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type ContractBoundsType = "singleContract" | "documentType" | "contractGroup";
 ```
 
 <a id="type-statusdriveprotocol"></a>
@@ -6440,6 +7813,119 @@ export class StatusTenderdashProtocol {
     block: number;
     p2p: number;
 }
+```
+
+<a id="type-electedmoderationseat"></a>
+## `ElectedModerationSeat`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type ElectedModerationSeat =
+| { seatContestable: true; challengeCoolDown: number }
+| { seatContestable: false; challengeCoolDown?: never };
+```
+
+<a id="type-interimmoderators"></a>
+## `InterimModerators`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type InterimModerators =
+| { $type: "contractOwner" }
+| { $type: "appointedModerators"; identities: string[] }
+| { $type: "notYetUsable" }
+| { $type: "noModeration" };
+```
+
+<a id="type-moderationability"></a>
+## `ModerationAbility`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type ModerationAbility = "deleteDocuments" | "ban" | "suspend" | "warn" | "changeDocumentFields";
+```
+
+<a id="type-propertyconstraintreferenced"></a>
+## `PropertyConstraintReferenced`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintReferenced = {
+    referenced: [reference: string, field: string];
+};
+```
+
+<a id="type-propertyconstraintaggregatefilter"></a>
+## `PropertyConstraintAggregateFilter`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type PropertyConstraintAggregateFilter = Record<
+string,
+string | number | bigint | { const: string }
+>;
+```
+
+<a id="type-documentpropertyreferenceoperand"></a>
+## `DocumentPropertyReferenceOperand`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentPropertyReferenceOperand =
+| Extract<
+DocumentPropertyReferenceTarget,
+{ type: 'identity' | 'permanentDocument' | 'deletableDocument' }
+>
+| DocumentPropertyReferenceExpression;
+```
+
+<a id="type-documentreferencechoosefirst"></a>
+## `DocumentReferenceChooseFirst`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceChooseFirst = {
+    among: string;
+    validWhen: Record<string, DocumentReferenceFindByFunction>;
+    by: Array<Record<string, 'asc' | 'desc'>>;
+};
+```
+
+<a id="type-documentreferencefindbyfunction"></a>
+## `DocumentReferenceFindByFunction`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceFindByFunction = {
+    function: 'sys.hash.sha256d';
+    params: Array<string | { const: string }>;
+};
+```
+
+<a id="type-documentreferencewherecondition"></a>
+## `DocumentReferenceWhereCondition`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentReferenceWhereCondition =
+| { const: string | number | bigint | boolean }
+| { notEqual: string | { const: string | number | bigint | boolean } }
+| { in: Array<string | number | bigint | boolean> }
+| { greaterThan: string | { const: number | bigint } }
+| { greaterThanOrEqual: string | { const: number | bigint } }
+| { lessThan: string | { const: number | bigint } }
+| { lessThanOrEqual: string | { const: number | bigint } }
+| { contains: string }
+| { containsAll: string };
 ```
 
 <a id="type-actiongoallike"></a>

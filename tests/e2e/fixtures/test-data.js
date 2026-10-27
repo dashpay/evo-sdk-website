@@ -726,7 +726,7 @@ const testData = {
           {
             identityId: "7XcruVSsGQVSgTcmPewaE4tXLutnW1F6PXxwMbo8GYQC",
             toAddress: "yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm",
-            amount: 1000000, // 0.00001 DASH in credits (minimum withdrawal amount)
+            amount: 1190000, // minimum at coreFeePerByte 1: 1,000,000 floor + 190,000 Core fee (protocol v14)
             privateKey: process.env.TEST_PRIVATE_KEY_TRANSFER || "PLACEHOLDER_TRANSFER_KEY",
             description: "Withdraw credits to Dash address"
           }
@@ -1030,7 +1030,7 @@ const testData = {
       addressWithdraw: {
         testnet: [{
           senderAddress: process.env.TEST_PLATFORM_ADDRESS_A || 'PLACEHOLDER_PLATFORM_ADDRESS_A',
-          amount: '1000000',
+          amount: '1190000',
           toAddress: 'yQW6TmUFef5CDyhEYwjoN8aUTMmKLYYNDm',
           coreFeePerByte: 1,
           privateKey: process.env.TEST_PLATFORM_ADDRESS_KEY_A || 'PLACEHOLDER_PLATFORM_ADDRESS_KEY_A'
