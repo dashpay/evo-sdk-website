@@ -71,7 +71,7 @@ async function executeWithRetry(executeFn, options = {}) {
 function validateBasicStateTransitionResult(result) {
   // Check for withdrawal-specific minimum amount error
   if (!result.success && result.result && result.result.includes('Missing response message')) {
-    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is 1,000,000 credits.');
+    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is 1,190,000 credits at coreFeePerByte 1.');
     console.error('Full error:', result.result);
   }
 

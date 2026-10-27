@@ -2615,6 +2615,10 @@
                 {
                   "value": "preProgrammed",
                   "label": "Pre-programmed"
+                },
+                {
+                  "value": "oncePerIdentity",
+                  "label": "Once per identity"
                 }
               ]
             },

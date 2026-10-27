@@ -2477,7 +2477,7 @@ signer.addKeyFromWif(privateKeyWif);
 import { Document } from '@dashevo/evo-sdk';
 const document = new Document({ dataContractId: "<contractId>", documentTypeName: "<documentType>", ownerId: "<ownerId>", properties });
 
-await sdk.documents.create({ document, identityKey, signer });
+const confirmed = await sdk.documents.create({ document, identityKey, signer });
 ```
 
 **Document Replace** - `documents.replace`

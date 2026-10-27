@@ -83,12 +83,12 @@ const operations = {
       return { options: { document, identityKey, signer }, context: { document } };
     },
     async execute(prepared, sdk) {
-      await sdk.documents.create(prepared.options);
-      const { document } = prepared.context;
+      const confirmed = await sdk.documents.create(prepared.options);
+      const document = confirmed ?? prepared.context.document;
       return { status: 'success', documentId: document.id?.toString(), ownerId: document.ownerId?.toString(), documentType: document.documentTypeName, message: `Document created successfully with ID: ${document.id?.toString()}` };
     },
     renderCode(values) {
-      return [...renderCommon(values), '', "import { Document } from '@dashevo/evo-sdk';", `const document = new Document({ dataContractId: ${JSON.stringify(values.contractId || '<contractId>')}, documentTypeName: ${JSON.stringify(values.documentType || '<documentType>')}, ownerId: ${JSON.stringify(values.ownerId || '<ownerId>')}, properties });`, '', 'await sdk.documents.create({ document, identityKey, signer });'].join('\n');
+      return [...renderCommon(values), '', "import { Document } from '@dashevo/evo-sdk';", `const document = new Document({ dataContractId: ${JSON.stringify(values.contractId || '<contractId>')}, documentTypeName: ${JSON.stringify(values.documentType || '<documentType>')}, ownerId: ${JSON.stringify(values.ownerId || '<ownerId>')}, properties });`, '', 'const confirmed = await sdk.documents.create({ document, identityKey, signer });'].join('\n');
     },
   },
   documentReplace: {

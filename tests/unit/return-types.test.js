@@ -76,4 +76,16 @@ describe('generated return type documentation', () => {
     expect(aiReference).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
     expect(docs).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
   });
+
+  it('offers every SDK token claim distribution type in the claim form', () => {
+    const declared = catalog.methods['tokens.claim'].parameters[0].properties
+      .find((property) => property.name === 'distributionType').type;
+    const sdkTypes = [...declared.matchAll(/"([^"]+)"/g)].map(([, value]) => value);
+    const formTypes = apiDefinitions.transitions.token.transitions.tokenClaim.inputs
+      .find((input) => input.name === 'distributionType').options
+      .map((option) => option.value);
+
+    expect(sdkTypes).toEqual(['preProgrammed', 'perpetual', 'oncePerIdentity']);
+    expect([...formTypes].sort()).toEqual([...sdkTypes].sort());
+  });
 });
