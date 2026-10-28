@@ -5,7 +5,7 @@ const docs = fs.readFileSync(new URL('../../public/docs.html', import.meta.url),
 const aiReference = fs.readFileSync(new URL('../../public/AI_REFERENCE.md', import.meta.url), 'utf8');
 
 describe('generated state transition examples', () => {
-  it('uses the Evo SDK v4 payload and signer call shape', () => {
+  it('uses the Evo SDK payload and signer call shape', () => {
     expect(aiReference).toContain('sdk.documents.create({ document, identityKey, signer })');
     expect(aiReference).toContain('sdk.contracts.publish({ dataContract, identityKey, signer })');
     expect(aiReference).toContain('sdk.identities.topUp({ identity, assetLockProof, assetLockPrivateKey })');

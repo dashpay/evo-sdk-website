@@ -187,7 +187,7 @@ describe('contract transition result compatibility', () => {
 });
 
 describe('asset-lock identity transitions', () => {
-  it('uses typed v4 options and removes obsolete calls', () => {
+  it('uses typed options and removes obsolete calls', () => {
     expect(assetLockTransitionOperations.identityCreate.renderCode({})).toContain('IdentityPublicKeyInCreation');
     expect(assetLockTransitionOperations.identityCreate.renderCode({})).toContain('assetLockPrivateKey, signer');
     expect(assetLockTransitionOperations.identityTopUp.renderCode({})).toContain('identity, assetLockProof, assetLockPrivateKey');

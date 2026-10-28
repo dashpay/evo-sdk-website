@@ -125,7 +125,7 @@ export const DPNS_CATEGORY_DEFINITIONS = {
   },
   // TODO(issue-67): Restore a Registration category after dpns.registerName
   // constructs Identity, IdentityPublicKey, IdentitySigner, and the preorder
-  // callback required by the SDK's typed v4 options.
+  // callback required by the SDK's typed options.
   /*
   registration: {
     label: 'Registration',

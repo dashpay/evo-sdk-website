@@ -2499,7 +2499,7 @@
         },
         "dpnsRegister": {
           "label": "DPNS Register Name",
-          "disabled": "Typed v4 preorder and registration flow is not covered by a usable credential fixture.",
+          "disabled": "Typed preorder and registration flow is not covered by a usable credential fixture.",
           "description": "Register a new DPNS username",
           "inputs": [
             {
@@ -2888,7 +2888,7 @@
       "transitions": {
         "dpnsUsername": {
           "label": "DPNS Username",
-          "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
+          "disabled": "Typed masternode voting flow is not covered by a usable voting-key fixture.",
           "description": "Cast a vote for a contested DPNS username",
           "inputs": [
             {
@@ -2934,7 +2934,7 @@
         },
         "masternodeVote": {
           "label": "Contested Resource",
-          "disabled": "Typed v4 masternode voting flow is not covered by a usable voting-key fixture.",
+          "disabled": "Typed masternode voting flow is not covered by a usable voting-key fixture.",
           "description": "Cast a vote for contested resources as a masternode",
           "inputs": [
             {

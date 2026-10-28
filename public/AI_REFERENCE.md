@@ -18,7 +18,7 @@ await sdk.connect();
 ```
 
 ## Authentication
-Evo SDK v4 state transitions accept typed payload objects and signer objects. Fetch the identity, select the public key that matches your private key, and keep production keys out of source control:
+Evo SDK state transitions accept typed payload objects and signer objects. Fetch the identity, select the public key that matches your private key, and keep production keys out of source control:
 ```javascript
 const identityId = '5DbLwAxGBzUzo81VewMUwn4b5P4bpv9FNFybi25XB5Bk';
 const privateKeyWif = 'L1ExamplePrivateKeyWifGoesHere';
@@ -2773,7 +2773,7 @@ await sdk.documents.setPrice({ document, price: BigInt(price), identityKey, sign
 **DPNS Register Name** - `dpns.registerName`
 *Register a new DPNS username*
 
-**Disabled:** Typed v4 preorder and registration flow is not covered by a usable credential fixture.
+**Disabled:** Typed preorder and registration flow is not covered by a usable credential fixture.
 
 Signature: `registerName(options: wasm.DpnsRegisterNameOptions): Promise<wasm.RegisterDpnsNameResult>`
 
@@ -3468,7 +3468,7 @@ await sdk.tokens.destroyFrozen({
 **DPNS Username** - `voting.masternodeVote`
 *Cast a vote for a contested DPNS username*
 
-**Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
+**Disabled:** Typed masternode voting flow is not covered by a usable voting-key fixture.
 
 Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<wasm.Vote>`
 
@@ -3513,7 +3513,7 @@ const result = await sdk.voting.masternodeVote({ masternodeProTxHash, votePoll, 
 **Contested Resource** - `voting.masternodeVote`
 *Cast a vote for contested resources as a masternode*
 
-**Disabled:** Typed v4 masternode voting flow is not covered by a usable voting-key fixture.
+**Disabled:** Typed masternode voting flow is not covered by a usable voting-key fixture.
 
 Signature: `masternodeVote(options: wasm.MasternodeVoteOptions): Promise<wasm.Vote>`
 

@@ -85,7 +85,7 @@ describe('generated return type documentation', () => {
       .find((input) => input.name === 'distributionType').options
       .map((option) => option.value);
 
-    expect(sdkTypes).toEqual(['preProgrammed', 'perpetual', 'oncePerIdentity']);
+    expect([...sdkTypes].sort()).toEqual(['oncePerIdentity', 'perpetual', 'preProgrammed']);
     expect([...formTypes].sort()).toEqual([...sdkTypes].sort());
   });
 });

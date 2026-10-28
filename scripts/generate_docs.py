@@ -1559,7 +1559,7 @@ def generate_docs_html(query_defs: dict, transition_defs: dict, type_metadata: d
 {query_content}
 
         <h2 id=\"state-transitions\"><a class=\"section-anchor\" href=\"#state-transitions\">State Transitions</a></h2>
-        <p class=\"description\">Evo SDK v4 state transitions accept constructed payload objects plus the appropriate public key and signer object. Build an <code>IdentitySigner</code> with <code>addKeyFromWif</code>; do not pass a WIF string directly in a transition call. Identity creation and asset-lock top ups instead take typed <code>AssetLockProof</code> and <code>PrivateKey</code> objects.</p>
+        <p class=\"description\">Evo SDK state transitions accept constructed payload objects plus the appropriate public key and signer object. Build an <code>IdentitySigner</code> with <code>addKeyFromWif</code>; do not pass a WIF string directly in a transition call. Identity creation and asset-lock top ups instead take typed <code>AssetLockProof</code> and <code>PrivateKey</code> objects.</p>
 {transition_content}
 {wallet_section_block}    </div>
 </body>
@@ -1640,7 +1640,7 @@ def generate_ai_reference_md(query_defs: dict, transition_defs: dict, type_metad
         '```',
         '',
         '## Authentication',
-        'Evo SDK v4 state transitions accept typed payload objects and signer objects. Fetch the '
+        'Evo SDK state transitions accept typed payload objects and signer objects. Fetch the '
         'identity, select the public key that matches your private key, and keep production keys '
         'out of source control:',
         '```javascript',
