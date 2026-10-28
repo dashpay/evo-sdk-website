@@ -268,6 +268,31 @@ describe('document transition preparation and execution', () => {
     expect(sdk.documents.create).toHaveBeenCalledWith(prepared.options);
   });
 
+  it('reports the confirmed document returned by document creation', async () => {
+    const sdk = documentSdk();
+    sdk.documents.create.mockResolvedValueOnce({
+      id: 'confirmed-document-id',
+      ownerId: 'confirmed-owner-id',
+      documentTypeName: 'note',
+    });
+    const operation = documentTransitionOperations.documentCreate;
+    const prepared = await operation.prepare({
+      contractId: 'contract-id',
+      documentType: 'note',
+      ownerId: 'owner-id',
+      data: { message: 'hello' },
+      privateKeyWif: 'document-wif',
+    }, sdk);
+
+    await expect(operation.execute(prepared, sdk)).resolves.toEqual({
+      status: 'success',
+      documentId: 'confirmed-document-id',
+      ownerId: 'confirmed-owner-id',
+      documentType: 'note',
+      message: 'Document created successfully with ID: confirmed-document-id',
+    });
+  });
+
   it('increments and normalizes document replacement revisions', async () => {
     const sdk = documentSdk();
     const operation = documentTransitionOperations.documentReplace;

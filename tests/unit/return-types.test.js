@@ -8,8 +8,10 @@ const typeReferenceHtml = fs.readFileSync(new URL('../../public/TYPE_REFERENCE.h
 const manifest = JSON.parse(fs.readFileSync(new URL('../../public/docs_manifest.json', import.meta.url), 'utf8'));
 const catalog = JSON.parse(fs.readFileSync(new URL('../../public/sdk-operation-catalog.json', import.meta.url), 'utf8'));
 const apiDefinitions = JSON.parse(fs.readFileSync(new URL('../../public/api-definitions.json', import.meta.url), 'utf8'));
-const packageJson = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-const sdkVersion = packageJson.dependencies['@dashevo/evo-sdk'];
+const sdkPackageJson = JSON.parse(
+  fs.readFileSync(new URL('../../node_modules/@dashevo/evo-sdk/package.json', import.meta.url), 'utf8'),
+);
+const sdkVersion = sdkPackageJson.version;
 const documentedMethods = ['queries', 'transitions'].flatMap((group) =>
   Object.values(apiDefinitions[group]).flatMap((category) =>
     Object.values(category[group]).map((operation) => operation.sdk_method),
@@ -57,8 +59,8 @@ describe('generated return type documentation', () => {
       expect.objectContaining({ name: 'document', type: 'Document', optional: false }),
       expect.objectContaining({ name: 'settings', type: 'PutSettings', optional: true }),
     ]));
-    expect(aiReference).toContain('Signature: `create(options: wasm.DocumentCreateOptions): Promise<void>`');
-    expect(docs).toContain('create(options: wasm.DocumentCreateOptions): Promise&lt;void&gt;');
+    expect(aiReference).toContain('Signature: `create(options: wasm.DocumentCreateOptions): Promise<wasm.Document>`');
+    expect(docs).toContain('create(options: wasm.DocumentCreateOptions): Promise&lt;wasm.Document&gt;');
   });
 
   it('keeps playground construction fields out of SDK documentation', () => {
@@ -73,5 +75,17 @@ describe('generated return type documentation', () => {
     expect(aiReference).not.toContain("const result = sdk.dpns.convertToHomographSafe('ąlice');");
     expect(aiReference).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
     expect(docs).not.toMatch(/evonodesProposedBlocksByRange\(\{[^}]*orderAscending/s);
+  });
+
+  it('offers every SDK token claim distribution type in the claim form', () => {
+    const declared = catalog.methods['tokens.claim'].parameters[0].properties
+      .find((property) => property.name === 'distributionType').type;
+    const sdkTypes = [...declared.matchAll(/"([^"]+)"/g)].map(([, value]) => value);
+    const formTypes = apiDefinitions.transitions.token.transitions.tokenClaim.inputs
+      .find((input) => input.name === 'distributionType').options
+      .map((option) => option.value);
+
+    expect([...sdkTypes].sort()).toEqual(['oncePerIdentity', 'perpetual', 'preProgrammed']);
+    expect([...formTypes].sort()).toEqual([...sdkTypes].sort());
   });
 });

@@ -71,7 +71,7 @@ async function executeWithRetry(executeFn, options = {}) {
 function validateBasicStateTransitionResult(result) {
   // Check for withdrawal-specific minimum amount error
   if (!result.success && result.result && result.result.includes('Missing response message')) {
-    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is 1,000,000 credits.');
+    console.error('⚠️  Withdrawal may have failed due to insufficient amount. Minimum withdrawal is 1,190,000 credits at coreFeePerByte 1.');
     console.error('Full error:', result.result);
   }
 
@@ -618,8 +618,8 @@ test.describe('Evo SDK State Transition Tests', () => {
       const testParams = parameterInjector.testData.stateTransitionParameters.identity.identityCreditWithdrawal.testnet[0];
 
       // Skip test if withdrawal amount is below minimum threshold
-      if (testParams.amount < 1000000) {
-        test.skip(true, `Withdrawal amount ${testParams.amount} credits is below minimum threshold (1,000,000 credits)`);
+      if (testParams.amount < 1190000) {
+        test.skip(true, `Withdrawal amount ${testParams.amount} credits is below minimum threshold (1,190,000 credits)`);
       }
 
       // Set up the identity credit withdrawal transition
@@ -1315,7 +1315,7 @@ test.describe('Evo SDK State Transition Tests', () => {
     const ADDRESS_SEED_AMOUNT = 100_000_000;
     const ADDRESS_TRANSFER_AMOUNT = 30_000_000;
     const IDENTITY_TOP_UP_AMOUNT = 500_000;
-    const ADDRESS_WITHDRAW_AMOUNT = 1_000_000;
+    const ADDRESS_WITHDRAW_AMOUNT = 1_190_000; // minimum at coreFeePerByte 1 (protocol v14)
     const IDENTITY_CREATE_AMOUNT = 5_000_000;
     const addressFixturesConfigured = Boolean(
       process.env.TEST_PLATFORM_ADDRESS_A &&
