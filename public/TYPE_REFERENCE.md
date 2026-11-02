@@ -1,6 +1,6 @@
 # Evo SDK Type Reference
 
-Generated from `@dashevo/evo-sdk@5.0.1` published TypeScript declarations under `dist/`.
+Generated from `@dashevo/evo-sdk@5.0.2` published TypeScript declarations under `dist/`.
 
 Named types reachable from documented method inputs and outputs are included recursively.
 
