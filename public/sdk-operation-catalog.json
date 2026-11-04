@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "sdk": {
     "name": "@dashevo/evo-sdk",
-    "version": "5.0.1",
+    "version": "5.0.3",
     "declarationRoot": "dist"
   },
   "operations": [
