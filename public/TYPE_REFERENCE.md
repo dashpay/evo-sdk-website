@@ -1,6 +1,6 @@
 # Evo SDK Type Reference
 
-Generated from `@dashevo/evo-sdk@5.0.3` published TypeScript declarations under `dist/`.
+Generated from `@dashevo/evo-sdk@5.1.0` published TypeScript declarations under `dist/`.
 
 Named types reachable from documented method inputs and outputs are included recursively.
 
@@ -932,6 +932,9 @@ export interface DocumentDeleteOptions {
      *
      * // Using individual fields
      * { document: { id: "...", ownerId: "...", dataContractId: "...", documentTypeName: "note" }, ... }
+     *
+     * Unlike replace, transfer, purchase and setPrice, a delete carries no
+     * revision: pass the document as fetched, without increasing it.
      */
     document: Document | {
         id: IdentifierLike;
@@ -973,6 +976,25 @@ export interface DocumentDeleteOptions {
 }
 ```
 
+<a id="type-documenthistoryentry"></a>
+## `DocumentHistoryEntry`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class DocumentHistoryEntry {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    toJSON(): any;
+    readonly document: Document;
+    readonly revision: bigint;
+    static readonly __struct: string;
+    readonly timeMs: bigint;
+    readonly __type: string;
+}
+```
+
 <a id="type-documenthistoryquery"></a>
 ## `DocumentHistoryQuery`
 
@@ -996,22 +1018,46 @@ export interface DocumentHistoryQuery {
     documentId: IdentifierLike
 
     /**
-     * Millisecond timestamp (exclusive) to start after.
-     * @default 0
+     * Inclusive lower time bound. Supply at most one selector. A query without one reads a
+     * page from the first retained revision, as `startAtMs: 0` does, up to `limit` entries.
+     *
+     * Every selector is an exact u64: a `number` is accepted only up to
+     * `Number.MAX_SAFE_INTEGER`, and anything larger must be a `bigint`, since
+     * JavaScript would have rounded it before the query is built.
      */
-    startAtMs?: number;
-
+    startAtMs?: bigint | number;
     /**
-     * Maximum number of entries to return.
-     * @default undefined
+     * Complete exclusive cursor returned by a previous page.
+     *
+     * `startAfter`, `startAtRevision` and `revision` need Platform protocol version 15.
+     * Below it only `startAtMs` is served, and the others are refused before sending.
      */
+    startAfter?: { timeMs: bigint | number; revision: bigint | number } | DocumentHistoryEntry;
+    startAtRevision?: bigint | number;
+    revision?: bigint | number;
+    /** Maximum ten entries. A single revision requires limit one. */
     limit?: number;
+}
+```
 
+<a id="type-documenthistoryresult"></a>
+## `DocumentHistoryResult`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class DocumentHistoryResult {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    toJSON(): any;
+    readonly entries: DocumentHistoryEntry[];
     /**
-     * Offset for pagination through the document history.
-     * @default undefined
+     * Missing when the legacy storage generation cannot authenticate lifecycle
+     * metadata: always below Platform protocol version 15, whose history proofs
+     * carry revisions only.
      */
-    offset?: number;
+    readonly lifecycle: DocumentHistoryLifecycle | undefined;
 }
 ```
 
@@ -1034,6 +1080,18 @@ export interface DocumentPurchaseOptions {
     /**
      * The document to purchase.
      * Must include id, ownerId, dataContractId, documentTypeName, and revision.
+     *
+     * Its `revision` must be the revision this purchase writes: the stored
+     * revision + 1. The SDK sends the revision as given and does not increase
+     * it, so increase it yourself: a document fetched from Platform carries the
+     * stored revision. Passing the stored revision is refused with
+     * "Document ... has invalid revision Some(n). The desired revision is n".
+     *
+     * @example
+     * const document = await sdk.getDocument(contractId, 'card', documentId);
+     * if (document?.revision === undefined) throw new Error('no stored revision');
+     * document.revision += 1n;
+     * await sdk.documentPurchase({ document, buyerId, price, identityKey, signer });
      */
     document: Document;
 
@@ -1091,7 +1149,22 @@ export interface DocumentReplaceOptions {
     /**
      * The document with updated data.
      * Must have the same ID as the existing document.
-     * Revision should be set to current revision + 1.
+     *
+     * Its `revision` must be the revision this replace writes: the stored
+     * revision + 1. The SDK sends the revision as given and does not increase
+     * it, so increase it yourself: a document fetched from Platform carries the
+     * stored revision. Passing the stored revision is refused with
+     * "Document ... has invalid revision Some(n). The desired revision is n".
+     * A document still at revision 1 is sent as a create instead: the create
+     * derives a new document ID, so it can succeed and leave the original
+     * unchanged.
+     *
+     * @example
+     * const document = await sdk.getDocument(contractId, 'card', documentId);
+     * if (document?.revision === undefined) throw new Error('no stored revision');
+     * document.revision += 1n;
+     * document.properties = { ...document.properties, name: 'New name' };
+     * await sdk.documentReplace({ document, identityKey, signer });
      */
     document: Document;
 
@@ -1138,12 +1211,25 @@ export interface DocumentSetPriceOptions {
     /**
      * The document to set a price on.
      * Must include id, ownerId, dataContractId, documentTypeName, and revision.
+     *
+     * Its `revision` must be the revision this price update writes: the stored
+     * revision + 1. The SDK sends the revision as given and does not increase
+     * it, so increase it yourself: a document fetched from Platform carries the
+     * stored revision. Passing the stored revision is refused with
+     * "Document ... has invalid revision Some(n). The desired revision is n".
+     *
+     * @example
+     * const document = await sdk.getDocument(contractId, 'card', documentId);
+     * if (document?.revision === undefined) throw new Error('no stored revision');
+     * document.revision += 1n;
+     * await sdk.documentSetPrice({ document, price: 5000000n, identityKey, signer });
      */
     document: Document;
 
     /**
      * The price in credits.
-     * Set to 0 to remove the price and make the document not for sale.
+     * A price of 0 does not take the document off sale: it stays listed, and
+     * anyone may buy it for 0 credits.
      */
     price: bigint;
 
@@ -1225,6 +1311,18 @@ export interface DocumentTransferOptions {
     /**
      * The document to transfer.
      * Must include id, ownerId, dataContractId, documentTypeName, and revision.
+     *
+     * Its `revision` must be the revision this transfer writes: the stored
+     * revision + 1. The SDK sends the revision as given and does not increase
+     * it, so increase it yourself: a document fetched from Platform carries the
+     * stored revision. Passing the stored revision is refused with
+     * "Document ... has invalid revision Some(n). The desired revision is n".
+     *
+     * @example
+     * const document = await sdk.getDocument(contractId, 'card', documentId);
+     * if (document?.revision === undefined) throw new Error('no stored revision');
+     * document.revision += 1n;
+     * await sdk.documentTransfer({ document, recipientId, identityKey, signer });
      */
     document: Document;
 
@@ -1324,8 +1422,9 @@ export interface DocumentsQuery {
 
     /**
      * Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
-     * the v1 wire's `group_by: repeated string` directly. Ignored by
-     * the regular document-fetch path.
+     * the v1 wire's `group_by: repeated string` directly. The regular
+     * document fetch (`getDocuments`) refuses it: it returns the documents
+     * themselves, which cannot be grouped.
      *
      * - `[]` or omitted → one ungrouped result entry, keyed by the
      *   empty string. Its value is the total count for
@@ -1355,7 +1454,9 @@ export interface DocumentsQuery {
      * signed response metadata; `"byStart"` names the bucket absolutely, so
      * both sides read it straight from the query. Provable either way.
      * Requires protocol version 14+ (the first version whose contract
-     * grammar hosts `timeRange` indexes).
+     * grammar hosts `timeRange` indexes): on a network not yet proven to run
+     * it, the SDK refuses the query without sending it
+     * (`ProtocolVersionNotActive`).
      *
      * - `selector: "oldest"` → the oldest still-active range (a near-full
      *   trailing window of ~`range`; best for "trending over the last window").
@@ -1388,7 +1489,7 @@ export interface DocumentsQuery {
      * window). An off-grid start is rejected rather than snapped, and an
      * empty window is a provable empty answer. The server and the proof
      * verifier resolve the same window from the query alone. Requires
-     * protocol version 14+.
+     * protocol version 14+, as `timeRange` does.
      *
      * `start` is a number, or a decimal string for values beyond
      * `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
@@ -2870,16 +2971,18 @@ export interface MasternodeVoteOptions {
     masternodeProTxHash: IdentifierLike;
 
     /**
-     * The vote poll to vote on.
-     * Use VotePoll.createContestedDocumentResourceVotePoll() to create.
+     * The vote poll to vote on: a contested resource poll
+     * (VotePoll.createContestedDocumentResourceVotePoll() creates one), or a yes/no poll as
+     * getVotePollsByEndDate returns it.
      */
     votePoll: VotePoll;
 
     /**
-     * The vote choice.
-     * Use ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or ResourceVoteChoice.lock().
+     * The vote choice. On a contested resource, a ResourceVoteChoice:
+     * ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or
+     * ResourceVoteChoice.lock(). On a yes/no poll, 'yes', 'no' or 'abstain'.
      */
-    voteChoice: ResourceVoteChoice;
+    voteChoice: ResourceVoteChoice | YesNoAbstainVoteChoiceName;
 
     /**
      * The masternode's voting public key.
@@ -3299,27 +3402,6 @@ export class RegisterDpnsNameResult {
 }
 ```
 
-<a id="type-resourcevote"></a>
-## `ResourceVote`
-
-Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
-
-```typescript
-export class ResourceVote {
-    free(): void;
-    [Symbol.dispose](): void;
-    constructor(poll: VotePoll, choice: ResourceVoteChoice);
-    static fromJSON(js: ResourceVoteJSON): ResourceVote;
-    static fromObject(obj: ResourceVoteObject): ResourceVote;
-    toJSON(): ResourceVoteJSON;
-    toObject(): ResourceVoteObject;
-    choice: ResourceVoteChoice;
-    poll: VotePoll;
-    static readonly __struct: string;
-    readonly __type: string;
-}
-```
-
 <a id="type-resourcevotechoice"></a>
 ## `ResourceVoteChoice`
 
@@ -3341,6 +3423,27 @@ export class ResourceVoteChoice {
     readonly __type: string;
     readonly value: Identifier | undefined;
     readonly voteType: string;
+}
+```
+
+<a id="type-resourcevotewithcount"></a>
+## `ResourceVoteWithCount`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class ResourceVoteWithCount {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * The identity's current vote on the vote poll.
+     */
+    readonly resourceVote: ResourceVote;
+    /**
+     * How many times the identity has voted on the vote poll, the current vote included.
+     */
+    readonly voteCount: number;
 }
 ```
 
@@ -3490,6 +3593,9 @@ export interface TokenBurnOptions {
 
     /**
      * Optional public note for the burn operation.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -3701,6 +3807,9 @@ export interface TokenDestroyFrozenOptions {
 
     /**
      * Optional public note for the destruction operation.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -3889,6 +3998,9 @@ export interface TokenEmergencyActionOptions {
 
     /**
      * Optional public note for the emergency action.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -3980,6 +4092,9 @@ export interface TokenFreezeOptions {
 
     /**
      * Optional public note for the freeze operation.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -4085,6 +4200,9 @@ export interface TokenMintOptions {
 
     /**
      * Optional public note for the mint operation.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -4234,6 +4352,9 @@ export interface TokenSetPriceOptions {
 
     /**
      * Optional public note for the price change.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -4480,6 +4601,9 @@ export interface TokenUnfreezeOptions {
 
     /**
      * Optional public note for the unfreeze operation.
+     * Only the proposer of a group action writes a note: it is left off when signing
+     * someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+     * non-proposer), and the action keeps the proposer's note.
      */
     publicNote?: string;
 
@@ -4564,10 +4688,26 @@ export class Vote {
     static fromObject(obj: VoteObject): Vote;
     toJSON(): VoteJSON;
     toObject(): VoteObject;
+    /**
+     * The resource vote choice of a resource vote. A yes/no vote has `yesNoChoice` instead.
+     */
     choice: ResourceVoteChoice;
+    /**
+     * The poll a resource vote answers. A yes/no vote names its poll by id only: it has
+     * `pollId` instead.
+     */
     poll: VotePoll;
+    /**
+     * The id of the poll a yes/no vote answers.
+     */
+    get pollId(): Identifier;
+    set pollId(value: IdentifierLike);
     static readonly __struct: string;
     readonly __type: string;
+    /**
+     * The answer of a yes/no vote: `yes`, `no` or `abstain`.
+     */
+    readonly yesNoChoice: string;
 }
 ```
 
@@ -4591,6 +4731,11 @@ export class VotePoll {
     documentTypeName: string;
     indexName: string;
     indexValues: Array<any>;
+    /**
+     * The kind of poll: `contestedDocumentResourceVotePoll` or `yesNoVotePoll`, the `$type`
+     * tag `toJSON()` writes (the specs check they agree).
+     */
+    readonly kind: string;
     static readonly __struct: string;
     readonly __type: string;
 }
@@ -4722,6 +4867,15 @@ export interface VotePollsByEndDateQuery {
      */
     orderAscending?: boolean;
 }
+```
+
+<a id="type-yesnoabstainvotechoicename"></a>
+## `YesNoAbstainVoteChoiceName`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type YesNoAbstainVoteChoiceName = "yes" | "no" | "abstain";
 ```
 
 <a id="type-assetlockproofjson"></a>
@@ -5374,6 +5528,43 @@ export interface DocumentActionFeeAgreementOptions {
 }
 ```
 
+<a id="type-documenthistorylifecycle"></a>
+## `DocumentHistoryLifecycle`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class DocumentHistoryLifecycle {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    toJSON(): any;
+    /**
+     * Zero unless the document has been deleted.
+     */
+    readonly deletedAtMs: bigint;
+    /**
+     * History sequence of the newest revision retained when the erasure began.
+     */
+    readonly erasingFromRevision: bigint;
+    /**
+     * Timestamp of the newest revision retained when the erasure began.
+     */
+    readonly erasingFromTimeMs: bigint;
+    /**
+     * Zero unless an authorized erasure has begun.
+     */
+    readonly erasingStartedAtMs: bigint;
+    readonly remainingRevisions: bigint;
+    /**
+     * `ACTIVE` while the document is visible to ordinary reads, `DELETED`
+     * once it has been deleted and its revisions are retained, `ERASING` once
+     * an authorized erasure has begun, `ABSENT` when nothing is left.
+     */
+    readonly state: "ACTIVE" | "DELETED" | "ERASING" | "ABSENT";
+}
+```
+
 <a id="type-gasfeespaidbylike"></a>
 ## `GasFeesPaidByLike`
 
@@ -5959,10 +6150,15 @@ export type GroveElementType =
 | "itemWithSumItemWithBackwardsReferences"
 | "provableCountSumTree"
 | "provableCountProvableSumTree"
+| "provableCountProvableBigSumTree"
+| "countBigSumTree"
+| "provableBigSumTree"
 | "provableSumTree"
 | "provableSumIndexedTree"
 | "provableCountIndexedTree"
 | "provableCountProvableSumIndexedTree"
+| "provableBigSumIndexedTree"
+| "provableCountProvableBigSumIndexedTree"
 | "commitmentTree"
 | "mmrTree"
 | "bulkAppendTree"
@@ -5981,10 +6177,15 @@ export type GroveElementType =
 | "nonCountedReferenceWithSumItem"
 | "nonCountedProvableCountSumTree"
 | "nonCountedProvableCountProvableSumTree"
+| "nonCountedProvableCountProvableBigSumTree"
+| "nonCountedCountBigSumTree"
+| "nonCountedProvableBigSumTree"
 | "nonCountedProvableSumTree"
 | "nonCountedProvableSumIndexedTree"
 | "nonCountedProvableCountIndexedTree"
 | "nonCountedProvableCountProvableSumIndexedTree"
+| "nonCountedProvableBigSumIndexedTree"
+| "nonCountedProvableCountProvableBigSumIndexedTree"
 | "nonCountedCommitmentTree"
 | "nonCountedMmrTree"
 | "nonCountedBulkAppendTree"
@@ -5995,12 +6196,18 @@ export type GroveElementType =
 | "notSummedCountSumTree"
 | "notSummedProvableCountSumTree"
 | "notSummedProvableCountProvableSumTree"
+| "notSummedProvableCountProvableBigSumTree"
+| "notSummedCountBigSumTree"
+| "notSummedProvableBigSumTree"
 | "notSummedProvableSumTree"
 | "notCountedOrSummedSumTree"
 | "notCountedOrSummedBigSumTree"
 | "notCountedOrSummedCountSumTree"
 | "notCountedOrSummedProvableCountSumTree"
 | "notCountedOrSummedProvableCountProvableSumTree"
+| "notCountedOrSummedProvableCountProvableBigSumTree"
+| "notCountedOrSummedCountBigSumTree"
+| "notCountedOrSummedProvableBigSumTree"
 | "notCountedOrSummedProvableSumTree";
 ```
 
@@ -6116,32 +6323,6 @@ export class ProTxHash {
 }
 ```
 
-<a id="type-resourcevotejson"></a>
-## `ResourceVoteJSON`
-
-Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
-
-```typescript
-export interface ResourceVoteJSON {
-    $formatVersion: string;
-    votePoll: VotePollJSON;
-    resourceVoteChoice: ResourceVoteChoiceJSON;
-}
-```
-
-<a id="type-resourcevoteobject"></a>
-## `ResourceVoteObject`
-
-Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
-
-```typescript
-export interface ResourceVoteObject {
-    $formatVersion: string;
-    votePoll: VotePollObject;
-    resourceVoteChoice: ResourceVoteChoiceObject;
-}
-```
-
 <a id="type-resourcevotechoicejson"></a>
 ## `ResourceVoteChoiceJSON`
 
@@ -6164,6 +6345,27 @@ export type ResourceVoteChoiceObject =
 | { $type: "towardsIdentity"; identity: Uint8Array }
 | { $type: "abstain" }
 | { $type: "lock" };
+```
+
+<a id="type-resourcevote"></a>
+## `ResourceVote`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export class ResourceVote {
+    free(): void;
+    [Symbol.dispose](): void;
+    constructor(poll: VotePoll, choice: ResourceVoteChoice);
+    static fromJSON(js: ResourceVoteJSON): ResourceVote;
+    static fromObject(obj: ResourceVoteObject): ResourceVote;
+    toJSON(): ResourceVoteJSON;
+    toObject(): ResourceVoteObject;
+    choice: ResourceVoteChoice;
+    poll: VotePoll;
+    static readonly __struct: string;
+    readonly __type: string;
+}
 ```
 
 <a id="type-statuschain"></a>
@@ -6355,12 +6557,19 @@ export class TokenPricingSchedule {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface VoteJSON {
+export type VoteJSON =
+| {
     $type: "resourceVote";
     $formatVersion: string;
     votePoll: VotePollJSON;
     resourceVoteChoice: ResourceVoteChoiceJSON;
 }
+| {
+    $type: "yesNoVote";
+    $formatVersion: string;
+    votePollId: string;
+    voteChoice: YesNoAbstainVoteChoiceName;
+};
 ```
 
 <a id="type-voteobject"></a>
@@ -6369,12 +6578,19 @@ export interface VoteJSON {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface VoteObject {
+export type VoteObject =
+| {
     $type: "resourceVote";
     $formatVersion: string;
     votePoll: VotePollObject;
     resourceVoteChoice: ResourceVoteChoiceObject;
 }
+| {
+    $type: "yesNoVote";
+    $formatVersion: string;
+    votePollId: Uint8Array;
+    voteChoice: YesNoAbstainVoteChoiceName;
+};
 ```
 
 <a id="type-votepolljson"></a>
@@ -6383,13 +6599,15 @@ export interface VoteObject {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface VotePollJSON {
+export type VotePollJSON =
+| {
     $type: "contestedDocumentResourceVotePoll";
     contractId: string;
     documentTypeName: string;
     indexName: string;
     indexValues: any[];
 }
+| ({ $type: "yesNoVotePoll" } & YesNoVotePollFieldsJSON);
 ```
 
 <a id="type-votepollobject"></a>
@@ -6398,13 +6616,15 @@ export interface VotePollJSON {
 Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
-export interface VotePollObject {
+export type VotePollObject =
+| {
     $type: "contestedDocumentResourceVotePoll";
     contractId: Uint8Array;
     documentTypeName: string;
     indexName: string;
     indexValues: any[];
 }
+| ({ $type: "yesNoVotePoll" } & YesNoVotePollFieldsObject);
 ```
 
 <a id="type-votepolloptions"></a>
@@ -6863,6 +7083,40 @@ export type DocumentPropertyReferenceTarget =
      */
     where?: DocumentReferenceWhere;
 }
+| {
+    /**
+     * A document of a document type the referring document names
+     * (protocol version 15): permanent or moderated, found by the value
+     * as its id. Told from the other members of the same `type` by its
+     * `contractId` and `documentType`, which start with `$self.`: the
+     * contract and the type are read from the referring document (`$self`,
+     * as `$old` is the stored one in a rule) when it is written, where
+     * consensus checks that both exist, that the type is of this kind and
+     * that it meets `documentTypeRequirements` (code 40153 when it does
+     * not). A list of both kinds admits a type of either: the reference is
+     * then checked as one of the kind the named type is.
+     */
+    type:
+    | 'permanentDocument'
+    | 'moderatedDocument'
+    | ['permanentDocument', 'moderatedDocument'];
+    /**
+     * `$self.` followed by the top-level identifier property of the
+     * referring document holding the id of the contract the referenced
+     * document type lives in.
+     */
+    contractId: `$self.${string}`;
+    /**
+     * `$self.` followed by the top-level string property of the referring
+     * document holding the name of the referenced document type.
+     */
+    documentType: `$self.${string}`;
+    /**
+     * What the named document type must look like. Absent when the
+     * declaration asks nothing of it beyond its kind.
+     */
+    documentTypeRequirements?: DocumentTypeRequirements;
+}
 | DocumentPropertyReferenceExpression;
 ```
 
@@ -7113,6 +7367,7 @@ export enum BatchType {
     UpdatePrice = 5,
     IgnoreWhileBumpingRevision = 6,
     IndexOnlyDelete = 7,
+    Erase = 8,
 }
 ```
 
@@ -7250,6 +7505,32 @@ export interface ContractBoundsObject {
 }
 ```
 
+<a id="type-resourcevotejson"></a>
+## `ResourceVoteJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface ResourceVoteJSON {
+    $formatVersion: string;
+    votePoll: VotePollJSON;
+    resourceVoteChoice: ResourceVoteChoiceJSON;
+}
+```
+
+<a id="type-resourcevoteobject"></a>
+## `ResourceVoteObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface ResourceVoteObject {
+    $formatVersion: string;
+    votePoll: VotePollObject;
+    resourceVoteChoice: ResourceVoteChoiceObject;
+}
+```
+
 <a id="type-statusprotocol"></a>
 ## `StatusProtocol`
 
@@ -7288,6 +7569,34 @@ export class StatusSoftware {
     set drive(value: string | null | undefined);
     get tenderdash(): string | undefined;
     set tenderdash(value: string | null | undefined);
+}
+```
+
+<a id="type-yesnovotepollfieldsjson"></a>
+## `YesNoVotePollFieldsJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface YesNoVotePollFieldsJSON {
+    purpose: YesNoVotePollPurposeJSON;
+    supermajorityNumerator: number;
+    supermajorityDenominator: number;
+    minimumVotingPower: YesNoMinimumVotingPowerObject;
+}
+```
+
+<a id="type-yesnovotepollfieldsobject"></a>
+## `YesNoVotePollFieldsObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export interface YesNoVotePollFieldsObject {
+    purpose: YesNoVotePollPurposeObject;
+    supermajorityNumerator: number;
+    supermajorityDenominator: number;
+    minimumVotingPower: YesNoMinimumVotingPowerObject;
 }
 ```
 
@@ -7536,6 +7845,29 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 export type DocumentReferenceWhere = Record<string, string | DocumentReferenceWhereCondition>;
 ```
 
+<a id="type-documenttyperequirements"></a>
+## `DocumentTypeRequirements`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeRequirements = {
+    properties: Record<string, DocumentTypeRequirementSlot>;
+    /**
+     * Which slots must be filled: a slot name, or `anyOf` / `allOf` over slot
+     * names and, one level down, the other combinator over slot names. Absent
+     * when every slot must be filled.
+     */
+    require?: string | DocumentTypeSlotRequirement;
+    /**
+     * What the named type must say of itself, whatever fills the slots: a
+     * condition that reads no `'$property'`. A type it does not hold for does
+     * not meet the requirements.
+     */
+    when?: DocumentTypeSlotCondition;
+};
+```
+
 <a id="type-identitykeyreferencerequirements"></a>
 ## `IdentityKeyReferenceRequirements`
 
@@ -7710,6 +8042,11 @@ export class TokenTradeMode {
     free(): void;
     [Symbol.dispose](): void;
     static NotTradeable(): TokenTradeMode;
+    /**
+     * Holders may list the token and make offers for it. Admitted from protocol version 16:
+     * earlier versions refuse a contract or a configuration update that uses it.
+     */
+    static Tradeable(): TokenTradeMode;
     static readonly __struct: string;
     readonly __type: string;
     readonly value: string;
@@ -7813,6 +8150,46 @@ export class StatusTenderdashProtocol {
     block: number;
     p2p: number;
 }
+```
+
+<a id="type-yesnominimumvotingpowerobject"></a>
+## `YesNoMinimumVotingPowerObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type YesNoMinimumVotingPowerObject =
+| { $type: "absolute"; votingPower: number }
+| {
+    $type: "fractionOfTotal";
+    numerator: number;
+    denominator: number;
+    rounding: "up" | "down" | "downPlusOne" | "upMinusOne";
+};
+```
+
+<a id="type-yesnovotepollpurposejson"></a>
+## `YesNoVotePollPurposeJSON`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type YesNoVotePollPurposeJSON = {
+    $type: "decisionProposal";
+    documentId: string;
+};
+```
+
+<a id="type-yesnovotepollpurposeobject"></a>
+## `YesNoVotePollPurposeObject`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type YesNoVotePollPurposeObject = {
+    $type: "decisionProposal";
+    documentId: Uint8Array;
+};
 ```
 
 <a id="type-electedmoderationseat"></a>
@@ -7928,6 +8305,81 @@ export type DocumentReferenceWhereCondition =
 | { containsAll: string };
 ```
 
+<a id="type-documenttyperequirementslot"></a>
+## `DocumentTypeRequirementSlot`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeRequirementSlot = {
+    /**
+     * Which property may fill the slot: `'$any'` for any property matching
+     * the rest, a property name, or `$self.` followed by the string property
+     * of the referring document that names it.
+     */
+    name: string;
+    /** What the property holds; `'array'` comes with `byteArray: true`. */
+    type: 'string' | 'identifier' | 'integer' | 'boolean' | 'array';
+    byteArray?: true;
+    /** The most bytes a value of the property may ever take. */
+    maxBytes?: number;
+    /** The other slots this one is filled by a different property than. */
+    distinctFrom?: Array<string>;
+    /**
+     * What the referenced type must say of the property: one the condition
+     * does not hold for does not fill the slot.
+     */
+    when?: DocumentTypeSlotCondition;
+};
+```
+
+<a id="type-documenttypeslotcondition"></a>
+## `DocumentTypeSlotCondition`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeSlotCondition =
+| { equal: [DocumentTypeSlotConditionString, DocumentTypeSlotConditionString] }
+| { notEqual: [DocumentTypeSlotConditionString, DocumentTypeSlotConditionString] }
+| { in: ['$kind' | '$property', Array<string>] }
+| { notIn: ['$kind' | '$property', Array<string>] }
+| {
+    contains: [
+    (
+    | '$moderatorAbilities.deleteKeepsFields'
+    | '$moderatorAbilities.changeFields'
+    | '$electedAbilities'
+    ),
+    '$property' | { const: string },
+    ];
+}
+| { present: DocumentTypeSlotConditionSetting }
+| { absent: DocumentTypeSlotConditionSetting }
+| { not: DocumentTypeSlotCondition }
+| { anyOf: Array<DocumentTypeSlotCondition> }
+| { allOf: Array<DocumentTypeSlotCondition> }
+| { ifThen: [DocumentTypeSlotCondition, DocumentTypeSlotCondition] }
+| {
+    ifThenElse: [
+    DocumentTypeSlotCondition,
+    DocumentTypeSlotCondition,
+    DocumentTypeSlotCondition,
+    ];
+};
+```
+
+<a id="type-documenttypeslotrequirement"></a>
+## `DocumentTypeSlotRequirement`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeSlotRequirement =
+| { anyOf: Array<string | { allOf: Array<string> }> }
+| { allOf: Array<string | { anyOf: Array<string> }> };
+```
+
 <a id="type-actiongoallike"></a>
 ## `ActionGoalLike`
 
@@ -8028,6 +8480,30 @@ Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
 
 ```typescript
 export type PreProgrammedDistributionsMap = Map<string, DistributionAmountsMap>;
+```
+
+<a id="type-documenttypeslotconditionsetting"></a>
+## `DocumentTypeSlotConditionSetting`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeSlotConditionSetting =
+| '$moderatorAbilities.deleteWithin'
+| '$moderatorAbilities.deleteSettled'
+| '$moderatorAbilities.deleteSettled.approversPredateDocument';
+```
+
+<a id="type-documenttypeslotconditionstring"></a>
+## `DocumentTypeSlotConditionString`
+
+Source declaration: `wasm-sdk/dist/raw/wasm_sdk.d.ts`
+
+```typescript
+export type DocumentTypeSlotConditionString =
+| '$kind'
+| '$property'
+| { const: string };
 ```
 
 <a id="type-actiongoal"></a>
