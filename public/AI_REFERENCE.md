@@ -1,6 +1,6 @@
 # Evo SDK - AI Reference
 
-Return types: generated from `@dashevo/evo-sdk@5.0.3` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
+Return types: generated from `@dashevo/evo-sdk@5.1.1` published declarations under `dist/`. See [named return type declarations](TYPE_REFERENCE.md).
 
 ## Overview
 The Evo SDK is a thin TypeScript wrapper around the Dash Platform WASM runtime. It exposes ergonomic namespaces (identities, documents, contracts, tokens, and more) optimized for automation and AI-assisted workflows.
@@ -473,8 +473,9 @@ Parameters:
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
     - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored by
-the regular document-fetch path.
+the v1 wire's `group_by: repeated string` directly. The regular
+document fetch (`getDocuments`) refuses it: it returns the documents
+themselves, which cannot be grouped.
 
 - `[]` or omitted → one ungrouped result entry, keyed by the
   empty string. Its value is the total count for
@@ -500,7 +501,9 @@ the current block time and the proof verifier re-derives it from the
 signed response metadata; `"byStart"` names the bucket absolutely, so
 both sides read it straight from the query. Provable either way.
 Requires protocol version 14+ (the first version whose contract
-grammar hosts `timeRange` indexes).
+grammar hosts `timeRange` indexes): on a network not yet proven to run
+it, the SDK refuses the query without sending it
+(`ProtocolVersionNotActive`).
 
 - `selector: "oldest"` → the oldest still-active range (a near-full
   trailing window of ~`range`; best for "trending over the last window").
@@ -524,7 +527,7 @@ the field's integer type, or the type's minimum for a clamped bottom
 window). An off-grid start is rejected rather than snapped, and an
 empty window is a provable empty answer. The server and the proof
 verifier resolve the same window from the query alone. Requires
-protocol version 14+.
+protocol version 14+, as `timeRange` does.
 
 `start` is a number, or a decimal string for values beyond
 `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
@@ -604,8 +607,9 @@ Parameters:
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
     - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored by
-the regular document-fetch path.
+the v1 wire's `group_by: repeated string` directly. The regular
+document fetch (`getDocuments`) refuses it: it returns the documents
+themselves, which cannot be grouped.
 
 - `[]` or omitted → one ungrouped result entry, keyed by the
   empty string. Its value is the total count for
@@ -631,7 +635,9 @@ the current block time and the proof verifier re-derives it from the
 signed response metadata; `"byStart"` names the bucket absolutely, so
 both sides read it straight from the query. Provable either way.
 Requires protocol version 14+ (the first version whose contract
-grammar hosts `timeRange` indexes).
+grammar hosts `timeRange` indexes): on a network not yet proven to run
+it, the SDK refuses the query without sending it
+(`ProtocolVersionNotActive`).
 
 - `selector: "oldest"` → the oldest still-active range (a near-full
   trailing window of ~`range`; best for "trending over the last window").
@@ -655,7 +661,7 @@ the field's integer type, or the type's minimum for a clamped bottom
 window). An off-grid start is rejected rather than snapped, and an
 empty window is a provable empty answer. The server and the proof
 verifier resolve the same window from the query alone. Requires
-protocol version 14+.
+protocol version 14+, as `timeRange` does.
 
 `start` is a number, or a decimal string for values beyond
 `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
@@ -706,8 +712,9 @@ Parameters:
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
     - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored by
-the regular document-fetch path.
+the v1 wire's `group_by: repeated string` directly. The regular
+document fetch (`getDocuments`) refuses it: it returns the documents
+themselves, which cannot be grouped.
 
 - `[]` or omitted → one ungrouped result entry, keyed by the
   empty string. Its value is the total count for
@@ -733,7 +740,9 @@ the current block time and the proof verifier re-derives it from the
 signed response metadata; `"byStart"` names the bucket absolutely, so
 both sides read it straight from the query. Provable either way.
 Requires protocol version 14+ (the first version whose contract
-grammar hosts `timeRange` indexes).
+grammar hosts `timeRange` indexes): on a network not yet proven to run
+it, the SDK refuses the query without sending it
+(`ProtocolVersionNotActive`).
 
 - `selector: "oldest"` → the oldest still-active range (a near-full
   trailing window of ~`range`; best for "trending over the last window").
@@ -757,7 +766,7 @@ the field's integer type, or the type's minimum for a clamped bottom
 window). An off-grid start is rejected rather than snapped, and an
 empty window is a provable empty answer. The server and the proof
 verifier resolve the same window from the query alone. Requires
-protocol version 14+.
+protocol version 14+, as `timeRange` does.
 
 `start` is a number, or a decimal string for values beyond
 `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
@@ -813,8 +822,9 @@ Parameters:
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `groupBy`: `string[]` (optional)
     - Aggregate-query option: SQL-shaped `GROUP BY` field list. Mirrors
-the v1 wire's `group_by: repeated string` directly. Ignored by
-the regular document-fetch path.
+the v1 wire's `group_by: repeated string` directly. The regular
+document fetch (`getDocuments`) refuses it: it returns the documents
+themselves, which cannot be grouped.
 
 - `[]` or omitted → one ungrouped result entry, keyed by the
   empty string. Its value is the total count for
@@ -840,7 +850,9 @@ the current block time and the proof verifier re-derives it from the
 signed response metadata; `"byStart"` names the bucket absolutely, so
 both sides read it straight from the query. Provable either way.
 Requires protocol version 14+ (the first version whose contract
-grammar hosts `timeRange` indexes).
+grammar hosts `timeRange` indexes): on a network not yet proven to run
+it, the SDK refuses the query without sending it
+(`ProtocolVersionNotActive`).
 
 - `selector: "oldest"` → the oldest still-active range (a near-full
   trailing window of ~`range`; best for "trending over the last window").
@@ -864,7 +876,7 @@ the field's integer type, or the type's minimum for a clamped bottom
 window). An off-grid start is rejected rather than snapped, and an
 empty window is a provable empty answer. The server and the proof
 verifier resolve the same window from the query alone. Requires
-protocol version 14+.
+protocol version 14+, as `timeRange` does.
 
 `start` is a number, or a decimal string for values beyond
 `Number.MAX_SAFE_INTEGER`. `grid` names one of the field's grids
@@ -894,7 +906,7 @@ const result = await sdk.documents.average({
 **Get Document History** - `documents.history`
 *Fetch historical revisions of a document. Requires a document type with history retention enabled (documentsKeepHistory).*
 
-Signature: `history(query: wasm.DocumentHistoryQuery): Promise<Map<bigint, wasm.Document>>`
+Signature: `history(query: wasm.DocumentHistoryQuery): Promise<wasm.DocumentHistoryResult>`
 
 Parameters:
 - `query`: `wasm.DocumentHistoryQuery` (required)
@@ -907,17 +919,28 @@ Parameters:
   - `documentId`: `IdentifierLike` (required)
     - Document identifier.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
-  - `startAtMs`: `number` (optional)
-    - Millisecond timestamp (exclusive) to start after.
+  - `startAtMs`: `bigint | number` (optional)
+    - Inclusive lower time bound. Supply at most one selector. A query without one reads a
+page from the first retained revision, as `startAtMs: 0` does, up to `limit` entries.
+
+Every selector is an exact u64: a `number` is accepted only up to
+`Number.MAX_SAFE_INTEGER`, and anything larger must be a `bigint`, since
+JavaScript would have rounded it before the query is built.
+  - `startAfter`: `{ timeMs: bigint | number; revision: bigint | number; } | DocumentHistoryEntry` (optional)
+    - Complete exclusive cursor returned by a previous page.
+
+`startAfter`, `startAtRevision` and `revision` need Platform protocol version 15.
+Below it only `startAtMs` is served, and the others are refused before sending.
+  - Type declarations: [`DocumentHistoryEntry`](TYPE_REFERENCE.md#type-documenthistoryentry)
+  - `startAtRevision`: `bigint | number` (optional)
+  - `revision`: `bigint | number` (optional)
   - `limit`: `number` (optional)
-    - Maximum number of entries to return.
-  - `offset`: `number` (optional)
-    - Offset for pagination through the document history.
+    - Maximum ten entries. A single revision requires limit one.
 
 Returns:
 
-- `Promise<Map<bigint, wasm.Document>>`
-  - Type declarations: [`wasm.Document`](TYPE_REFERENCE.md#type-document)
+- `Promise<wasm.DocumentHistoryResult>`
+  - Type declarations: [`wasm.DocumentHistoryResult`](TYPE_REFERENCE.md#type-documenthistoryresult)
 
 Example:
 ```javascript
@@ -1221,7 +1244,7 @@ const result = await sdk.group.contestedResourceVotersForIdentity({
 **Get Identity Votes** - `voting.contestedResourceIdentityVotes`
 *Fetch contested resource votes submitted by a particular identity.*
 
-Signature: `contestedResourceIdentityVotes(query: wasm.ContestedResourceIdentityVotesQuery): Promise<Map<string, wasm.ResourceVote>>`
+Signature: `contestedResourceIdentityVotes(query: wasm.ContestedResourceIdentityVotesQuery): Promise<Map<string, wasm.ResourceVoteWithCount>>`
 
 Parameters:
 - `query`: `wasm.ContestedResourceIdentityVotesQuery` (required)
@@ -1241,8 +1264,8 @@ Parameters:
 
 Returns:
 
-- `Promise<Map<string, wasm.ResourceVote>>`
-  - Type declarations: [`wasm.ResourceVote`](TYPE_REFERENCE.md#type-resourcevote)
+- `Promise<Map<string, wasm.ResourceVoteWithCount>>`
+  - Type declarations: [`wasm.ResourceVoteWithCount`](TYPE_REFERENCE.md#type-resourcevotewithcount)
 
 Example:
 ```javascript
@@ -2491,7 +2514,15 @@ Parameters:
   - `document`: `Document` (required)
     - The document with updated data.
 Must have the same ID as the existing document.
-Revision should be set to current revision + 1.
+
+Its `revision` must be the revision this replace writes: the stored
+revision + 1. The SDK sends the revision as given and does not increase
+it, so increase it yourself: a document fetched from Platform carries the
+stored revision. Passing the stored revision is refused with
+"Document ... has invalid revision Some(n). The desired revision is n".
+A document still at revision 1 is sent as a create instead: the create
+derives a new document ID, so it can succeed and leave the original
+unchanged.
   - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
@@ -2599,6 +2630,12 @@ Parameters:
   - `document`: `Document` (required)
     - The document to transfer.
 Must include id, ownerId, dataContractId, documentTypeName, and revision.
+
+Its `revision` must be the revision this transfer writes: the stored
+revision + 1. The SDK sends the revision as given and does not increase
+it, so increase it yourself: a document fetched from Platform carries the
+stored revision. Passing the stored revision is refused with
+"Document ... has invalid revision Some(n). The desired revision is n".
   - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
   - `recipientId`: `Identifier` (required)
     - The new owner's identity ID.
@@ -2659,6 +2696,12 @@ Parameters:
   - `document`: `Document` (required)
     - The document to purchase.
 Must include id, ownerId, dataContractId, documentTypeName, and revision.
+
+Its `revision` must be the revision this purchase writes: the stored
+revision + 1. The SDK sends the revision as given and does not increase
+it, so increase it yourself: a document fetched from Platform carries the
+stored revision. Passing the stored revision is refused with
+"Document ... has invalid revision Some(n). The desired revision is n".
   - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
   - `buyerId`: `Identifier` (required)
     - The buyer's identity ID.
@@ -2722,10 +2765,17 @@ Parameters:
   - `document`: `Document` (required)
     - The document to set a price on.
 Must include id, ownerId, dataContractId, documentTypeName, and revision.
+
+Its `revision` must be the revision this price update writes: the stored
+revision + 1. The SDK sends the revision as given and does not increase
+it, so increase it yourself: a document fetched from Platform carries the
+stored revision. Passing the stored revision is refused with
+"Document ... has invalid revision Some(n). The desired revision is n".
   - Type declarations: [`Document`](TYPE_REFERENCE.md#type-document)
   - `price`: `bigint` (required)
     - The price in credits.
-Set to 0 to remove the price and make the document not for sale.
+A price of 0 does not take the document off sale: it stays listed, and
+anyone may buy it for 0 credits.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
 Get this from the owner identity's public keys.
@@ -2839,6 +2889,9 @@ Parameters:
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
   - `publicNote`: `string` (optional)
     - Optional public note for the burn operation.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -2906,6 +2959,9 @@ If not provided, mints to the minter's identity.
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
   - `publicNote`: `string` (optional)
     - Optional public note for the mint operation.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
 Get this from the minter identity's public keys.
@@ -3043,6 +3099,9 @@ credits/token for purchases of 1+, 900 for purchases of 100+, and
 Mutually exclusive with `price`. Must contain at least one entry.
   - `publicNote`: `string` (optional)
     - Optional public note for the price change.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -3166,6 +3225,9 @@ Parameters:
     - The emergency action to perform: "pause" or "resume".
   - `publicNote`: `string` (optional)
     - Optional public note for the emergency action.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -3292,6 +3354,9 @@ Parameters:
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
   - `publicNote`: `string` (optional)
     - Optional public note for the freeze operation.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -3356,6 +3421,9 @@ Parameters:
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
   - `publicNote`: `string` (optional)
     - Optional public note for the unfreeze operation.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -3420,6 +3488,9 @@ Parameters:
   - Type declarations: [`Identifier`](TYPE_REFERENCE.md#type-identifier)
   - `publicNote`: `string` (optional)
     - Optional public note for the destruction operation.
+Only the proposer of a group action writes a note: it is left off when signing
+someone else's action (`GroupStateTransitionInfoStatus.otherSigner()` as a
+non-proposer), and the action keeps the proposer's note.
   - `identityKey`: `IdentityPublicKey` (required)
     - The identity public key to use for signing the transition.
   - Type declarations: [`IdentityPublicKey`](TYPE_REFERENCE.md#type-identitypublickey)
@@ -3480,13 +3551,15 @@ Parameters:
 or base58.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `votePoll`: `VotePoll` (required)
-    - The vote poll to vote on.
-Use VotePoll.createContestedDocumentResourceVotePoll() to create.
+    - The vote poll to vote on: a contested resource poll
+(VotePoll.createContestedDocumentResourceVotePoll() creates one), or a yes/no poll as
+getVotePollsByEndDate returns it.
   - Type declarations: [`VotePoll`](TYPE_REFERENCE.md#type-votepoll)
-  - `voteChoice`: `ResourceVoteChoice` (required)
-    - The vote choice.
-Use ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or ResourceVoteChoice.lock().
-  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice)
+  - `voteChoice`: `ResourceVoteChoice | YesNoAbstainVoteChoiceName` (required)
+    - The vote choice. On a contested resource, a ResourceVoteChoice:
+ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or
+ResourceVoteChoice.lock(). On a yes/no poll, 'yes', 'no' or 'abstain'.
+  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice), [`YesNoAbstainVoteChoiceName`](TYPE_REFERENCE.md#type-yesnoabstainvotechoicename)
   - `votingKey`: `IdentityPublicKey` (required)
     - The masternode's voting public key.
 This should be the voting key associated with the masternode.
@@ -3525,13 +3598,15 @@ Parameters:
 or base58.
   - Type declarations: [`IdentifierLike`](TYPE_REFERENCE.md#type-identifierlike)
   - `votePoll`: `VotePoll` (required)
-    - The vote poll to vote on.
-Use VotePoll.createContestedDocumentResourceVotePoll() to create.
+    - The vote poll to vote on: a contested resource poll
+(VotePoll.createContestedDocumentResourceVotePoll() creates one), or a yes/no poll as
+getVotePollsByEndDate returns it.
   - Type declarations: [`VotePoll`](TYPE_REFERENCE.md#type-votepoll)
-  - `voteChoice`: `ResourceVoteChoice` (required)
-    - The vote choice.
-Use ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or ResourceVoteChoice.lock().
-  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice)
+  - `voteChoice`: `ResourceVoteChoice | YesNoAbstainVoteChoiceName` (required)
+    - The vote choice. On a contested resource, a ResourceVoteChoice:
+ResourceVoteChoice.towardsIdentity(), ResourceVoteChoice.abstain(), or
+ResourceVoteChoice.lock(). On a yes/no poll, 'yes', 'no' or 'abstain'.
+  - Type declarations: [`ResourceVoteChoice`](TYPE_REFERENCE.md#type-resourcevotechoice), [`YesNoAbstainVoteChoiceName`](TYPE_REFERENCE.md#type-yesnoabstainvotechoicename)
   - `votingKey`: `IdentityPublicKey` (required)
     - The masternode's voting public key.
 This should be the voting key associated with the masternode.
